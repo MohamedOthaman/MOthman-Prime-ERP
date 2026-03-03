@@ -13,6 +13,10 @@ export default {
       },
     },
     extend: {
+      fontFamily: {
+        sans: ['Inter', 'system-ui', 'sans-serif'],
+        mono: ['JetBrains Mono', 'monospace'],
+      },
       colors: {
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
@@ -47,6 +51,22 @@ export default {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
+        "storage-frozen": "hsl(var(--storage-frozen))",
+        "storage-frozen-bg": "hsl(var(--storage-frozen-bg))",
+        "storage-chilled": "hsl(var(--storage-chilled))",
+        "storage-chilled-bg": "hsl(var(--storage-chilled-bg))",
+        "storage-dry": "hsl(var(--storage-dry))",
+        "storage-dry-bg": "hsl(var(--storage-dry-bg))",
+        "brand-header": "hsl(var(--brand-header))",
+        "brand-border": "hsl(var(--brand-border))",
+        "row-hover": "hsl(var(--row-hover))",
+        success: "hsl(var(--success))",
+        "success-bg": "hsl(var(--success-bg))",
+        warning: "hsl(var(--warning))",
+        "warning-bg": "hsl(var(--warning-bg))",
+        "nav-bg": "hsl(var(--nav-bg))",
+        "nav-active": "hsl(var(--nav-active))",
+        "nav-inactive": "hsl(var(--nav-inactive))",
         sidebar: {
           DEFAULT: "hsl(var(--sidebar-background))",
           foreground: "hsl(var(--sidebar-foreground))",
@@ -65,25 +85,22 @@ export default {
       },
       keyframes: {
         "accordion-down": {
-          from: {
-            height: "0",
-          },
-          to: {
-            height: "var(--radix-accordion-content-height)",
-          },
+          from: { height: "0" },
+          to: { height: "var(--radix-accordion-content-height)" },
         },
         "accordion-up": {
-          from: {
-            height: "var(--radix-accordion-content-height)",
-          },
-          to: {
-            height: "0",
-          },
+          from: { height: "var(--radix-accordion-content-height)" },
+          to: { height: "0" },
+        },
+        "slide-up": {
+          from: { transform: "translateY(100%)", opacity: "0" },
+          to: { transform: "translateY(0)", opacity: "1" },
         },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
+        "slide-up": "slide-up 0.3s ease-out",
       },
     },
   },
