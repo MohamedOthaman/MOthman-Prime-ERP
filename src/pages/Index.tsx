@@ -1,12 +1,61 @@
-// Update this page (the content is just a fallback if you fail to update the page)
+import { useState } from "react";
+import { Search, Package } from "lucide-react";
+import { useStockContext } from "@/contexts/StockContext";
+import { BrandSection } from "@/components/BrandSection";
 
 const Index = () => {
+  const { stock } = useStockContext();
+  const [search, setSearch] = useState("");
+
+  const filtered = stock
+    .map((brand) => ({
+      ...brand,
+      products: brand.products.filter(
+        (p) =>
+          p.name.toLowerCase().includes(search.toLowerCase()) ||
+          p.code.toLowerCase().includes(search.toLowerCase())
+      ),
+    }))
+    .filter((brand) => brand.products.length > 0);
+
+  const totalProducts = stock.reduce((a, b) => a + b.products.length, 0);
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background">
-      <div className="text-center">
-        <h1 className="mb-4 text-4xl font-bold">Welcome to Your Blank App</h1>
-        <p className="text-xl text-muted-foreground">Start building your amazing project here!</p>
-      </div>
+    <div className="min-h-screen bg-background pb-16">
+      <header className="sticky top-0 z-10 bg-background/95 backdrop-blur border-b border-border px-4 py-3">
+        <div className="max-w-3xl mx-auto">
+          <div className="flex items-center gap-2 mb-3">
+            <Package className="w-5 h-5 text-primary" />
+            <h1 className="text-lg font-bold text-foreground tracking-tight">Stock Overview</h1>
+            <span className="ml-auto text-xs text-muted-foreground font-mono">
+              {totalProducts} items
+            </span>
+          </div>
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <input
+              type="text"
+              placeholder="Search product or code..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full bg-secondary text-foreground text-sm rounded-md pl-9 pr-3 py-2 border border-border focus:outline-none focus:ring-1 focus:ring-ring placeholder:text-muted-foreground"
+            />
+          </div>
+        </div>
+      </header>
+
+      <main className="max-w-3xl mx-auto px-4 py-4">
+        {filtered.length === 0 ? (
+          <div className="text-center py-16 text-muted-foreground">
+            <Package className="w-10 h-10 mx-auto mb-3 opacity-40" />
+            <p className="text-sm">No products found</p>
+          </div>
+        ) : (
+          filtered.map((brand) => (
+            <BrandSection key={brand.name} brand={brand} />
+          ))
+        )}
+      </main>
     </div>
   );
 };
