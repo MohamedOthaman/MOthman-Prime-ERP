@@ -3,9 +3,16 @@ import { Settings, Plus, Edit3, X, Check, Search, Barcode } from "lucide-react";
 import { useStockContext } from "@/contexts/StockContext";
 import { Product, StorageType } from "@/data/stockData";
 import { StorageBadge } from "@/components/StorageBadge";
+import { DateWheel, NumberWheel, WheelPicker } from "@/components/WheelPicker";
 import { toast } from "sonner";
 
 type View = "list" | "add" | "edit";
+
+const storageOptions = [
+  { label: "F - Frozen", value: "Frozen" },
+  { label: "C - Chilled", value: "Chilled" },
+  { label: "D - Dry", value: "Dry" },
+];
 
 const emptyProduct: Omit<Product, "nearestExpiryDays" | "totalQty"> = {
   code: "",
@@ -25,6 +32,7 @@ export default function ProductManagement() {
   const [editingCode, setEditingCode] = useState<string | null>(null);
   const [form, setForm] = useState({ ...emptyProduct });
   const [newBarcode, setNewBarcode] = useState("");
+  const [showCartonPicker, setShowCartonPicker] = useState(false);
 
   const allProducts = stock.flatMap(brand =>
     brand.products.map(p => ({ ...p, brand: brand.name }))
@@ -93,7 +101,6 @@ export default function ProductManagement() {
       nearestExpiryDays: 999,
     };
 
-    // Recalc totalQty from batches
     const map: Record<string, number> = {};
     product.batches.forEach(b => { map[b.unit] = (map[b.unit] || 0) + b.qty; });
     product.totalQty = Object.entries(map).map(([unit, amount]) => ({ unit, amount }));
@@ -147,7 +154,7 @@ export default function ProductManagement() {
               <div className="text-center py-10 text-muted-foreground text-sm">No products found</div>
             ) : (
               <div className="bg-card border border-border rounded-lg overflow-hidden">
-                {filtered.map((p, idx) => (
+                {filtered.map((p) => (
                   <button
                     key={p.code}
                     onClick={() => startEdit(p)}
@@ -189,30 +196,16 @@ export default function ProductManagement() {
                 </datalist>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-xs text-muted-foreground block mb-1">Product Code *</label>
-                  <input
-                    type="text"
-                    value={form.code}
-                    onChange={e => setForm(prev => ({ ...prev, code: e.target.value }))}
-                    placeholder="e.g. MN001"
-                    className="w-full bg-secondary text-foreground text-sm rounded-md px-3 py-2 border border-border focus:outline-none focus:ring-1 focus:ring-ring placeholder:text-muted-foreground font-mono"
-                    disabled={view === "edit"}
-                  />
-                </div>
-                <div>
-                  <label className="text-xs text-muted-foreground block mb-1">Storage Type</label>
-                  <select
-                    value={form.storageType}
-                    onChange={e => setForm(prev => ({ ...prev, storageType: e.target.value as StorageType }))}
-                    className="w-full bg-secondary text-foreground text-sm rounded-md px-3 py-2 border border-border focus:outline-none focus:ring-1 focus:ring-ring"
-                  >
-                    <option value="Frozen">F - Frozen</option>
-                    <option value="Chilled">C - Chilled</option>
-                    <option value="Dry">D - Dry</option>
-                  </select>
-                </div>
+              <div>
+                <label className="text-xs text-muted-foreground block mb-1">Product Code *</label>
+                <input
+                  type="text"
+                  value={form.code}
+                  onChange={e => setForm(prev => ({ ...prev, code: e.target.value }))}
+                  placeholder="e.g. MN001"
+                  className="w-full bg-secondary text-foreground text-sm rounded-md px-3 py-2 border border-border focus:outline-none focus:ring-1 focus:ring-ring placeholder:text-muted-foreground font-mono"
+                  disabled={view === "edit"}
+                />
               </div>
 
               <div>
@@ -226,28 +219,47 @@ export default function ProductManagement() {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-xs text-muted-foreground block mb-1">Packaging Type</label>
-                  <input
-                    type="text"
-                    value={form.packaging}
-                    onChange={e => setForm(prev => ({ ...prev, packaging: e.target.value }))}
-                    placeholder="e.g. CTN / PCS"
-                    className="w-full bg-secondary text-foreground text-sm rounded-md px-3 py-2 border border-border focus:outline-none focus:ring-1 focus:ring-ring placeholder:text-muted-foreground"
-                  />
-                </div>
-                <div>
-                  <label className="text-xs text-muted-foreground block mb-1">Carton Holds</label>
-                  <input
-                    type="number"
-                    value={form.cartonHolds || ""}
-                    onChange={e => setForm(prev => ({ ...prev, cartonHolds: e.target.value ? Number(e.target.value) : undefined }))}
-                    placeholder="Optional"
-                    className="w-full bg-secondary text-foreground text-sm rounded-md px-3 py-2 border border-border focus:outline-none focus:ring-1 focus:ring-ring placeholder:text-muted-foreground"
-                    min={1}
-                  />
-                </div>
+              {/* Storage Type Wheel */}
+              <div>
+                <label className="text-xs text-muted-foreground block mb-1">Storage Type</label>
+                <WheelPicker
+                  items={storageOptions}
+                  selectedValue={form.storageType}
+                  onChange={(v) => setForm(prev => ({ ...prev, storageType: v as StorageType }))}
+                  height={120}
+                />
+              </div>
+
+              <div>
+                <label className="text-xs text-muted-foreground block mb-1">Packaging Type</label>
+                <input
+                  type="text"
+                  value={form.packaging}
+                  onChange={e => setForm(prev => ({ ...prev, packaging: e.target.value }))}
+                  placeholder="e.g. CTN / PCS"
+                  className="w-full bg-secondary text-foreground text-sm rounded-md px-3 py-2 border border-border focus:outline-none focus:ring-1 focus:ring-ring placeholder:text-muted-foreground"
+                />
+              </div>
+
+              {/* Carton Holds Wheel */}
+              <div>
+                <label className="text-xs text-muted-foreground block mb-1">Carton Holds (optional)</label>
+                <button
+                  onClick={() => setShowCartonPicker(!showCartonPicker)}
+                  className="w-full bg-secondary text-foreground text-sm rounded-md px-3 py-2 border border-border text-left"
+                >
+                  {form.cartonHolds ? `${form.cartonHolds} pcs` : "Tap to set"}
+                </button>
+                {showCartonPicker && (
+                  <div className="mt-2">
+                    <NumberWheel
+                      value={form.cartonHolds || 1}
+                      onChange={(v) => setForm(prev => ({ ...prev, cartonHolds: v }))}
+                      min={1}
+                      max={100}
+                    />
+                  </div>
+                )}
               </div>
 
               {/* Barcodes */}

@@ -97,6 +97,12 @@
 .wheel-picker {
   -webkit-overflow-scrolling: touch;
   scroll-snap-type: y mandatory;
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.wheel-picker::-webkit-scrollbar {
+  display: none;
 }
 
 .wheel-picker-item {

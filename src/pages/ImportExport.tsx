@@ -1,8 +1,9 @@
 import { useState, useRef } from "react";
-import { FileSpreadsheet, Download, Upload, FileText, AlertTriangle, Check, X, Loader2 } from "lucide-react";
+import { FileSpreadsheet, Download, Upload, FileText, AlertTriangle, Check, X } from "lucide-react";
 import { useStockContext } from "@/contexts/StockContext";
 import { Brand, recalcDaysLeft } from "@/data/stockData";
 import { toast } from "sonner";
+import { WheelPicker } from "@/components/WheelPicker";
 import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
@@ -19,11 +20,14 @@ export default function ImportExport() {
   const { stock, importProducts } = useStockContext();
   const [tab, setTab] = useState<Tab>("export");
   const [expiryDays, setExpiryDays] = useState(30);
+  const [showExpiryPicker, setShowExpiryPicker] = useState(false);
   const [importPreview, setImportPreview] = useState<Brand[] | null>(null);
   const [validationErrors, setValidationErrors] = useState<ValidationError[]>([]);
   const [pdfError, setPdfError] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const pdfFileRef = useRef<HTMLInputElement>(null);
+
+  const expiryOptions = [30, 60, 90, 180].map(d => ({ label: `${d} days`, value: d }));
 
   const flattenStock = () => {
     const rows: any[] = [];
@@ -63,7 +67,6 @@ export default function ImportExport() {
     doc.text("Stock Report", 14, 15);
     doc.setFontSize(8);
     doc.text(`Generated: ${new Date().toLocaleDateString()}`, 14, 22);
-
     const rows = flattenStock();
     autoTable(doc, {
       head: [["Brand", "Code", "Name", "Storage", "Batch", "Qty", "Unit", "Prod", "Exp", "D.Left"]],
@@ -116,14 +119,11 @@ export default function ImportExport() {
   const handleImport = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
-    // Only accept .xlsx
     if (!file.name.endsWith(".xlsx")) {
       toast.error("Only .xlsx files are accepted");
       e.target.value = "";
       return;
     }
-
     const reader = new FileReader();
     reader.onload = (ev) => {
       try {
@@ -131,91 +131,45 @@ export default function ImportExport() {
         const wb = XLSX.read(data, { type: "array" });
         const ws = wb.Sheets[wb.SheetNames[0]];
         const rows: any[] = XLSX.utils.sheet_to_json(ws);
-
-        if (rows.length === 0) {
-          toast.error("File is empty");
-          return;
-        }
-
-        // Validate all rows
+        if (rows.length === 0) { toast.error("File is empty"); return; }
         const allErrors: ValidationError[] = [];
-        rows.forEach((row, i) => {
-          allErrors.push(...validateRow(row, i + 2)); // +2 for header row + 1-indexed
-        });
-
+        rows.forEach((row, i) => { allErrors.push(...validateRow(row, i + 2)); });
         setValidationErrors(allErrors);
-
         if (allErrors.length > 0) {
-          toast.error(`${allErrors.length} validation error(s) found. Review before importing.`);
+          toast.error(`${allErrors.length} validation error(s) found.`);
         }
-
-        // Parse into Brand structure
         const brandsMap = new Map<string, Brand>();
         for (const row of rows) {
           const brandName = row["Brand"] || row["brand"] || "Unknown";
-          if (!brandsMap.has(brandName)) {
-            brandsMap.set(brandName, { name: brandName, products: [] });
-          }
+          if (!brandsMap.has(brandName)) brandsMap.set(brandName, { name: brandName, products: [] });
           const brand = brandsMap.get(brandName)!;
           const code = String(row["Product Code"] || row["product_code"] || row["Code"] || "").trim();
           if (!code) continue;
-          
           let product = brand.products.find(p => p.code === code);
           if (!product) {
             const storageRaw = String(row["Storage Type"] || row["storage_type"] || "D");
             let storageType: "Frozen" | "Chilled" | "Dry" = "Dry";
             if (storageRaw.charAt(0).toUpperCase() === "F") storageType = "Frozen";
             else if (storageRaw.charAt(0).toUpperCase() === "C") storageType = "Chilled";
-            
-            product = {
-              code,
-              name: row["Product Name"] || row["product_name"] || row["Name"] || "",
-              totalQty: [],
-              packaging: "",
-              nearestExpiryDays: 999,
-              storageType,
-              batches: [],
-            };
+            product = { code, name: row["Product Name"] || row["product_name"] || row["Name"] || "", totalQty: [], packaging: "", nearestExpiryDays: 999, storageType, batches: [] };
             brand.products.push(product);
           }
           const unit = row["Unit"] || row["unit"] || "PCS";
-
-          // Handle Excel date serial numbers
           let prodDate = row["Production Date"] || row["production_date"] || row["Prod Date"] || "";
           let expDate = row["Expiry Date"] || row["expiry_date"] || row["Exp Date"] || "";
-          
-          if (typeof prodDate === "number") {
-            const d = XLSX.SSF.parse_date_code(prodDate);
-            prodDate = `${d.y}-${String(d.m).padStart(2, "0")}-${String(d.d).padStart(2, "0")}`;
-          }
-          if (typeof expDate === "number") {
-            const d = XLSX.SSF.parse_date_code(expDate);
-            expDate = `${d.y}-${String(d.m).padStart(2, "0")}-${String(d.d).padStart(2, "0")}`;
-          }
-
-          product.batches.push({
-            batchNo: String(row["Batch No"] || row["batch_no"] || `B-${Date.now()}`),
-            qty: Number(row["Qty"] || row["qty"] || row["Quantity"] || 0),
-            unit,
-            productionDate: String(prodDate),
-            expiryDate: String(expDate),
-            daysLeft: 0,
-            receivedDate: row["Received Date"] || row["received_date"] || new Date().toISOString().split("T")[0],
-          });
+          if (typeof prodDate === "number") { const d = XLSX.SSF.parse_date_code(prodDate); prodDate = `${d.y}-${String(d.m).padStart(2, "0")}-${String(d.d).padStart(2, "0")}`; }
+          if (typeof expDate === "number") { const d = XLSX.SSF.parse_date_code(expDate); expDate = `${d.y}-${String(d.m).padStart(2, "0")}-${String(d.d).padStart(2, "0")}`; }
+          product.batches.push({ batchNo: String(row["Batch No"] || row["batch_no"] || `B-${Date.now()}`), qty: Number(row["Qty"] || row["qty"] || row["Quantity"] || 0), unit, productionDate: String(prodDate), expiryDate: String(expDate), daysLeft: 0, receivedDate: row["Received Date"] || row["received_date"] || new Date().toISOString().split("T")[0] });
           product.packaging = [...new Set(product.batches.map(b => b.unit))].join(" / ");
         }
-
         const parsed = recalcDaysLeft(Array.from(brandsMap.values()));
         parsed.forEach(b => b.products.forEach(p => {
           const map: Record<string, number> = {};
           p.batches.forEach(batch => { map[batch.unit] = (map[batch.unit] || 0) + batch.qty; });
           p.totalQty = Object.entries(map).map(([unit, amount]) => ({ unit, amount }));
         }));
-
         setImportPreview(parsed);
-      } catch (err) {
-        toast.error("Failed to parse Excel file. Ensure it's a valid .xlsx file.");
-      }
+      } catch { toast.error("Failed to parse Excel file."); }
     };
     reader.readAsArrayBuffer(file);
     e.target.value = "";
@@ -224,24 +178,15 @@ export default function ImportExport() {
   const handlePDFImport = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
-    if (!file.name.endsWith(".pdf")) {
-      toast.error("Only .pdf files are accepted");
-      e.target.value = "";
-      return;
-    }
-
-    setPdfError("PDF packing list import requires a structured format. This feature uses text extraction from the PDF. If parsing fails, please convert your packing list to Excel (.xlsx) format and use the Excel import instead.");
-    toast.error("PDF import: structured parsing not yet available for this document. Please use Excel import.");
+    if (!file.name.endsWith(".pdf")) { toast.error("Only .pdf files are accepted"); e.target.value = ""; return; }
+    setPdfError("PDF packing list import requires a structured format. Please convert to Excel (.xlsx) and use Excel import.");
+    toast.error("PDF import: structured parsing not available. Use Excel import.");
     e.target.value = "";
   };
 
   const applyImport = () => {
     if (!importPreview) return;
-    if (validationErrors.length > 0) {
-      toast.error("Fix validation errors before importing");
-      return;
-    }
+    if (validationErrors.length > 0) { toast.error("Fix validation errors first"); return; }
     importProducts(importPreview);
     setImportPreview(null);
     setValidationErrors([]);
@@ -258,18 +203,11 @@ export default function ImportExport() {
       </header>
 
       <main className="max-w-3xl mx-auto px-4 py-4 space-y-4">
-        {/* Tabs */}
         <div className="flex bg-secondary rounded-lg p-1">
-          <button
-            onClick={() => setTab("export")}
-            className={`flex-1 py-2 text-sm font-semibold rounded-md transition-colors ${tab === "export" ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}
-          >
+          <button onClick={() => setTab("export")} className={`flex-1 py-2 text-sm font-semibold rounded-md transition-colors ${tab === "export" ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}>
             <Download className="w-4 h-4 inline mr-1" /> Export
           </button>
-          <button
-            onClick={() => setTab("import")}
-            className={`flex-1 py-2 text-sm font-semibold rounded-md transition-colors ${tab === "import" ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}
-          >
+          <button onClick={() => setTab("import")} className={`flex-1 py-2 text-sm font-semibold rounded-md transition-colors ${tab === "import" ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}>
             <Upload className="w-4 h-4 inline mr-1" /> Import
           </button>
         </div>
@@ -300,17 +238,22 @@ export default function ImportExport() {
                   <p className="text-xs text-muted-foreground">Export items expiring within selected period</p>
                 </div>
               </div>
-              <div className="flex gap-2 flex-wrap mb-3">
-                {[30, 60, 90, 180].map(d => (
-                  <button
-                    key={d}
-                    onClick={() => setExpiryDays(d)}
-                    className={`px-3 py-1.5 rounded text-xs font-semibold transition-colors ${expiryDays === d ? "bg-primary text-primary-foreground" : "bg-secondary text-secondary-foreground"}`}
-                  >
-                    {d}d
-                  </button>
-                ))}
-              </div>
+              <button
+                onClick={() => setShowExpiryPicker(!showExpiryPicker)}
+                className="w-full bg-secondary text-foreground text-sm rounded-md px-3 py-2 border border-border text-left mb-3"
+              >
+                Period: {expiryDays} days {showExpiryPicker ? "▲" : "▼"}
+              </button>
+              {showExpiryPicker && (
+                <div className="mb-3">
+                  <WheelPicker
+                    items={expiryOptions}
+                    selectedValue={expiryDays}
+                    onChange={(v) => setExpiryDays(v as number)}
+                    height={120}
+                  />
+                </div>
+              )}
               <button onClick={exportNearExpiry} className="w-full bg-warning text-primary-foreground font-semibold py-2 rounded-md text-sm">
                 Export Near Expiry ({expiryDays} days)
               </button>
@@ -322,31 +265,19 @@ export default function ImportExport() {
           <div className="space-y-3">
             <div className="bg-card border border-border rounded-lg p-4">
               <p className="text-sm font-semibold text-foreground mb-1">Import Excel File (.xlsx only)</p>
-              <p className="text-xs text-muted-foreground mb-1">
-                Required columns: Product Code, Batch No, Production Date, Expiry Date, Quantity
-              </p>
-              <p className="text-xs text-muted-foreground mb-3">
-                Optional: Brand, Product Name, Storage Type, Unit
-              </p>
+              <p className="text-xs text-muted-foreground mb-1">Required columns: Product Code, Batch No, Production Date, Expiry Date, Quantity</p>
+              <p className="text-xs text-muted-foreground mb-3">Optional: Brand, Product Name, Storage Type, Unit</p>
               <input ref={fileRef} type="file" accept=".xlsx" onChange={handleImport} className="hidden" />
-              <button
-                onClick={() => fileRef.current?.click()}
-                className="w-full bg-primary text-primary-foreground font-semibold py-2.5 rounded-md text-sm"
-              >
+              <button onClick={() => fileRef.current?.click()} className="w-full bg-primary text-primary-foreground font-semibold py-2.5 rounded-md text-sm">
                 Select Excel File
               </button>
             </div>
 
             <div className="bg-card border border-border rounded-lg p-4">
               <p className="text-sm font-semibold text-foreground mb-1">Import PDF Packing List</p>
-              <p className="text-xs text-muted-foreground mb-3">
-                Only structured packing list format supported
-              </p>
+              <p className="text-xs text-muted-foreground mb-3">Only structured packing list format supported</p>
               <input ref={pdfFileRef} type="file" accept=".pdf" onChange={handlePDFImport} className="hidden" />
-              <button
-                onClick={() => pdfFileRef.current?.click()}
-                className="w-full bg-secondary text-secondary-foreground font-semibold py-2.5 rounded-md text-sm"
-              >
+              <button onClick={() => pdfFileRef.current?.click()} className="w-full bg-secondary text-secondary-foreground font-semibold py-2.5 rounded-md text-sm">
                 Select PDF File
               </button>
             </div>
@@ -363,9 +294,7 @@ export default function ImportExport() {
                 <p className="text-xs font-semibold text-destructive mb-2">Validation Errors ({validationErrors.length})</p>
                 <div className="max-h-32 overflow-y-auto space-y-1">
                   {validationErrors.map((err, i) => (
-                    <p key={i} className="text-xs text-destructive/80">
-                      Row {err.row}: {err.field} — {err.message}
-                    </p>
+                    <p key={i} className="text-xs text-destructive/80">Row {err.row}: {err.field} — {err.message}</p>
                   ))}
                 </div>
               </div>
@@ -374,18 +303,12 @@ export default function ImportExport() {
             {importPreview && (
               <div className="bg-card border border-border rounded-lg overflow-hidden">
                 <div className="px-3 py-2 bg-brand-header border-b border-border flex items-center justify-between">
-                  <span className="text-xs font-semibold text-foreground uppercase tracking-wide">
-                    Import Preview
-                  </span>
-                  <span className="text-xs text-muted-foreground">
-                    {importPreview.reduce((a, b) => a + b.products.length, 0)} products
-                  </span>
+                  <span className="text-xs font-semibold text-foreground uppercase tracking-wide">Import Preview</span>
+                  <span className="text-xs text-muted-foreground">{importPreview.reduce((a, b) => a + b.products.length, 0)} products</span>
                 </div>
                 {importPreview.map(brand => (
                   <div key={brand.name}>
-                    <div className="px-3 py-1.5 text-xs font-bold text-primary border-b border-border/50 bg-muted/30">
-                      {brand.name}
-                    </div>
+                    <div className="px-3 py-1.5 text-xs font-bold text-primary border-b border-border/50 bg-muted/30">{brand.name}</div>
                     {brand.products.map(p => (
                       <div key={p.code} className="px-3 py-1.5 border-b border-border/50 flex items-center gap-2 text-sm">
                         <span className="font-mono text-xs text-primary w-16">{p.code}</span>
@@ -396,14 +319,8 @@ export default function ImportExport() {
                   </div>
                 ))}
                 <div className="p-3 flex gap-2">
-                  <button onClick={() => { setImportPreview(null); setValidationErrors([]); }} className="flex-1 bg-secondary text-secondary-foreground font-semibold py-2 rounded-md text-sm">
-                    Cancel
-                  </button>
-                  <button
-                    onClick={applyImport}
-                    disabled={validationErrors.length > 0}
-                    className={`flex-1 font-semibold py-2 rounded-md text-sm flex items-center justify-center gap-1 ${validationErrors.length > 0 ? "bg-muted text-muted-foreground" : "bg-success text-primary-foreground"}`}
-                  >
+                  <button onClick={() => { setImportPreview(null); setValidationErrors([]); }} className="flex-1 bg-secondary text-secondary-foreground font-semibold py-2 rounded-md text-sm">Cancel</button>
+                  <button onClick={applyImport} disabled={validationErrors.length > 0} className={`flex-1 font-semibold py-2 rounded-md text-sm flex items-center justify-center gap-1 ${validationErrors.length > 0 ? "bg-muted text-muted-foreground" : "bg-success text-primary-foreground"}`}>
                     <Check className="w-4 h-4" /> Apply Import
                   </button>
                 </div>
