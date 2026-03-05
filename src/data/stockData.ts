@@ -52,8 +52,8 @@ function calcDaysLeft(expiryDate: string): number {
   now.setHours(0, 0, 0, 0);
   const exp = new Date(expiryDate);
   exp.setHours(0, 0, 0, 0);
-  const diff = Math.ceil((exp.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-  return Math.max(0, diff); // Never show negative
+  const diff = Math.floor((exp.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+  return diff;
 }
 
 export function recalcDaysLeft(brands: Brand[]): Brand[] {

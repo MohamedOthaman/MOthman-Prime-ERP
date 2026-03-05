@@ -4,6 +4,7 @@ import { type Product } from "@/data/stockData";
 import { StorageBadge } from "./StorageBadge";
 import { ExpiryIndicator } from "./ExpiryIndicator";
 import { BatchDetails } from "./BatchDetails";
+import { MovingBadge } from "./MovingBadge";
 
 export function ProductRow({ product }: { product: Product }) {
   const [expanded, setExpanded] = useState(false);
@@ -26,8 +27,9 @@ export function ProductRow({ product }: { product: Product }) {
           {product.code}
         </span>
 
-        <span className="text-sm font-medium text-foreground truncate flex-1 min-w-0">
+        <span className="text-sm font-medium text-foreground truncate flex-1 min-w-0 flex items-center gap-1">
           {product.name}
+          <MovingBadge productCode={product.code} />
         </span>
 
         <span className="font-mono text-sm text-secondary-foreground shrink-0 w-24 text-right">

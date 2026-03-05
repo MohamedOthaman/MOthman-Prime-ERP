@@ -1,15 +1,21 @@
 import { useState, useMemo } from "react";
-import { BarChart3, AlertTriangle, TrendingUp, History, Building2 } from "lucide-react";
+import { BarChart3, AlertTriangle, TrendingUp, History, Building2, Settings } from "lucide-react";
 import { useStockContext } from "@/contexts/StockContext";
 import { ExpiryIndicator } from "@/components/ExpiryIndicator";
 import { StorageBadge } from "@/components/StorageBadge";
+import { WheelPicker, NumberWheel } from "@/components/WheelPicker";
+import { getMovingThreshold, setMovingThreshold } from "@/components/MovingBadge";
 
-type ReportTab = "expiry" | "forecast" | "movements" | "brands";
+type ReportTab = "expiry" | "forecast" | "movements" | "brands" | "settings";
 
 export default function Reports() {
   const { stock, movements } = useStockContext();
   const [tab, setTab] = useState<ReportTab>("expiry");
   const [expiryFilter, setExpiryFilter] = useState(30);
+  const [threshold, setThresholdState] = useState(getMovingThreshold());
+  const [showExpiryPicker, setShowExpiryPicker] = useState(false);
+
+  const expiryOptions = [7, 14, 30, 60, 90, 120, 180, 365].map(d => ({ label: `${d} days`, value: d }));
 
   const allBatches = useMemo(() => {
     const items: { brand: string; code: string; name: string; storageType: any; batchNo: string; qty: number; unit: string; expiryDate: string; daysLeft: number }[] = [];
@@ -34,7 +40,7 @@ export default function Reports() {
   }, [stock]);
 
   const nearExpiry = useMemo(() => 
-    allBatches.filter(b => b.daysLeft <= expiryFilter && b.daysLeft >= 0).sort((a, b) => a.daysLeft - b.daysLeft),
+    allBatches.filter(b => b.daysLeft <= expiryFilter).sort((a, b) => a.daysLeft - b.daysLeft),
     [allBatches, expiryFilter]
   );
 
@@ -73,6 +79,7 @@ export default function Reports() {
     { key: "forecast", icon: TrendingUp, label: "Forecast" },
     { key: "movements", icon: History, label: "Movements" },
     { key: "brands", icon: Building2, label: "Brands" },
+    { key: "settings", icon: Settings, label: "Settings" },
   ];
 
   return (
@@ -99,17 +106,27 @@ export default function Reports() {
 
         {tab === "expiry" && (
           <div className="space-y-3">
-            <div className="flex gap-2 flex-wrap">
-              {[14, 30, 60, 90, 180].map(d => (
-                <button
-                  key={d}
-                  onClick={() => setExpiryFilter(d)}
-                  className={`px-3 py-1.5 rounded text-xs font-semibold transition-colors ${expiryFilter === d ? "bg-primary text-primary-foreground" : "bg-secondary text-secondary-foreground"}`}
-                >
-                  {d}d
-                </button>
-              ))}
+            {/* Wheel picker for day filter */}
+            <div className="bg-card border border-border rounded-lg p-3">
+              <button 
+                onClick={() => setShowExpiryPicker(!showExpiryPicker)}
+                className="w-full text-left text-sm font-semibold text-foreground flex items-center justify-between"
+              >
+                <span>Filter: {expiryFilter} days</span>
+                <span className="text-xs text-muted-foreground">{showExpiryPicker ? "Close" : "Change"}</span>
+              </button>
+              {showExpiryPicker && (
+                <div className="mt-3">
+                  <WheelPicker
+                    items={expiryOptions}
+                    selectedValue={expiryFilter}
+                    onChange={(v) => setExpiryFilter(v as number)}
+                    height={140}
+                  />
+                </div>
+              )}
             </div>
+
             {nearExpiry.length === 0 ? (
               <div className="text-center py-10 text-muted-foreground text-sm">No items expiring within {expiryFilter} days</div>
             ) : (
@@ -214,6 +231,27 @@ export default function Reports() {
                 </div>
               </div>
             ))}
+          </div>
+        )}
+
+        {tab === "settings" && (
+          <div className="space-y-4">
+            <div className="bg-card border border-border rounded-lg p-4">
+              <h3 className="text-sm font-semibold text-foreground mb-1">Moving Speed Threshold</h3>
+              <p className="text-xs text-muted-foreground mb-3">
+                Products selling ≥ threshold units in 30 days = ⚡Fast, otherwise 🐢Slow
+              </p>
+              <NumberWheel
+                value={threshold}
+                onChange={(v) => { setThresholdState(v); setMovingThreshold(v); }}
+                min={1}
+                max={200}
+                label="Units/Month"
+              />
+              <p className="text-center text-sm font-mono text-foreground mt-2">
+                Current: {threshold} units/month
+              </p>
+            </div>
           </div>
         )}
       </main>
