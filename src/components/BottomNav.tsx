@@ -1,10 +1,9 @@
-import { Package, ShoppingCart, Camera, FileSpreadsheet, BarChart3, Settings } from "lucide-react";
+import { Package, ScanLine, FileSpreadsheet, BarChart3, Settings } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 
 const tabs = [
   { path: "/", icon: Package, label: "Stock" },
-  { path: "/sale", icon: ShoppingCart, label: "Sale" },
-  { path: "/scan-invoice", icon: Camera, label: "AI Scan" },
+  { path: "/invoice-scan", icon: ScanLine, label: "Invoices" },
   { path: "/import-export", icon: FileSpreadsheet, label: "IO" },
   { path: "/reports", icon: BarChart3, label: "Reports" },
   { path: "/products", icon: Settings, label: "Products" },
