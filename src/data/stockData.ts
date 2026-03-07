@@ -36,15 +36,37 @@ export interface InvoiceItem {
   unit: string;
   batchNo: string;
   expiryDate: string;
+  scannedQty?: number; // tracks how many have been scanned for verification
 }
+
+export type InvoiceStatus = "ready" | "done" | "edited" | "cancelled";
 
 export interface Invoice {
   invoiceNo: string;
   date: string;
   time: string;
+  customerName?: string;
   items: InvoiceItem[];
   type: "OUT";
+  status: InvoiceStatus;
   deductionLog: { batchNo: string; qty: number; unit: string; expiryDate: string }[];
+}
+
+export interface MarketReturn {
+  id: string;
+  date: string;
+  time: string;
+  customerName: string;
+  driverName: string;
+  voucherNumber: string;
+  items: {
+    productCode: string;
+    productName: string;
+    qty: number;
+    unit: string;
+    expiryDate: string;
+    batchNo: string;
+  }[];
 }
 
 function calcDaysLeft(expiryDate: string): number {

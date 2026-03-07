@@ -6,8 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { StockProvider } from "@/contexts/StockContext";
 import { BottomNav } from "@/components/BottomNav";
 import Index from "./pages/Index";
-import SaleMode from "./pages/SaleMode";
-import ScanInvoice from "./pages/ScanInvoice";
+import InvoiceScan from "./pages/InvoiceScan";
 import ImportExport from "./pages/ImportExport";
 import Reports from "./pages/Reports";
 import ProductManagement from "./pages/ProductManagement";
@@ -24,8 +23,7 @@ const App = () => (
         <BrowserRouter>
           <Routes>
             <Route path="/" element={<Index />} />
-            <Route path="/sale" element={<SaleMode />} />
-            <Route path="/scan-invoice" element={<ScanInvoice />} />
+            <Route path="/invoice-scan" element={<InvoiceScan />} />
             <Route path="/import-export" element={<ImportExport />} />
             <Route path="/reports" element={<Reports />} />
             <Route path="/products" element={<ProductManagement />} />
