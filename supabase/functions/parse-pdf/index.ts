@@ -54,7 +54,7 @@ const skuTool = {
   type: "function",
   function: {
     name: "extract_sku",
-    description: "Extract structured stock/SKU data from the stock report",
+    description: "Extract structured stock/SKU data from the stock report. Flag incomplete records instead of discarding them.",
     parameters: {
       type: "object",
       properties: {
@@ -63,19 +63,23 @@ const skuTool = {
           items: {
             type: "object",
             properties: {
-              itemCode: { type: "string" },
-              itemName: { type: "string" },
-              brand: { type: "string", description: "Brand name from 'Brand :' headers" },
-              baseUom: { type: "string", description: "Base unit of measure (KG, CTN, PCS, etc.)" },
-              totalStock: { type: "number" },
+              itemCode: { type: "string", description: "Product code / Item Code / SKU code" },
+              itemName: { type: "string", description: "Product name / Item Name / Description" },
+              brand: { type: "string", description: "Brand name from headers or context" },
+              baseUom: { type: "string", description: "Unit of measure (KG, CTN, PCS, BOX, etc.)" },
+              totalStock: { type: "number", description: "Total stock quantity if shown" },
+              warehouse: { type: "string", description: "Warehouse name/code if available, empty string if not" },
+              flagged: { type: "boolean", description: "true if any critical field (code, name, qty) is missing or unclear" },
+              flagReason: { type: "string", description: "Why this record is flagged, empty if not flagged" },
               batches: {
                 type: "array",
                 items: {
                   type: "object",
                   properties: {
-                    expiryDate: { type: "string", description: "YYYY-MM-DD (convert from DD/MM/YYYY)" },
+                    expiryDate: { type: "string", description: "YYYY-MM-DD (convert from any date format)" },
                     qty: { type: "number" },
                     batchNo: { type: "string" },
+                    warehouse: { type: "string", description: "Warehouse for this specific batch if different" },
                   },
                   required: ["expiryDate", "qty", "batchNo"],
                   additionalProperties: false,
@@ -133,24 +137,38 @@ Items are in a table with columns: Item Code, Item Name, Uom, Sales Qty, LC Valu
 Extract the Item Code, Item Name, Uom, and Sales Qty (as a number) for each item.
 Be thorough - extract EVERY invoice and EVERY item from the document.`,
 
-  sku: `You are a precise data extraction expert for warehouse stock reports. Extract ALL products from this "Stock Report By Warehouse & Expiry" text.
+  sku: `You are a precise data extraction expert for warehouse stock reports. Extract ALL products from the provided stock report content.
+
+COLUMN NAME DETECTION — use semantic understanding, column names vary across systems:
+- "Item Code" / "Product Code" / "SKU" / "Code" → itemCode
+- "Item Name" / "Product Name" / "Description" / "Desc" → itemName  
+- "Stock Qty" / "Quantity" / "Qty" / "On Hand" / "Balance" → qty
+- "Wh Expiry Date" / "Expiry" / "Exp Date" / "Best Before" → expiryDate
+- "UOM" / "Unit" / "Base UOM" / "Uom" → baseUom
+- "Brand" / "Brand Name" / "Brand :" → brand
+- "Batch" / "Batch #" / "Batch No" / "Lot" → batchNo
+- "Wh" / "Warehouse" / "Location" / "Store" → warehouse
 
 DOCUMENT STRUCTURE:
-- Products are grouped under Brand headers like "Brand : XX - BRAND NAME"
+- Products may be grouped under Brand headers like "Brand : XX - BRAND NAME"
 - Each product row has: Item Code, Item Name, Packing, Origin, Total Stock, Base UOM
-- Below each product are batch rows with: Warehouse (Wh), Expiry Date (DD/MM/YYYY), Stock Qty, Batch #
-- Continuation rows (same product) have EMPTY Item Code and Item Name columns
-- Some batches have empty qty (0 stock) — skip those
+- Below each product are batch rows with: Warehouse, Expiry Date, Stock Qty, Batch #
+- Continuation rows (same product) may have EMPTY Item Code and Item Name columns
+- Data may be fragmented across pages — reconstruct by combining related fields
+- Tables may span multiple pages with repeated headers — detect and skip repeated headers
 
 CRITICAL RULES:
-1. Convert ALL dates from DD/MM/YYYY to YYYY-MM-DD
+1. Convert ALL dates to YYYY-MM-DD (from DD/MM/YYYY, MM/DD/YYYY, or any format)
 2. Extract EVERY product and EVERY batch with qty > 0
-3. Keep track of the current Brand — each product belongs to the last "Brand :" header seen
+3. Keep track of the current Brand — each product belongs to the last brand header seen
 4. Products before the first Brand header use "General" as brand
-5. If a product spans multiple pages, combine all its batches
-6. Pay close attention to column alignment — the text columns may shift across pages
-7. Do NOT miss any products or batches. Accuracy is critical.
-8. totalStock should be the number shown in the "Total Stock" column (not recalculated)`,
+5. If a product spans multiple pages, combine all its batches into one record
+6. Pay close attention to column alignment — text columns may shift across pages
+7. Do NOT miss any products or batches. Accuracy is critical
+8. totalStock should be the number shown in the "Total Stock" column (not recalculated)
+9. If a product row is split across multiple lines, reconstruct it as a single record
+10. NEVER discard a record because a field is missing — set flagged=true and flagReason instead
+11. Extract warehouse info per batch when available`,
 
   packing_list: `You are a data extraction expert for warehouse management. Extract ALL products from this packing list document.
 Look for item codes, product names, quantities, units, batch numbers, expiry dates, and production dates.
@@ -274,13 +292,18 @@ serve(async (req) => {
     // Use pro for SKU (accuracy critical), flash-preview for others (fast + accurate)
     const model = type === "sku" ? "google/gemini-2.5-pro" : "google/gemini-3-flash-preview";
 
-    // For packing lists with images, use vision
-    if (type === "packing_list" && images && images.length > 0) {
+    // For image-based PDFs (packing lists or scanned SKU reports), use vision
+    if (images && images.length > 0 && (type === "packing_list" || !textChunks || textChunks.length === 0)) {
+      const label = type === "packing_list" ? "packing list" : "stock report";
       const content: Array<{ type: string; text?: string; image_url?: { url: string } }> = [
-        { type: "text", text: "Extract all products from these packing list pages:" },
+        { type: "text", text: `Extract all products from these ${label} pages. Detect tables, reconstruct fragmented rows, and use semantic column matching:` },
       ];
       for (const img of images) {
         content.push({ type: "image_url", image_url: { url: img } });
+      }
+      // Add any partial text that was extracted alongside images
+      if (textChunks && textChunks.length > 0) {
+        content.push({ type: "text", text: `Additional extracted text for reference:\n${textChunks[0]}` });
       }
       const result = await callAIWithRetry(LOVABLE_API_KEY, type, content, model);
       return new Response(JSON.stringify(result), {

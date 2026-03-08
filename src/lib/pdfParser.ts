@@ -22,7 +22,10 @@ export interface ParsedProduct {
   brand: string;
   baseUom: string;
   totalStock?: number;
-  batches: { expiryDate: string; qty: number; batchNo: string }[];
+  warehouse?: string;
+  flagged?: boolean;
+  flagReason?: string;
+  batches: { expiryDate: string; qty: number; batchNo: string; warehouse?: string }[];
 }
 
 export interface ParsedPackingItem {
@@ -255,17 +258,12 @@ export async function parsePdf(
 
     onProgress?.(`Extracted text from ${numPages} pages → ${textChunks.length} chunks. Sending to AI...`);
     body = { type, textChunks };
-  } else if (type === "packing_list" || !hasText) {
-    // Image-based PDF
-    onProgress?.("Rendering PDF pages...");
+  } else if (!hasText) {
+    // Image-based / scanned PDF — render pages for OCR
+    onProgress?.("Rendering PDF pages for OCR...");
     const images = await renderPagesToImages(file);
-    onProgress?.(`Analyzing ${images.length} page(s) with AI...`);
-
-    if (hasText) {
-      body = { type, textChunks: [text.slice(0, MAX_CHARS_PER_CHUNK)], images };
-    } else {
-      body = { type, images };
-    }
+    onProgress?.(`Analyzing ${images.length} page(s) with AI vision...`);
+    body = { type, images };
   }
 
   onProgress?.("Processing with AI (this may take a few minutes for large files)...");
@@ -285,7 +283,11 @@ export async function parsePdf(
 
   // Log summary
   if (type === "sku" && result?.products) {
-    console.log(`SKU import: ${result.products.length} products, ${result.products.reduce((s: number, p: any) => s + (p.batches?.length || 0), 0)} batches`);
+    const flagged = result.products.filter((p: any) => p.flagged);
+    console.log(`SKU import: ${result.products.length} products, ${result.products.reduce((s: number, p: any) => s + (p.batches?.length || 0), 0)} batches, ${flagged.length} flagged for review`);
+    if (flagged.length > 0) {
+      console.warn("Flagged products:", flagged.map((p: any) => `${p.itemCode || "?"}: ${p.flagReason}`));
+    }
   }
 
   return result;
