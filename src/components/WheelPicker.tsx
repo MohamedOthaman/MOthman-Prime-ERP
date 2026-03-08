@@ -28,7 +28,7 @@ export function WheelPicker({
 
   const visibleCount = Math.floor(height / itemHeight);
   const paddingCount = Math.floor(visibleCount / 2);
-  const centerOffset = paddingCount * itemHeight;
+  const centerOffset = (height - itemHeight) / 2;
 
   const getSelectedIndex = useCallback(() => {
     return items.findIndex(i => i.value === selectedValue);
