@@ -1,9 +1,13 @@
 import { useState, useMemo, useRef, useEffect } from "react";
-import { BarChart3, AlertTriangle, TrendingUp, History, Building2, Settings, FileText, RotateCcw, Download, ArrowUpDown, Filter, FileSpreadsheet, File } from "lucide-react";
+import { BarChart3, AlertTriangle, TrendingUp, History, Building2, Settings, FileText, RotateCcw, Download, ArrowUpDown, Filter, FileSpreadsheet, File, CalendarIcon } from "lucide-react";
 import { useStockContext } from "@/contexts/StockContext";
 import { ExpiryIndicator } from "@/components/ExpiryIndicator";
 import { StorageBadge } from "@/components/StorageBadge";
-import { WheelPicker, NumberWheel } from "@/components/WheelPicker";
+import { WheelPicker, NumberWheel, DateWheel } from "@/components/WheelPicker";
+import { Drawer, DrawerContent, DrawerTrigger } from "@/components/ui/drawer";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+import { format } from "date-fns";
 import { getMovingThreshold, setMovingThreshold } from "@/components/MovingBadge";
 import {
   exportExcel, exportPDF,
@@ -284,13 +288,35 @@ export default function Reports() {
               <div className="grid grid-cols-2 gap-2">
                 <div>
                   <label className="text-[10px] text-muted-foreground">From</label>
-                  <input type="date" value={moveDateFrom} onChange={e => setMoveDateFrom(e.target.value)}
-                    className="w-full bg-secondary text-foreground text-xs rounded-md px-2 py-1.5 border border-border focus:outline-none focus:ring-1 focus:ring-ring" />
+                  <Drawer>
+                    <DrawerTrigger asChild>
+                      <Button variant="outline" className={cn("w-full justify-start text-left text-xs font-normal h-8 bg-secondary border-border", !moveDateFrom && "text-muted-foreground")}>
+                        <CalendarIcon className="mr-1 h-3 w-3 opacity-60" />
+                        {moveDateFrom ? format(new Date(moveDateFrom), "dd/MM/yyyy") : "Select"}
+                      </Button>
+                    </DrawerTrigger>
+                    <DrawerContent className="px-4 pb-8">
+                      <div className="mt-4">
+                        <DateWheel value={moveDateFrom || format(new Date(), "yyyy-MM-dd")} onChange={v => setMoveDateFrom(v)} label="From Date" />
+                      </div>
+                    </DrawerContent>
+                  </Drawer>
                 </div>
                 <div>
                   <label className="text-[10px] text-muted-foreground">To</label>
-                  <input type="date" value={moveDateTo} onChange={e => setMoveDateTo(e.target.value)}
-                    className="w-full bg-secondary text-foreground text-xs rounded-md px-2 py-1.5 border border-border focus:outline-none focus:ring-1 focus:ring-ring" />
+                  <Drawer>
+                    <DrawerTrigger asChild>
+                      <Button variant="outline" className={cn("w-full justify-start text-left text-xs font-normal h-8 bg-secondary border-border", !moveDateTo && "text-muted-foreground")}>
+                        <CalendarIcon className="mr-1 h-3 w-3 opacity-60" />
+                        {moveDateTo ? format(new Date(moveDateTo), "dd/MM/yyyy") : "Select"}
+                      </Button>
+                    </DrawerTrigger>
+                    <DrawerContent className="px-4 pb-8">
+                      <div className="mt-4">
+                        <DateWheel value={moveDateTo || format(new Date(), "yyyy-MM-dd")} onChange={v => setMoveDateTo(v)} label="To Date" />
+                      </div>
+                    </DrawerContent>
+                  </Drawer>
                 </div>
               </div>
               <div className="flex gap-2">
@@ -388,13 +414,35 @@ export default function Reports() {
                   <div className="grid grid-cols-2 gap-2">
                     <div>
                       <label className="text-[10px] text-muted-foreground">From</label>
-                      <input type="date" value={invDateFrom} onChange={e => setInvDateFrom(e.target.value)}
-                        className="w-full bg-secondary text-foreground text-xs rounded-md px-2 py-1.5 border border-border focus:outline-none focus:ring-1 focus:ring-ring" />
+                      <Drawer>
+                        <DrawerTrigger asChild>
+                          <Button variant="outline" className={cn("w-full justify-start text-left text-xs font-normal h-8 bg-secondary border-border", !invDateFrom && "text-muted-foreground")}>
+                            <CalendarIcon className="mr-1 h-3 w-3 opacity-60" />
+                            {invDateFrom ? format(new Date(invDateFrom), "dd/MM/yyyy") : "Select"}
+                          </Button>
+                        </DrawerTrigger>
+                        <DrawerContent className="px-4 pb-8">
+                          <div className="mt-4">
+                            <DateWheel value={invDateFrom || format(new Date(), "yyyy-MM-dd")} onChange={v => setInvDateFrom(v)} label="From Date" />
+                          </div>
+                        </DrawerContent>
+                      </Drawer>
                     </div>
                     <div>
                       <label className="text-[10px] text-muted-foreground">To</label>
-                      <input type="date" value={invDateTo} onChange={e => setInvDateTo(e.target.value)}
-                        className="w-full bg-secondary text-foreground text-xs rounded-md px-2 py-1.5 border border-border focus:outline-none focus:ring-1 focus:ring-ring" />
+                      <Drawer>
+                        <DrawerTrigger asChild>
+                          <Button variant="outline" className={cn("w-full justify-start text-left text-xs font-normal h-8 bg-secondary border-border", !invDateTo && "text-muted-foreground")}>
+                            <CalendarIcon className="mr-1 h-3 w-3 opacity-60" />
+                            {invDateTo ? format(new Date(invDateTo), "dd/MM/yyyy") : "Select"}
+                          </Button>
+                        </DrawerTrigger>
+                        <DrawerContent className="px-4 pb-8">
+                          <div className="mt-4">
+                            <DateWheel value={invDateTo || format(new Date(), "yyyy-MM-dd")} onChange={v => setInvDateTo(v)} label="To Date" />
+                          </div>
+                        </DrawerContent>
+                      </Drawer>
                     </div>
                   </div>
                 </div>
