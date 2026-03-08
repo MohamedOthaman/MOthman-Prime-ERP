@@ -356,13 +356,21 @@ export default function InvoiceScan() {
         });
       }
     }
-    const now = new Date();
-    await addInvoice({
-      invoiceNo, customerName, date: now.toISOString().split("T")[0],
-      time: now.toLocaleTimeString(), items: invoiceItems, type: "OUT",
-      status: "done", deductionLog: allDeductions,
-    });
-    toast.success(`Invoice ${invoiceNo} completed`);
+
+    // Check if this invoice already exists (e.g. status "ready") → update it
+    const existingInvoice = invoices.find(i => i.invoiceNo === invoiceNo);
+    if (existingInvoice) {
+      await updateInvoice(invoiceNo, inv => ({ ...inv, status: "done" }));
+      toast.success(`Invoice ${invoiceNo} → Done ✔`);
+    } else {
+      const now = new Date();
+      await addInvoice({
+        invoiceNo, customerName, date: now.toISOString().split("T")[0],
+        time: now.toLocaleTimeString(), items: invoiceItems, type: "OUT",
+        status: "done", deductionLog: allDeductions,
+      });
+      toast.success(`Invoice ${invoiceNo} completed`);
+    }
     resetForm();
   };
 
