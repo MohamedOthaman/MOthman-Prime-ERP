@@ -341,7 +341,7 @@ export default function Reports() {
         {tab === "brands" && (
           <div className="space-y-3">
             <div className="flex justify-end">
-              <ExportBtn onClick={exportBrands} />
+              <ExportDropdown onExcel={() => handleExportBrands("excel")} onPDF={() => handleExportBrands("pdf")} />
             </div>
             {brandSummary.map(brand => (
               <div key={brand.name} className="bg-card border border-border rounded-lg p-4">
