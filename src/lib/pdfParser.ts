@@ -220,8 +220,8 @@ export async function parsePdf(
 
   let body: any;
 
-  if (hasText) {
-    // Text-based PDF
+  if (hasText && type !== "packing_list") {
+    // Text-based PDF (Oracle reports)
     const textChunks = chunkText(text);
 
     if (type === "sku" && textChunks.length > 1) {
@@ -258,7 +258,7 @@ export async function parsePdf(
 
     onProgress?.(`Extracted text from ${numPages} pages → ${textChunks.length} chunks. Sending to AI...`);
     body = { type, textChunks };
-  } else {
+  } else if (!hasText) {
     // Image-based / scanned PDF — render pages for OCR
     onProgress?.("Rendering PDF pages for OCR...");
     const images = await renderPagesToImages(file);
