@@ -7,7 +7,7 @@ import { useStockContext } from "@/contexts/StockContext";
 import { Invoice, InvoiceItem, MarketReturn } from "@/data/stockData";
 import { toast } from "sonner";
 import { BrowserMultiFormatReader, DecodeHintType, BarcodeFormat } from "@zxing/library";
-import Tesseract from "tesseract.js";
+import { parsePdf } from "@/lib/pdfParser";
 import { NumberWheel, DateWheel } from "@/components/WheelPicker";
 
 type View = "main" | "details" | "scanning" | "returns" | "return-scan" | "completed-view";
