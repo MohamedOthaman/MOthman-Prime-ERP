@@ -382,7 +382,7 @@ export default function Reports() {
                         className="text-xs text-muted-foreground flex items-center gap-1">
                         <ArrowUpDown className="w-3 h-3" /> {invSortDir === "asc" ? "Oldest" : "Newest"}
                       </button>
-                      <ExportBtn onClick={exportInvoices} />
+                      <ExportDropdown onExcel={() => handleExportInvoices("excel")} onPDF={() => handleExportInvoices("pdf")} />
                     </div>
                   </div>
                   <div className="grid grid-cols-2 gap-2">
