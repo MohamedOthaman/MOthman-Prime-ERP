@@ -284,7 +284,7 @@ serve(async (req) => {
       }
       const result = await callAIWithRetry(LOVABLE_API_KEY, type, content, model);
       return new Response(JSON.stringify(result), {
-        status: result.status || 200,
+        status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
