@@ -88,7 +88,7 @@ export default function InvoiceScan() {
       }
 
       // Use continuous decoding from the video element directly
-      reader.decodeFromVideoElement(videoRef.current!, (result, err) => {
+      reader.decodeFromVideoDevice(undefined, videoRef.current!, (result, err) => {
         if (result) {
           const now = Date.now();
           const text = result.getText();

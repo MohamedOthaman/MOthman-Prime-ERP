@@ -35,7 +35,7 @@ export function useBarcodeScanner() {
         await videoRef.current.play();
       }
 
-      reader.decodeFromVideoElement(videoRef.current!, (result, err) => {
+      reader.decodeFromVideoDevice(undefined, videoRef.current!, (result, err) => {
         if (result) {
           const now = Date.now();
           const text = result.getText();
