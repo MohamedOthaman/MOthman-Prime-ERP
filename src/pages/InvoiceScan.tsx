@@ -114,9 +114,13 @@ export default function InvoiceScan() {
   // --- INVOICE INPUT ---
   const handleInvoiceBarcodeScan = () => {
     startScanning((barcode) => {
-      // Check if it's a completed invoice
       const existing = invoices.find(i => i.invoiceNo === barcode);
-      if (existing && (existing.status === "done" || existing.status === "edited" || existing.status === "cancelled")) {
+      if (existing) {
+        if (existing.status === "ready") {
+          loadExistingInvoiceItems(existing);
+          stopCamera();
+          return;
+        }
         setActiveInvoice(existing);
         setView("completed-view");
         stopCamera();
