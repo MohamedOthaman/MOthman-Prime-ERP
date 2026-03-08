@@ -59,7 +59,7 @@ export default function InvoiceScan() {
   const lastBarcodeRef = useRef<string>("");
   const fileRef = useRef<HTMLInputElement>(null);
 
-  const lastCompletedInvoice = invoices.find(i => i.status === "done" || i.status === "edited");
+  const lastCompletedInvoice = invoices.find(i => i.status !== "ready");
 
   const stopCamera = useCallback(() => {
     if (readerRef.current) { readerRef.current.reset(); readerRef.current = null; }
