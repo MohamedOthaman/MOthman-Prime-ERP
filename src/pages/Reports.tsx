@@ -444,6 +444,10 @@ export default function Reports() {
               returns.length === 0 ? (
                 <div className="text-center py-10 text-muted-foreground text-sm">No returns recorded</div>
               ) : (
+                <>
+                <div className="flex justify-end">
+                  <ExportDropdown onExcel={() => handleExportReturns("excel")} onPDF={() => handleExportReturns("pdf")} />
+                </div>
                 <div className="bg-card border border-border rounded-lg overflow-hidden">
                   {returns.map(ret => (
                     <div key={ret.id} className="px-3 py-2.5 border-b border-border/50">
