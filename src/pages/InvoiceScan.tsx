@@ -358,6 +358,24 @@ export default function InvoiceScan() {
     toast.success(`Added ${found.product.name}`);
   };
 
+  const startReturnScanning = () => {
+    setReturnScanning(true);
+    startScanning((barcode) => {
+      const found = findProductByBarcode(barcode) || findProduct(barcode.toUpperCase());
+      if (!found) { toast.error(`Product not found: ${barcode}`); return; }
+      setReturnItems(prev => [...prev, {
+        productCode: found.product.code, productName: found.product.name,
+        qty: returnQty, unit: found.product.batches[0]?.unit || "PCS", expiryDate: returnExpiry,
+      }]);
+      toast.success(`Scanned: ${found.product.name}`);
+    });
+  };
+
+  const stopReturnScanning = () => {
+    stopCamera();
+    setReturnScanning(false);
+  };
+
   const confirmReturn = async () => {
     if (returnItems.length === 0) { toast.error("No items to return"); return; }
     const now = new Date();
