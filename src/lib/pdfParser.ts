@@ -22,7 +22,10 @@ export interface ParsedProduct {
   brand: string;
   baseUom: string;
   totalStock?: number;
-  batches: { expiryDate: string; qty: number; batchNo: string }[];
+  warehouse?: string;
+  flagged?: boolean;
+  flagReason?: string;
+  batches: { expiryDate: string; qty: number; batchNo: string; warehouse?: string }[];
 }
 
 export interface ParsedPackingItem {
