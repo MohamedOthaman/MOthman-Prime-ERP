@@ -91,6 +91,77 @@ export default function ImportExport() {
     toast.success(`Near expiry report (${expiryDays}d) exported`);
   };
 
+  const exportByBrand = () => {
+    const wb = XLSX.utils.book_new();
+    stock.forEach(brand => {
+      const rows: any[] = [];
+      brand.products.forEach(product => {
+        product.batches.forEach(batch => {
+          rows.push({
+            "Product Code": product.code,
+            "Product Name": product.name,
+            "Storage Type": product.storageType,
+            "Batch No": batch.batchNo,
+            Qty: batch.qty,
+            Unit: batch.unit,
+            "Expiry Date": batch.expiryDate,
+            "D.Left": batch.daysLeft,
+          });
+        });
+      });
+      if (rows.length > 0) {
+        const sheetName = brand.name.slice(0, 31); // Excel sheet name limit
+        const ws = XLSX.utils.json_to_sheet(rows);
+        XLSX.utils.book_append_sheet(wb, ws, sheetName);
+      }
+    });
+    XLSX.writeFile(wb, `stock_by_brand_${new Date().toISOString().split("T")[0]}.xlsx`);
+    toast.success("Stock by Brand exported");
+  };
+
+  const exportInventorySnapshot = () => {
+    const rows = stock.flatMap(brand =>
+      brand.products.map(product => ({
+        Brand: brand.name,
+        "Product Code": product.code,
+        "Product Name": product.name,
+        "Storage Type": product.storageType,
+        "Total Qty": product.totalQty.map(q => `${q.amount} ${q.unit}`).join(", "),
+        "Batches": product.batches.length,
+        "Nearest Expiry": product.nearestExpiryDays < 999 ? `${product.nearestExpiryDays}d` : "—",
+      }))
+    );
+    const ws = XLSX.utils.json_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Inventory");
+    XLSX.writeFile(wb, `inventory_snapshot_${new Date().toISOString().split("T")[0]}.xlsx`);
+    toast.success("Inventory snapshot exported");
+  };
+
+  const exportMovements = () => {
+    if (movements.length === 0) {
+      toast.info("No movements to export");
+      return;
+    }
+    const rows = movements.map(m => ({
+      Date: m.date,
+      Time: m.time,
+      Type: m.type,
+      "Product Code": m.productCode,
+      "Product Name": m.productName,
+      "Batch No": m.batchNo,
+      Qty: m.qty,
+      Unit: m.unit,
+      "Invoice No": m.invoiceNo || "",
+      "Return ID": m.returnId || "",
+    }));
+    const ws = XLSX.utils.json_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Movements");
+    XLSX.writeFile(wb, `movements_${new Date().toISOString().split("T")[0]}.xlsx`);
+    toast.success("Movements report exported");
+  };
+
   const validateRow = (row: any, rowNum: number): ValidationError[] => {
     const errors: ValidationError[] = [];
     const code = row["Product Code"] || row["product_code"] || row["Code"];
