@@ -212,6 +212,34 @@ async function callAI(
   }
 }
 
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function callAIWithRetry(
+  apiKey: string,
+  type: "invoices" | "sku" | "packing_list",
+  content: Array<{ type: string; text?: string; image_url?: { url: string } }>,
+  maxRetries = 2,
+) {
+  let lastResult: any = null;
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    const result = await callAI(apiKey, type, content);
+    if (!result?.error) return result;
+
+    lastResult = result;
+    const retriable =
+      result.status === 429 ||
+      result.error?.includes("empty response") ||
+      result.error?.includes("incomplete");
+
+    if (!retriable || attempt === maxRetries) break;
+    await sleep(500 * (attempt + 1));
+  }
+
+  return lastResult;
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -238,7 +266,7 @@ serve(async (req) => {
       for (const img of images) {
         content.push({ type: "image_url", image_url: { url: img } });
       }
-      const result = await callAI(LOVABLE_API_KEY, type, content);
+      const result = await callAIWithRetry(LOVABLE_API_KEY, type, content);
       return new Response(JSON.stringify(result), {
         status: result.status || 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -252,31 +280,36 @@ serve(async (req) => {
 
     if (textChunks.length === 1) {
       const content = [{ type: "text", text: textChunks[0] }];
-      const result = await callAI(LOVABLE_API_KEY, type, content);
+      const result = await callAIWithRetry(LOVABLE_API_KEY, type, content);
       return new Response(JSON.stringify(result), {
         status: result.status || 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // Multiple chunks - process ALL in parallel
-    const chunkPromises = textChunks.map((chunk) => {
-      const content = [{ type: "text" as const, text: chunk }];
-      return callAI(LOVABLE_API_KEY, type, content);
-    });
+    // Multiple chunks - process in small parallel batches with retry
+    const CHUNK_CONCURRENCY = 3;
+    const allResults: any[] = [];
 
-    const chunkResults = await Promise.all(chunkPromises);
-    
-    // Check for errors
-    const firstError = chunkResults.find((r) => r.error);
-    if (firstError) {
-      return new Response(JSON.stringify(firstError), {
-        status: firstError.status || 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+    for (let i = 0; i < textChunks.length; i += CHUNK_CONCURRENCY) {
+      const batch = textChunks.slice(i, i + CHUNK_CONCURRENCY);
+      const batchResults = await Promise.all(
+        batch.map((chunk) => {
+          const content = [{ type: "text" as const, text: chunk }];
+          return callAIWithRetry(LOVABLE_API_KEY, type, content);
+        }),
+      );
+
+      const firstError = batchResults.find((r) => r?.error);
+      if (firstError) {
+        return new Response(JSON.stringify(firstError), {
+          status: firstError.status || 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      allResults.push(...batchResults.map((r) => r.data));
     }
-
-    const allResults = chunkResults.map((r) => r.data);
 
     // Merge results
     let merged: any;
