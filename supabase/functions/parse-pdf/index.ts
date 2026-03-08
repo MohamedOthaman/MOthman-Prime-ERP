@@ -304,12 +304,10 @@ serve(async (req) => {
       const result = await callAIWithRetry(LOVABLE_API_KEY, type, content, model);
 
       if (result?.error) {
-        // For SKU imports, skip failed chunks and continue (partial data is better than none)
-        if (type === "sku") {
-          console.error(`Chunk ${i + 1} failed, skipping:`, result.error);
-          continue;
-        }
-        return new Response(JSON.stringify(result), {
+        return new Response(JSON.stringify({
+          error: `Chunk ${i + 1}/${textChunks.length} failed: ${result.error}`,
+          status: result.status || 500,
+        }), {
           status: result.status || 500,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });

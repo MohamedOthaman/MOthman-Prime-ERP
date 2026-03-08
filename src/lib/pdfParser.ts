@@ -101,6 +101,63 @@ function chunkText(text: string): string[] {
   return chunks;
 }
 
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function mergeSkuProducts(products: ParsedProduct[]): ParsedProduct[] {
+  const productMap = new Map<string, ParsedProduct>();
+
+  for (const product of products) {
+    const key = product.itemCode?.trim() || `${product.itemName}-${product.brand}`;
+    const existing = productMap.get(key);
+
+    if (!existing) {
+      productMap.set(key, {
+        ...product,
+        batches: [...(product.batches || [])],
+      });
+      continue;
+    }
+
+    if (!existing.itemName && product.itemName) existing.itemName = product.itemName;
+    if ((!existing.brand || existing.brand === "General") && product.brand) existing.brand = product.brand;
+    if (!existing.baseUom && product.baseUom) existing.baseUom = product.baseUom;
+
+    const batchKeys = new Set(
+      existing.batches.map((batch) => `${batch.batchNo}|${batch.expiryDate}|${batch.qty}`),
+    );
+
+    for (const batch of product.batches || []) {
+      const batchKey = `${batch.batchNo}|${batch.expiryDate}|${batch.qty}`;
+      if (!batchKeys.has(batchKey)) {
+        existing.batches.push(batch);
+        batchKeys.add(batchKey);
+      }
+    }
+  }
+
+  return Array.from(productMap.values());
+}
+
+async function invokeParsePdfWithRetry(body: Record<string, unknown>, retries = 2) {
+  let lastError: any;
+
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    const { data, error } = await supabase.functions.invoke("parse-pdf", { body });
+    if (!error) return { data, error: null };
+
+    lastError = error;
+    const message = String(error.message || "").toLowerCase();
+    const shouldRetry = message.includes("failed to fetch") || message.includes("failed to send a request");
+
+    if (!shouldRetry || attempt === retries) break;
+    await sleep(1000 * (attempt + 1));
+  }
+
+  return { data: null, error: lastError };
+}
+
 export async function parsePdf(
   file: File,
   type: PdfType,
@@ -116,6 +173,39 @@ export async function parsePdf(
   if (hasText && type !== "packing_list") {
     // Text-based PDF (Oracle reports)
     const textChunks = chunkText(text);
+
+    if (type === "sku" && textChunks.length > 1) {
+      onProgress?.(`Extracted text from ${numPages} pages → ${textChunks.length} chunks. Processing in reliable mode...`);
+
+      const collected: ParsedProduct[] = [];
+
+      for (let i = 0; i < textChunks.length; i++) {
+        onProgress?.(`Processing chunk ${i + 1}/${textChunks.length}...`);
+
+        const { data, error } = await invokeParsePdfWithRetry(
+          { type, textChunks: [textChunks[i]] },
+          2,
+        );
+
+        if (error) {
+          console.error(`Chunk ${i + 1} failed:`, error);
+          return { error: `Failed at chunk ${i + 1}/${textChunks.length}. Please retry.` };
+        }
+
+        const chunkResult = data?.data || data;
+        const products = chunkResult?.products || [];
+        collected.push(...products);
+
+        if (i < textChunks.length - 1) {
+          await sleep(250);
+        }
+      }
+
+      const merged = mergeSkuProducts(collected);
+      console.log(`SKU import: ${merged.length} products after merge, from ${textChunks.length} chunks`);
+      return { products: merged };
+    }
+
     onProgress?.(`Extracted text from ${numPages} pages → ${textChunks.length} chunks. Sending to AI...`);
     body = { type, textChunks };
   } else if (type === "packing_list" || !hasText) {
@@ -133,7 +223,7 @@ export async function parsePdf(
 
   onProgress?.("Processing with AI (this may take a few minutes for large files)...");
 
-  const { data, error } = await supabase.functions.invoke("parse-pdf", { body });
+  const { data, error } = await invokeParsePdfWithRetry(body, 2);
 
   if (error) {
     console.error("Edge function error:", error);
