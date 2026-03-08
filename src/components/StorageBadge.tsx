@@ -8,7 +8,7 @@ const config: Record<StorageType, { icon: typeof Snowflake; bg: string; text: st
 };
 
 export function StorageBadge({ type }: { type: StorageType }) {
-  const c = config[type];
+  const c = config[type] || config["Chilled"];
   const Icon = c.icon;
   return (
     <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold tracking-wide ${c.bg} ${c.text}`}>
