@@ -1,5 +1,5 @@
 import { useState, useRef } from "react";
-import { FileSpreadsheet, Download, Upload, FileText, AlertTriangle, Check, X } from "lucide-react";
+import { FileSpreadsheet, Download, Upload, FileText, AlertTriangle, Check, X, Building2, Package, History } from "lucide-react";
 import { useStockContext } from "@/contexts/StockContext";
 import { Brand, recalcDaysLeft } from "@/data/stockData";
 import { toast } from "sonner";
