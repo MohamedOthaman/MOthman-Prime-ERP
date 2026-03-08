@@ -76,32 +76,27 @@ export default function InvoiceScan() {
         BarcodeFormat.EAN_13, BarcodeFormat.EAN_8, BarcodeFormat.CODE_128,
         BarcodeFormat.CODE_39, BarcodeFormat.QR_CODE, BarcodeFormat.UPC_A, BarcodeFormat.UPC_E,
       ]);
-      hints.set(DecodeHintType.TRY_HARDER, true);
-      const reader = new BrowserMultiFormatReader(hints);
+      const reader = new BrowserMultiFormatReader(hints, 100);
       readerRef.current = reader;
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: "environment", width: { ideal: 1280 }, height: { ideal: 720 } },
-      });
-      streamRef.current = stream;
-      if (videoRef.current) { videoRef.current.srcObject = stream; await videoRef.current.play(); }
-      const scanLoop = async () => {
-        while (readerRef.current && videoRef.current && streamRef.current) {
-          try {
-            const result = await readerRef.current.decodeOnceFromVideoDevice(undefined, videoRef.current);
-            if (result) {
-              const now = Date.now();
-              const text = result.getText();
-              if (now - lastScanRef.current >= 500 && !(text === lastBarcodeRef.current && now - lastScanRef.current < 2000)) {
-                lastScanRef.current = now;
-                lastBarcodeRef.current = text;
-                onScan(text);
-              }
-            }
-          } catch {}
-          await new Promise(r => setTimeout(r, 100));
+
+      reader.decodeFromVideoDevice(undefined, videoRef.current!, (result, err) => {
+        if (result) {
+          const now = Date.now();
+          const text = result.getText();
+          if (now - lastScanRef.current >= 300 && !(text === lastBarcodeRef.current && now - lastScanRef.current < 1500)) {
+            lastScanRef.current = now;
+            lastBarcodeRef.current = text;
+            onScan(text);
+          }
         }
-      };
-      scanLoop();
+      });
+
+      // Grab stream ref for torch after decodeFromVideoDevice sets it up
+      setTimeout(() => {
+        if (videoRef.current?.srcObject) {
+          streamRef.current = videoRef.current.srcObject as MediaStream;
+        }
+      }, 500);
     } catch { toast.error("Cannot access camera"); }
   }, [stopCamera]);
 
