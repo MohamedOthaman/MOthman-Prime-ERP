@@ -206,7 +206,7 @@ export default function Reports() {
                 className="text-sm font-semibold text-foreground flex items-center gap-1">
                 <Filter className="w-3.5 h-3.5 text-muted-foreground" /> {expiryFilter} days
               </button>
-              <ExportBtn onClick={exportExpiry} />
+              <ExportDropdown onExcel={() => handleExportExpiry("excel")} onPDF={() => handleExportExpiry("pdf")} />
             </div>
             {showExpiryPicker && (
               <div className="bg-card border border-border rounded-lg p-3">
