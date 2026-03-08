@@ -24,9 +24,7 @@ export default function ImportExport() {
   const [showExpiryPicker, setShowExpiryPicker] = useState(false);
   const [importPreview, setImportPreview] = useState<Brand[] | null>(null);
   const [validationErrors, setValidationErrors] = useState<ValidationError[]>([]);
-  const [pdfError, setPdfError] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
-  const pdfFileRef = useRef<HTMLInputElement>(null);
 
   const expiryOptions = [30, 60, 90, 180].map(d => ({ label: `${d} days`, value: d }));
 
