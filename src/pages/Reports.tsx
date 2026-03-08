@@ -107,35 +107,27 @@ export default function Reports() {
     return data;
   }, [invoices, invoiceSubTab, invDateFrom, invDateTo, invSortDir]);
 
-  // Export helpers
-  const exportToExcel = (rows: any[], filename: string, sheetName: string) => {
-    if (rows.length === 0) { toast.info("No data to export"); return; }
-    const ws = XLSX.utils.json_to_sheet(rows);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, sheetName);
-    XLSX.writeFile(wb, `${filename}_${new Date().toISOString().split("T")[0]}.xlsx`);
-    toast.success("Exported successfully");
+  // Export handlers
+  const handleExportExpiry = (format: "excel" | "pdf") => {
+    const config = getExpiryExportConfig(nearExpiry, expiryFilter);
+    format === "excel" ? exportExcel(config) : exportPDF(config);
   };
-
-  const exportExpiry = () => exportToExcel(
-    nearExpiry.map(b => ({ Brand: b.brand, Code: b.code, Name: b.name, Batch: b.batchNo, Qty: b.qty, Unit: b.unit, Expiry: b.expiryDate, "D.Left": b.daysLeft })),
-    `expiry_${expiryFilter}d`, "Near Expiry"
-  );
-
-  const exportMovements = () => exportToExcel(
-    filteredMovements.map(m => ({ Date: m.date, Type: m.type, Code: m.productCode, Product: m.productName, Batch: m.batchNo, Qty: m.qty, Unit: m.unit, Invoice: m.invoiceNo || "" })),
-    "movements", "Movements"
-  );
-
-  const exportInvoices = () => exportToExcel(
-    filteredInvoices.flatMap(inv => inv.items.map(it => ({ Invoice: inv.invoiceNo, Date: inv.date, Customer: inv.customerName, Status: inv.status, Code: it.productCode, Product: it.productName, Qty: it.qty, Unit: it.unit }))),
-    `invoices_${invoiceSubTab}`, "Invoices"
-  );
-
-  const exportBrands = () => exportToExcel(
-    brandSummary.map(b => ({ Brand: b.name, Products: b.products, Batches: b.totalBatches, "Total Qty": b.totalQty, "Nearest Expiry": b.nearestExpiry < 999 ? `${b.nearestExpiry}d` : "—" })),
-    "brands", "Brands"
-  );
+  const handleExportMovements = (format: "excel" | "pdf") => {
+    const config = getMovementsExportConfig(filteredMovements);
+    format === "excel" ? exportExcel(config) : exportPDF(config);
+  };
+  const handleExportInvoices = (format: "excel" | "pdf") => {
+    const config = getInvoicesExportConfig(filteredInvoices, invoiceSubTab);
+    format === "excel" ? exportExcel(config) : exportPDF(config);
+  };
+  const handleExportBrands = (format: "excel" | "pdf") => {
+    const config = getBrandsExportConfig(brandSummary);
+    format === "excel" ? exportExcel(config) : exportPDF(config);
+  };
+  const handleExportReturns = (format: "excel" | "pdf") => {
+    const config = getReturnsExportConfig(returns);
+    format === "excel" ? exportExcel(config) : exportPDF(config);
+  };
 
   const tabs: { key: ReportTab; icon: any; label: string }[] = [
     { key: "expiry", icon: AlertTriangle, label: "Expiry" },
@@ -152,12 +144,6 @@ export default function Reports() {
     { key: "cancelled", label: "Cancelled", count: invoices.filter(i => i.status === "cancelled").length },
     { key: "returns", label: "Returns", count: returns.length },
   ];
-
-  const ExportBtn = ({ onClick }: { onClick: () => void }) => (
-    <button onClick={onClick} className="text-xs font-semibold text-primary flex items-center gap-1 bg-primary/10 px-2 py-1 rounded-md">
-      <Download className="w-3 h-3" /> Export
-    </button>
-  );
 
   return (
     <div className="min-h-screen bg-background pb-16">
