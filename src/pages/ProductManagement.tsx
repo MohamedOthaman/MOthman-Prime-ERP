@@ -84,7 +84,7 @@ export default function ProductManagement() {
     }));
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!form.code.trim()) { toast.error("Product Code required"); return; }
     if (!form.name.trim()) { toast.error("Product Name required"); return; }
     if (!brandName.trim()) { toast.error("Brand required"); return; }
