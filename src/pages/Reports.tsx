@@ -418,7 +418,7 @@ export default function Reports() {
                             inv.status === "edited" ? "bg-warning/20 text-warning" :
                             inv.status === "cancelled" ? "bg-destructive/20 text-destructive" :
                             "bg-primary/20 text-primary"
-                          }`}>{inv.status}</span>
+                          }`}>{inv.status.charAt(0).toUpperCase() + inv.status.slice(1)}</span>
                           <span className="font-mono text-xs text-muted-foreground">{inv.items.length}</span>
                         </button>
                         {expandedInvoice === inv.invoiceNo && (
