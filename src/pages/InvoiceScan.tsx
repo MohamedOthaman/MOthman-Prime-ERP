@@ -129,11 +129,33 @@ export default function InvoiceScan() {
   };
 
   const handleManualInvoiceSubmit = () => {
-    if (!invoiceNo.trim()) { toast.error("Enter invoice number"); return; }
-    const existing = invoices.find(i => i.invoiceNo === invoiceNo.trim());
+    const trimmed = invoiceNo.trim();
+    if (!trimmed) { 
+      // Auto-generate invoice number if empty
+      setInvoiceNo(`INV-${Date.now().toString().slice(-6)}`);
+      setView("details");
+      return;
+    }
+    const existing = invoices.find(i => i.invoiceNo === trimmed);
     if (existing && existing.status !== "ready") {
       setActiveInvoice(existing);
       setView("completed-view");
+      return;
+    }
+    // Check if user typed a product code instead of invoice number
+    const foundAsProduct = findProductByBarcode(trimmed) || findProduct(trimmed.toUpperCase());
+    if (foundAsProduct) {
+      // Auto-generate invoice, go to details, and add this product
+      const autoInv = `INV-${Date.now().toString().slice(-6)}`;
+      setInvoiceNo(autoInv);
+      const nearestBatch = [...foundAsProduct.product.batches].sort((a, b) => new Date(a.expiryDate).getTime() - new Date(b.expiryDate).getTime())[0];
+      setItems([{
+        productCode: foundAsProduct.product.code, productName: foundAsProduct.product.name,
+        qty: 1, unit: foundAsProduct.product.batches[0]?.unit || "PCS",
+        nearestExpiry: nearestBatch?.expiryDate || "", scannedQty: 0,
+      }]);
+      toast.success(`Added ${foundAsProduct.product.name}`);
+      setView("details");
       return;
     }
     setView("details");
@@ -250,8 +272,9 @@ export default function InvoiceScan() {
 
   // --- DETAILS VIEW ---
   const addProductToInvoice = (code: string) => {
-    const found = findProductByBarcode(code) || findProduct(code.toUpperCase());
-    if (!found) { toast.error(`Product not found: ${code}`); return; }
+    const trimmed = code.trim();
+    const found = findProductByBarcode(trimmed) || findProduct(trimmed.toUpperCase()) || findProduct(trimmed);
+    if (!found) { toast.error(`منتج غير موجود: ${trimmed}`); return; }
     const existing = items.findIndex(i => i.productCode === found.product.code);
     if (existing >= 0) {
       setItems(prev => prev.map((item, i) => i === existing ? { ...item, qty: item.qty + 1 } : item));
@@ -263,7 +286,7 @@ export default function InvoiceScan() {
         nearestExpiry: nearestBatch?.expiryDate || "", scannedQty: 0,
       }]);
     }
-    toast.success(`Added ${found.product.name}`);
+    toast.success(`✔ ${found.product.name}`);
   };
 
   const updateItemQty = (idx: number, delta: number) => {
@@ -457,7 +480,7 @@ export default function InvoiceScan() {
               <label className="text-sm font-semibold text-foreground block">Or Enter Manually</label>
               <input type="text" value={invoiceNo} onChange={e => setInvoiceNo(e.target.value)}
                 onKeyDown={e => e.key === "Enter" && handleManualInvoiceSubmit()}
-                placeholder="Invoice number..."
+                placeholder="رقم الفاتورة أو كود المنتج..."
                 className="w-full bg-secondary text-foreground text-sm rounded-md px-3 py-2.5 border border-border focus:outline-none focus:ring-1 focus:ring-ring placeholder:text-muted-foreground font-mono" />
               <button onClick={handleManualInvoiceSubmit}
                 className="w-full bg-secondary text-secondary-foreground font-semibold py-2.5 rounded-md text-sm">
