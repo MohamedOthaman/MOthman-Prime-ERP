@@ -4,6 +4,7 @@ import { useStockContext } from "@/contexts/StockContext";
 import { Brand, recalcDaysLeft } from "@/data/stockData";
 import { toast } from "sonner";
 import { WheelPicker } from "@/components/WheelPicker";
+import { PdfImportSection } from "@/components/PdfImportSection";
 import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
