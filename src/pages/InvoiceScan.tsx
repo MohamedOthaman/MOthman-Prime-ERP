@@ -46,6 +46,7 @@ export default function InvoiceScan() {
   const [returnExpiry, setReturnExpiry] = useState(new Date().toISOString().split("T")[0]);
   const [showReturnQtyPicker, setShowReturnQtyPicker] = useState(false);
   const [showReturnExpiryPicker, setShowReturnExpiryPicker] = useState(false);
+  const [returnScanning, setReturnScanning] = useState(false);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -357,6 +358,24 @@ export default function InvoiceScan() {
     toast.success(`Added ${found.product.name}`);
   };
 
+  const startReturnScanning = () => {
+    setReturnScanning(true);
+    startScanning((barcode) => {
+      const found = findProductByBarcode(barcode) || findProduct(barcode.toUpperCase());
+      if (!found) { toast.error(`Product not found: ${barcode}`); return; }
+      setReturnItems(prev => [...prev, {
+        productCode: found.product.code, productName: found.product.name,
+        qty: returnQty, unit: found.product.batches[0]?.unit || "PCS", expiryDate: returnExpiry,
+      }]);
+      toast.success(`Scanned: ${found.product.name}`);
+    });
+  };
+
+  const stopReturnScanning = () => {
+    stopCamera();
+    setReturnScanning(false);
+  };
+
   const confirmReturn = async () => {
     if (returnItems.length === 0) { toast.error("No items to return"); return; }
     const now = new Date();
@@ -665,35 +684,39 @@ export default function InvoiceScan() {
             </div>
 
             <div className="bg-card border border-border rounded-lg p-4 space-y-3">
-              <h3 className="text-xs font-semibold text-foreground uppercase tracking-wide">Add Returned Products</h3>
-              <input type="text" value={returnManualCode} onChange={e => setReturnManualCode(e.target.value)}
-                placeholder="Product code or barcode..."
-                className="w-full bg-secondary text-foreground text-sm rounded-md px-3 py-2 border border-border focus:outline-none focus:ring-1 focus:ring-ring placeholder:text-muted-foreground font-mono" />
-
-              <div>
-                <label className="text-xs text-muted-foreground block mb-1">Quantity</label>
-                <button onClick={() => setShowReturnQtyPicker(!showReturnQtyPicker)}
-                  className="w-full bg-secondary text-foreground text-sm rounded-md px-3 py-2 border border-border text-left">
-                  {returnQty}
+              <div className="flex items-center justify-between">
+                <h3 className="text-xs font-semibold text-foreground uppercase tracking-wide">Add Returned Products</h3>
+                <button onClick={returnScanning ? stopReturnScanning : startReturnScanning}
+                  className={`text-xs font-semibold px-2.5 py-1.5 rounded-md flex items-center gap-1 ${returnScanning ? "bg-destructive/20 text-destructive" : "bg-primary/20 text-primary"}`}>
+                  <Camera className="w-3 h-3" /> {returnScanning ? "Stop Scan" : "Scan Barcode"}
                 </button>
-                {showReturnQtyPicker && (
-                  <div className="mt-2">
-                    <NumberWheel value={returnQty} onChange={setReturnQty} min={1} max={999} />
-                  </div>
-                )}
               </div>
 
-              <div>
-                <label className="text-xs text-muted-foreground block mb-1">Expiry Date</label>
-                <button onClick={() => setShowReturnExpiryPicker(!showReturnExpiryPicker)}
-                  className="w-full bg-secondary text-foreground text-sm rounded-md px-3 py-2 border border-border text-left font-mono">
-                  {returnExpiry}
-                </button>
-                {showReturnExpiryPicker && (
-                  <div className="mt-2">
-                    <DateWheel value={returnExpiry} onChange={setReturnExpiry} />
+              {returnScanning && (
+                <div className="relative rounded-lg overflow-hidden border border-border">
+                  <video ref={videoRef} className="w-full aspect-video object-cover" playsInline muted />
+                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                    <div className="w-48 h-12 border-2 border-success/60 rounded-lg" />
                   </div>
-                )}
+                </div>
+              )}
+
+              <input type="text" value={returnManualCode} onChange={e => setReturnManualCode(e.target.value)}
+                placeholder="Or enter code manually..."
+                className="w-full bg-secondary text-foreground text-sm rounded-md px-3 py-2 border border-border focus:outline-none focus:ring-1 focus:ring-ring placeholder:text-muted-foreground font-mono" />
+
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="text-xs text-muted-foreground block mb-1">Quantity</label>
+                  <input type="number" value={returnQty} onChange={e => setReturnQty(Math.max(1, parseInt(e.target.value) || 1))}
+                    min="1"
+                    className="w-full bg-secondary text-foreground text-sm rounded-md px-3 py-2 border border-border focus:outline-none focus:ring-1 focus:ring-ring" />
+                </div>
+                <div>
+                  <label className="text-xs text-muted-foreground block mb-1">Expiry Date</label>
+                  <input type="date" value={returnExpiry} onChange={e => setReturnExpiry(e.target.value)}
+                    className="w-full bg-secondary text-foreground text-sm rounded-md px-3 py-2 border border-border focus:outline-none focus:ring-1 focus:ring-ring" />
+                </div>
               </div>
 
               <button onClick={addReturnProduct}
