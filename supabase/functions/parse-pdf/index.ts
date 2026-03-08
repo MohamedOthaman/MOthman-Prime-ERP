@@ -247,19 +247,24 @@ serve(async (req) => {
       });
     }
 
-    // Multiple chunks - process each and merge
-    const allResults: any[] = [];
-    for (const chunk of textChunks) {
-      const content = [{ type: "text", text: chunk }];
-      const result = await callAI(LOVABLE_API_KEY, type, content);
-      if (result.error) {
-        return new Response(JSON.stringify(result), {
-          status: result.status || 500,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      allResults.push(result.data);
+    // Multiple chunks - process ALL in parallel
+    const chunkPromises = textChunks.map((chunk) => {
+      const content = [{ type: "text" as const, text: chunk }];
+      return callAI(LOVABLE_API_KEY, type, content);
+    });
+
+    const chunkResults = await Promise.all(chunkPromises);
+    
+    // Check for errors
+    const firstError = chunkResults.find((r) => r.error);
+    if (firstError) {
+      return new Response(JSON.stringify(firstError), {
+        status: firstError.status || 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
+
+    const allResults = chunkResults.map((r) => r.data);
 
     // Merge results
     let merged: any;
