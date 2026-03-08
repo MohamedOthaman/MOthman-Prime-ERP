@@ -1,10 +1,15 @@
 import { useState, useRef } from "react";
-import { Settings, Plus, Edit3, X, Check, Search, Barcode, Camera, Trash2, ChevronDown, ChevronUp } from "lucide-react";
+import { Settings, Plus, Edit3, X, Check, Search, Barcode, Camera, Trash2, ChevronDown, ChevronUp, CalendarIcon } from "lucide-react";
 import { useStockContext } from "@/contexts/StockContext";
 import { Product, Batch, StorageType } from "@/data/stockData";
 import { StorageBadge } from "@/components/StorageBadge";
 import { useBarcodeScanner } from "@/hooks/useBarcodeScanner";
 import { toast } from "sonner";
+import { format, parse } from "date-fns";
+import { cn } from "@/lib/utils";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { Button } from "@/components/ui/button";
 
 type View = "list" | "add" | "edit";
 
@@ -402,19 +407,52 @@ export default function ProductManagement() {
                       <div className="grid grid-cols-2 gap-2">
                         <div>
                           <label className="text-[10px] text-muted-foreground block mb-0.5">Production Date</label>
-                          <input type="date" value={batch.productionDate} onChange={e => updateBatch(idx, "productionDate", e.target.value)}
-                            className="w-full bg-secondary text-foreground text-sm rounded-md px-2.5 py-2 border border-border focus:outline-none focus:ring-1 focus:ring-ring" />
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <Button variant="outline" className={cn("w-full justify-start text-left text-sm font-normal h-9 bg-secondary border-border", !batch.productionDate && "text-muted-foreground")}>
+                                <CalendarIcon className="mr-1.5 h-3.5 w-3.5 opacity-60" />
+                                {batch.productionDate ? format(new Date(batch.productionDate), "dd/MM/yyyy") : "Select"}
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0" align="start">
+                              <Calendar mode="single" selected={batch.productionDate ? new Date(batch.productionDate) : undefined}
+                                onSelect={d => updateBatch(idx, "productionDate", d ? format(d, "yyyy-MM-dd") : "")}
+                                initialFocus className={cn("p-3 pointer-events-auto")} />
+                            </PopoverContent>
+                          </Popover>
                         </div>
                         <div>
                           <label className="text-[10px] text-muted-foreground block mb-0.5">Expiry Date *</label>
-                          <input type="date" value={batch.expiryDate} onChange={e => updateBatch(idx, "expiryDate", e.target.value)}
-                            className="w-full bg-secondary text-foreground text-sm rounded-md px-2.5 py-2 border border-border focus:outline-none focus:ring-1 focus:ring-ring" />
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <Button variant="outline" className={cn("w-full justify-start text-left text-sm font-normal h-9 bg-secondary border-border", !batch.expiryDate && "text-muted-foreground")}>
+                                <CalendarIcon className="mr-1.5 h-3.5 w-3.5 opacity-60" />
+                                {batch.expiryDate ? format(new Date(batch.expiryDate), "dd/MM/yyyy") : "Select"}
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0" align="start">
+                              <Calendar mode="single" selected={batch.expiryDate ? new Date(batch.expiryDate) : undefined}
+                                onSelect={d => updateBatch(idx, "expiryDate", d ? format(d, "yyyy-MM-dd") : "")}
+                                initialFocus className={cn("p-3 pointer-events-auto")} />
+                            </PopoverContent>
+                          </Popover>
                         </div>
                       </div>
                       <div>
                         <label className="text-[10px] text-muted-foreground block mb-0.5">Received Date</label>
-                        <input type="date" value={batch.receivedDate} onChange={e => updateBatch(idx, "receivedDate", e.target.value)}
-                          className="w-full bg-secondary text-foreground text-sm rounded-md px-2.5 py-2 border border-border focus:outline-none focus:ring-1 focus:ring-ring" />
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <Button variant="outline" className={cn("w-full justify-start text-left text-sm font-normal h-9 bg-secondary border-border", !batch.receivedDate && "text-muted-foreground")}>
+                              <CalendarIcon className="mr-1.5 h-3.5 w-3.5 opacity-60" />
+                              {batch.receivedDate ? format(new Date(batch.receivedDate), "dd/MM/yyyy") : "Select"}
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-auto p-0" align="start">
+                            <Calendar mode="single" selected={batch.receivedDate ? new Date(batch.receivedDate) : undefined}
+                              onSelect={d => updateBatch(idx, "receivedDate", d ? format(d, "yyyy-MM-dd") : "")}
+                              initialFocus className={cn("p-3 pointer-events-auto")} />
+                          </PopoverContent>
+                        </Popover>
                       </div>
                       <button onClick={() => removeBatch(idx)}
                         className="w-full bg-destructive/10 text-destructive font-semibold py-2 rounded-md text-xs flex items-center justify-center gap-1">
