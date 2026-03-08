@@ -140,18 +140,65 @@ function mergeSkuProducts(products: ParsedProduct[]): ParsedProduct[] {
   return Array.from(productMap.values());
 }
 
+async function normalizeInvokeError(error: any) {
+  const baseMessage = String(error?.message || "Failed to process PDF");
+  let status: number | undefined;
+  let details = "";
+
+  const responseLike = error?.context;
+  if (responseLike && typeof responseLike.status === "number") {
+    status = responseLike.status;
+
+    if (typeof responseLike.clone === "function") {
+      try {
+        details = await responseLike.clone().text();
+      } catch {
+        // ignore body parse issues
+      }
+    }
+  }
+
+  const combined = `${baseMessage} ${details}`.toLowerCase();
+
+  if (status === 402 || combined.includes("402") || combined.includes("credits exhausted")) {
+    return {
+      message: "AI credits exhausted. Please add credits from Settings → Workspace → Usage then retry.",
+      status: 402,
+      retryable: false,
+    };
+  }
+
+  if (status === 429 || combined.includes("429") || combined.includes("rate limit")) {
+    return {
+      message: "Too many AI requests right now. Please wait a minute and retry.",
+      status: 429,
+      retryable: true,
+    };
+  }
+
+  const retryable =
+    combined.includes("failed to fetch") ||
+    combined.includes("failed to send a request") ||
+    combined.includes("network");
+
+  return {
+    message: baseMessage,
+    status,
+    retryable,
+  };
+}
+
 async function invokeParsePdfWithRetry(body: Record<string, unknown>, retries = 2) {
-  let lastError: any;
+  let lastError: { message: string; status?: number; retryable?: boolean } | null = null;
 
   for (let attempt = 0; attempt <= retries; attempt++) {
     const { data, error } = await supabase.functions.invoke("parse-pdf", { body });
     if (!error) return { data, error: null };
 
-    lastError = error;
-    const message = String(error.message || "").toLowerCase();
-    const shouldRetry = message.includes("failed to fetch") || message.includes("failed to send a request");
+    const normalizedError = await normalizeInvokeError(error);
+    lastError = normalizedError;
 
-    if (!shouldRetry || attempt === retries) break;
+    if (!normalizedError.retryable || attempt === retries) break;
     await sleep(1000 * (attempt + 1));
   }
 
