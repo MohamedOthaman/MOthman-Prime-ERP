@@ -4,7 +4,8 @@ import { supabase } from "@/integrations/supabase/client";
 // Configure worker
 pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`;
 
-const MAX_CHARS_PER_CHUNK = 12000;
+// Smaller chunks = more reliable AI processing for large files
+const MAX_CHARS_PER_CHUNK = 8000;
 
 export type PdfType = "invoices" | "sku" | "packing_list";
 
@@ -41,12 +42,13 @@ export interface ParseResult {
   error?: string;
 }
 
-async function extractTextFromPdf(file: File): Promise<{ text: string; hasText: boolean }> {
+async function extractTextFromPdf(file: File, onProgress?: (msg: string) => void): Promise<{ text: string; hasText: boolean; numPages: number }> {
   const arrayBuffer = await file.arrayBuffer();
   const pdf = await pdfjsLib.getDocument({ data: new Uint8Array(arrayBuffer) }).promise;
   let fullText = "";
 
   for (let i = 1; i <= pdf.numPages; i++) {
+    if (i % 20 === 0) onProgress?.(`Reading page ${i}/${pdf.numPages}...`);
     const page = await pdf.getPage(i);
     const content = await page.getTextContent();
     const pageText = content.items
@@ -55,7 +57,7 @@ async function extractTextFromPdf(file: File): Promise<{ text: string; hasText: 
     fullText += pageText + "\n\n";
   }
 
-  return { text: fullText.trim(), hasText: fullText.trim().length > 100 };
+  return { text: fullText.trim(), hasText: fullText.trim().length > 100, numPages: pdf.numPages };
 }
 
 async function renderPagesToImages(file: File, maxPages = 10): Promise<string[]> {
@@ -63,7 +65,6 @@ async function renderPagesToImages(file: File, maxPages = 10): Promise<string[]>
   const pdf = await pdfjsLib.getDocument({ data: new Uint8Array(arrayBuffer) }).promise;
   const pagesToRender = Math.min(pdf.numPages, maxPages);
 
-  // Render all pages in parallel
   const promises = Array.from({ length: pagesToRender }, async (_, i) => {
     const page = await pdf.getPage(i + 1);
     const viewport = page.getViewport({ scale: 1.5 });
@@ -108,29 +109,29 @@ export async function parsePdf(
   onProgress?.("Reading PDF...");
 
   // Try text extraction first
-  const { text, hasText } = await extractTextFromPdf(file);
+  const { text, hasText, numPages } = await extractTextFromPdf(file, onProgress);
 
   let body: any;
 
   if (hasText && type !== "packing_list") {
     // Text-based PDF (Oracle reports)
-    onProgress?.("Extracting data with AI...");
     const textChunks = chunkText(text);
-    onProgress?.(`Processing ${textChunks.length} chunk(s)...`);
+    onProgress?.(`Extracted text from ${numPages} pages → ${textChunks.length} chunks. Sending to AI...`);
     body = { type, textChunks };
   } else if (type === "packing_list" || !hasText) {
-    // Image-based PDF - render to images
+    // Image-based PDF
     onProgress?.("Rendering PDF pages...");
     const images = await renderPagesToImages(file);
     onProgress?.(`Analyzing ${images.length} page(s) with AI...`);
 
-    // If we also have text, include it
     if (hasText) {
       body = { type, textChunks: [text.slice(0, MAX_CHARS_PER_CHUNK)], images };
     } else {
       body = { type, images };
     }
   }
+
+  onProgress?.("Processing with AI (this may take a few minutes for large files)...");
 
   const { data, error } = await supabase.functions.invoke("parse-pdf", { body });
 
@@ -143,5 +144,12 @@ export async function parsePdf(
     return { error: data.error };
   }
 
-  return data?.data || data;
+  const result = data?.data || data;
+
+  // Log summary
+  if (type === "sku" && result?.products) {
+    console.log(`SKU import: ${result.products.length} products, ${result.products.reduce((s: number, p: any) => s + (p.batches?.length || 0), 0)} batches`);
+  }
+
+  return result;
 }

@@ -133,14 +133,24 @@ Items are in a table with columns: Item Code, Item Name, Uom, Sales Qty, LC Valu
 Extract the Item Code, Item Name, Uom, and Sales Qty (as a number) for each item.
 Be thorough - extract EVERY invoice and EVERY item from the document.`,
 
-  sku: `You are a data extraction expert for warehouse management. Extract ALL products from this Stock Report By Warehouse & Expiry PDF text.
-Products are grouped by Brand (indicated by "Brand :" headers).
-Each product has: Item Code, Item Name, Packing, Origin, Total Stock, Base UOM.
-Below each product are batch rows with: Warehouse (Wh), Expiry Date (DD/MM/YYYY - convert to YYYY-MM-DD), Stock Qty, Batch #.
-Continuation rows for the same product have empty Item Code/Name columns.
-Some batch quantities might be empty (0 stock) - skip those.
-Be thorough - extract EVERY product and EVERY batch with qty > 0.
-The first products before any Brand: header belong to a default brand (use the item's origin or "General").`,
+  sku: `You are a precise data extraction expert for warehouse stock reports. Extract ALL products from this "Stock Report By Warehouse & Expiry" text.
+
+DOCUMENT STRUCTURE:
+- Products are grouped under Brand headers like "Brand : XX - BRAND NAME"
+- Each product row has: Item Code, Item Name, Packing, Origin, Total Stock, Base UOM
+- Below each product are batch rows with: Warehouse (Wh), Expiry Date (DD/MM/YYYY), Stock Qty, Batch #
+- Continuation rows (same product) have EMPTY Item Code and Item Name columns
+- Some batches have empty qty (0 stock) — skip those
+
+CRITICAL RULES:
+1. Convert ALL dates from DD/MM/YYYY to YYYY-MM-DD
+2. Extract EVERY product and EVERY batch with qty > 0
+3. Keep track of the current Brand — each product belongs to the last "Brand :" header seen
+4. Products before the first Brand header use "General" as brand
+5. If a product spans multiple pages, combine all its batches
+6. Pay close attention to column alignment — the text columns may shift across pages
+7. Do NOT miss any products or batches. Accuracy is critical.
+8. totalStock should be the number shown in the "Total Stock" column (not recalculated)`,
 
   packing_list: `You are a data extraction expert for warehouse management. Extract ALL products from this packing list document.
 Look for item codes, product names, quantities, units, batch numbers, expiry dates, and production dates.
@@ -151,6 +161,7 @@ async function callAI(
   apiKey: string,
   type: string,
   content: Array<{ type: string; text?: string; image_url?: { url: string } }>,
+  model: string,
 ) {
   const tool = type === "invoices" ? invoiceTool : type === "sku" ? skuTool : packingTool;
   const toolName = type === "invoices" ? "extract_invoices" : type === "sku" ? "extract_sku" : "extract_packing_list";
@@ -162,7 +173,7 @@ async function callAI(
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: "google/gemini-2.5-flash",
+      model,
       messages: [
         { role: "system", content: systemPrompts[type] },
         { role: "user", content },
@@ -189,18 +200,18 @@ async function callAI(
     const rawText = await response.text();
     if (!rawText || rawText.trim().length === 0) {
       console.error("Empty response from AI gateway");
-      return { error: "AI returned empty response. Try a smaller file.", status: 500 };
+      return { error: "AI returned empty response", status: 500, retryable: true };
     }
     data = JSON.parse(rawText);
   } catch (parseErr) {
     console.error("Failed to parse AI response as JSON:", parseErr);
-    return { error: "AI response was incomplete. Try a smaller file or retry.", status: 500 };
+    return { error: "AI response was incomplete", status: 500, retryable: true };
   }
 
   const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
   if (!toolCall) {
     console.error("No tool call in response:", JSON.stringify(data).slice(0, 500));
-    return { error: "AI did not return structured data", status: 500 };
+    return { error: "AI did not return structured data", status: 500, retryable: true };
   }
 
   try {
@@ -208,7 +219,7 @@ async function callAI(
     return { data: parsed, status: 200 };
   } catch (e) {
     console.error("Failed to parse tool call arguments:", e);
-    return { error: "Failed to parse AI response", status: 500 };
+    return { error: "Failed to parse AI response", status: 500, retryable: true };
   }
 }
 
@@ -218,23 +229,25 @@ function sleep(ms: number) {
 
 async function callAIWithRetry(
   apiKey: string,
-  type: "invoices" | "sku" | "packing_list",
+  type: string,
   content: Array<{ type: string; text?: string; image_url?: { url: string } }>,
-  maxRetries = 2,
+  model: string,
+  maxRetries = 3,
 ) {
   let lastResult: any = null;
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
-    const result = await callAI(apiKey, type, content);
+    if (attempt > 0) {
+      const delay = 1000 * Math.pow(2, attempt - 1); // 1s, 2s, 4s
+      console.log(`Retry attempt ${attempt}, waiting ${delay}ms...`);
+      await sleep(delay);
+    }
+
+    const result = await callAI(apiKey, type, content, model);
     if (!result?.error) return result;
 
     lastResult = result;
-    const retriable =
-      result.status === 429 ||
-      result.error?.includes("empty response") ||
-      result.error?.includes("incomplete");
-
+    const retriable = result.retryable || result.status === 429;
     if (!retriable || attempt === maxRetries) break;
-    await sleep(500 * (attempt + 1));
   }
 
   return lastResult;
@@ -253,10 +266,13 @@ serve(async (req) => {
     const { type, textChunks, images } = body as {
       type: "invoices" | "sku" | "packing_list";
       textChunks?: string[];
-      images?: string[]; // base64 data URLs
+      images?: string[];
     };
 
     if (!type) throw new Error("Missing 'type' parameter");
+
+    // Use pro model for SKU (accuracy matters), flash for others (speed matters)
+    const model = type === "sku" ? "google/gemini-2.5-pro" : "google/gemini-2.5-flash";
 
     // For packing lists with images, use vision
     if (type === "packing_list" && images && images.length > 0) {
@@ -266,49 +282,52 @@ serve(async (req) => {
       for (const img of images) {
         content.push({ type: "image_url", image_url: { url: img } });
       }
-      const result = await callAIWithRetry(LOVABLE_API_KEY, type, content);
+      const result = await callAIWithRetry(LOVABLE_API_KEY, type, content, model);
       return new Response(JSON.stringify(result), {
         status: result.status || 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // For text-based PDFs, process in chunks if needed
+    // For text-based PDFs
     if (!textChunks || textChunks.length === 0) {
       throw new Error("No text content provided");
     }
 
-    if (textChunks.length === 1) {
-      const content = [{ type: "text", text: textChunks[0] }];
-      const result = await callAIWithRetry(LOVABLE_API_KEY, type, content);
-      return new Response(JSON.stringify(result), {
-        status: result.status || 200,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    // Multiple chunks - process in small parallel batches with retry
-    const CHUNK_CONCURRENCY = 3;
+    // Process chunks SEQUENTIALLY for reliability (one at a time, no parallel)
     const allResults: any[] = [];
 
-    for (let i = 0; i < textChunks.length; i += CHUNK_CONCURRENCY) {
-      const batch = textChunks.slice(i, i + CHUNK_CONCURRENCY);
-      const batchResults = await Promise.all(
-        batch.map((chunk) => {
-          const content = [{ type: "text" as const, text: chunk }];
-          return callAIWithRetry(LOVABLE_API_KEY, type, content);
-        }),
-      );
+    for (let i = 0; i < textChunks.length; i++) {
+      console.log(`Processing chunk ${i + 1}/${textChunks.length} (${textChunks[i].length} chars)`);
 
-      const firstError = batchResults.find((r) => r?.error);
-      if (firstError) {
-        return new Response(JSON.stringify(firstError), {
-          status: firstError.status || 500,
+      const content = [{ type: "text" as const, text: textChunks[i] }];
+      const result = await callAIWithRetry(LOVABLE_API_KEY, type, content, model);
+
+      if (result?.error) {
+        // For SKU imports, skip failed chunks and continue (partial data is better than none)
+        if (type === "sku") {
+          console.error(`Chunk ${i + 1} failed, skipping:`, result.error);
+          continue;
+        }
+        return new Response(JSON.stringify(result), {
+          status: result.status || 500,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
 
-      allResults.push(...batchResults.map((r) => r.data));
+      allResults.push(result.data);
+
+      // Small delay between chunks to avoid rate limits
+      if (i < textChunks.length - 1) {
+        await sleep(500);
+      }
+    }
+
+    if (allResults.length === 0) {
+      return new Response(
+        JSON.stringify({ error: "All chunks failed to process. Try a smaller file or retry." }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
     }
 
     // Merge results
@@ -316,7 +335,25 @@ serve(async (req) => {
     if (type === "invoices") {
       merged = { invoices: allResults.flatMap((r) => r.invoices || []) };
     } else if (type === "sku") {
-      merged = { products: allResults.flatMap((r) => r.products || []) };
+      // Deduplicate products by itemCode (same product may appear in adjacent chunks)
+      const productMap = new Map<string, any>();
+      for (const r of allResults) {
+        for (const p of r.products || []) {
+          if (productMap.has(p.itemCode)) {
+            // Merge batches from duplicate products
+            const existing = productMap.get(p.itemCode);
+            const existingBatchNos = new Set(existing.batches.map((b: any) => b.batchNo));
+            for (const b of p.batches) {
+              if (!existingBatchNos.has(b.batchNo)) {
+                existing.batches.push(b);
+              }
+            }
+          } else {
+            productMap.set(p.itemCode, { ...p });
+          }
+        }
+      }
+      merged = { products: Array.from(productMap.values()) };
     } else {
       merged = { items: allResults.flatMap((r) => r.items || []) };
     }
