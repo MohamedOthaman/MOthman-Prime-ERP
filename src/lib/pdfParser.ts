@@ -249,6 +249,8 @@ export async function parsePdf(
           }
           return { error: data.error };
         }
+
+        const chunkResult = data?.data || data;
         const products = chunkResult?.products || [];
         collected.push(...products);
 
