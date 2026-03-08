@@ -184,10 +184,10 @@ export default function ImportExport() {
     e.target.value = "";
   };
 
-  const applyImport = () => {
+  const applyImport = async () => {
     if (!importPreview) return;
     if (validationErrors.length > 0) { toast.error("Fix validation errors first"); return; }
-    importProducts(importPreview);
+    await importProducts(importPreview);
     setImportPreview(null);
     setValidationErrors([]);
     toast.success("Products imported successfully");
