@@ -271,7 +271,7 @@ export default function Reports() {
                 <span className="text-xs font-semibold text-foreground uppercase tracking-wide flex items-center gap-1">
                   <Filter className="w-3 h-3" /> Filters
                 </span>
-                <ExportBtn onClick={exportMovements} />
+                <ExportDropdown onExcel={() => handleExportMovements("excel")} onPDF={() => handleExportMovements("pdf")} />
               </div>
               <div className="flex gap-1">
                 {(["ALL", "IN", "OUT"] as const).map(t => (
