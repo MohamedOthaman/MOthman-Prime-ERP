@@ -292,13 +292,18 @@ serve(async (req) => {
     // Use pro for SKU (accuracy critical), flash-preview for others (fast + accurate)
     const model = type === "sku" ? "google/gemini-2.5-pro" : "google/gemini-3-flash-preview";
 
-    // For packing lists with images, use vision
-    if (type === "packing_list" && images && images.length > 0) {
+    // For image-based PDFs (packing lists or scanned SKU reports), use vision
+    if (images && images.length > 0 && (type === "packing_list" || !textChunks || textChunks.length === 0)) {
+      const label = type === "packing_list" ? "packing list" : "stock report";
       const content: Array<{ type: string; text?: string; image_url?: { url: string } }> = [
-        { type: "text", text: "Extract all products from these packing list pages:" },
+        { type: "text", text: `Extract all products from these ${label} pages. Detect tables, reconstruct fragmented rows, and use semantic column matching:` },
       ];
       for (const img of images) {
         content.push({ type: "image_url", image_url: { url: img } });
+      }
+      // Add any partial text that was extracted alongside images
+      if (textChunks && textChunks.length > 0) {
+        content.push({ type: "text", text: `Additional extracted text for reference:\n${textChunks[0]}` });
       }
       const result = await callAIWithRetry(LOVABLE_API_KEY, type, content, model);
       return new Response(JSON.stringify(result), {
