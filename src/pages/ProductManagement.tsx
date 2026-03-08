@@ -5,11 +5,11 @@ import { Product, Batch, StorageType } from "@/data/stockData";
 import { StorageBadge } from "@/components/StorageBadge";
 import { useBarcodeScanner } from "@/hooks/useBarcodeScanner";
 import { toast } from "sonner";
-import { format, parse } from "date-fns";
+import { format } from "date-fns";
 import { cn } from "@/lib/utils";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Calendar } from "@/components/ui/calendar";
 import { Button } from "@/components/ui/button";
+import { Drawer, DrawerContent, DrawerTrigger } from "@/components/ui/drawer";
+import { DateWheel } from "@/components/WheelPicker";
 
 type View = "list" | "add" | "edit";
 
@@ -407,52 +407,52 @@ export default function ProductManagement() {
                       <div className="grid grid-cols-2 gap-2">
                         <div>
                           <label className="text-[10px] text-muted-foreground block mb-0.5">Production Date</label>
-                          <Popover>
-                            <PopoverTrigger asChild>
+                          <Drawer>
+                            <DrawerTrigger asChild>
                               <Button variant="outline" className={cn("w-full justify-start text-left text-sm font-normal h-9 bg-secondary border-border", !batch.productionDate && "text-muted-foreground")}>
                                 <CalendarIcon className="mr-1.5 h-3.5 w-3.5 opacity-60" />
                                 {batch.productionDate ? format(new Date(batch.productionDate), "dd/MM/yyyy") : "Select"}
                               </Button>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-auto p-0" align="start">
-                              <Calendar mode="single" selected={batch.productionDate ? new Date(batch.productionDate) : undefined}
-                                onSelect={d => updateBatch(idx, "productionDate", d ? format(d, "yyyy-MM-dd") : "")}
-                                initialFocus className={cn("p-3 pointer-events-auto")} />
-                            </PopoverContent>
-                          </Popover>
+                            </DrawerTrigger>
+                            <DrawerContent className="px-4 pb-8">
+                              <div className="mt-4">
+                                <DateWheel value={batch.productionDate || format(new Date(), "yyyy-MM-dd")} onChange={v => updateBatch(idx, "productionDate", v)} label="Production Date" />
+                              </div>
+                            </DrawerContent>
+                          </Drawer>
                         </div>
                         <div>
                           <label className="text-[10px] text-muted-foreground block mb-0.5">Expiry Date *</label>
-                          <Popover>
-                            <PopoverTrigger asChild>
+                          <Drawer>
+                            <DrawerTrigger asChild>
                               <Button variant="outline" className={cn("w-full justify-start text-left text-sm font-normal h-9 bg-secondary border-border", !batch.expiryDate && "text-muted-foreground")}>
                                 <CalendarIcon className="mr-1.5 h-3.5 w-3.5 opacity-60" />
                                 {batch.expiryDate ? format(new Date(batch.expiryDate), "dd/MM/yyyy") : "Select"}
                               </Button>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-auto p-0" align="start">
-                              <Calendar mode="single" selected={batch.expiryDate ? new Date(batch.expiryDate) : undefined}
-                                onSelect={d => updateBatch(idx, "expiryDate", d ? format(d, "yyyy-MM-dd") : "")}
-                                initialFocus className={cn("p-3 pointer-events-auto")} />
-                            </PopoverContent>
-                          </Popover>
+                            </DrawerTrigger>
+                            <DrawerContent className="px-4 pb-8">
+                              <div className="mt-4">
+                                <DateWheel value={batch.expiryDate || format(new Date(), "yyyy-MM-dd")} onChange={v => updateBatch(idx, "expiryDate", v)} label="Expiry Date" />
+                              </div>
+                            </DrawerContent>
+                          </Drawer>
                         </div>
                       </div>
                       <div>
                         <label className="text-[10px] text-muted-foreground block mb-0.5">Received Date</label>
-                        <Popover>
-                          <PopoverTrigger asChild>
+                        <Drawer>
+                          <DrawerTrigger asChild>
                             <Button variant="outline" className={cn("w-full justify-start text-left text-sm font-normal h-9 bg-secondary border-border", !batch.receivedDate && "text-muted-foreground")}>
                               <CalendarIcon className="mr-1.5 h-3.5 w-3.5 opacity-60" />
                               {batch.receivedDate ? format(new Date(batch.receivedDate), "dd/MM/yyyy") : "Select"}
                             </Button>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-auto p-0" align="start">
-                            <Calendar mode="single" selected={batch.receivedDate ? new Date(batch.receivedDate) : undefined}
-                              onSelect={d => updateBatch(idx, "receivedDate", d ? format(d, "yyyy-MM-dd") : "")}
-                              initialFocus className={cn("p-3 pointer-events-auto")} />
-                          </PopoverContent>
-                        </Popover>
+                          </DrawerTrigger>
+                          <DrawerContent className="px-4 pb-8">
+                            <div className="mt-4">
+                              <DateWheel value={batch.receivedDate || format(new Date(), "yyyy-MM-dd")} onChange={v => updateBatch(idx, "receivedDate", v)} label="Received Date" />
+                            </div>
+                          </DrawerContent>
+                        </Drawer>
                       </div>
                       <button onClick={() => removeBatch(idx)}
                         className="w-full bg-destructive/10 text-destructive font-semibold py-2 rounded-md text-xs flex items-center justify-center gap-1">
