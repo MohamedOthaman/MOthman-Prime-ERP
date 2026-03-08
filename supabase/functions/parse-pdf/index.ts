@@ -184,10 +184,22 @@ async function callAI(
     return { error: `AI processing failed: ${response.status}`, status: 500 };
   }
 
-  const data = await response.json();
+  let data: any;
+  try {
+    const rawText = await response.text();
+    if (!rawText || rawText.trim().length === 0) {
+      console.error("Empty response from AI gateway");
+      return { error: "AI returned empty response. Try a smaller file.", status: 500 };
+    }
+    data = JSON.parse(rawText);
+  } catch (parseErr) {
+    console.error("Failed to parse AI response as JSON:", parseErr);
+    return { error: "AI response was incomplete. Try a smaller file or retry.", status: 500 };
+  }
+
   const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
   if (!toolCall) {
-    console.error("No tool call in response:", JSON.stringify(data));
+    console.error("No tool call in response:", JSON.stringify(data).slice(0, 500));
     return { error: "AI did not return structured data", status: 500 };
   }
 
