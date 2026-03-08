@@ -46,6 +46,7 @@ export default function InvoiceScan() {
   const [returnExpiry, setReturnExpiry] = useState(new Date().toISOString().split("T")[0]);
   const [showReturnQtyPicker, setShowReturnQtyPicker] = useState(false);
   const [showReturnExpiryPicker, setShowReturnExpiryPicker] = useState(false);
+  const [returnScanning, setReturnScanning] = useState(false);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
