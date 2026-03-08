@@ -16,6 +16,51 @@ import { format } from "date-fns";
 
 ...
 
+type View = "main" | "details" | "scanning" | "returns" | "return-scan" | "completed-view";
+
+interface PendingItem {
+  productCode: string;
+  productName: string;
+  qty: number;
+  unit: string;
+  nearestExpiry: string;
+  scannedQty: number;
+}
+
+export default function InvoiceScan() {
+  const {
+    stock, invoices, findProduct, findProductByBarcode,
+    deductFIFO, addInvoice, updateInvoice, restoreStock, addReturn
+  } = useStockContext();
+
+  const [view, setView] = useState<View>("main");
+  const [invoiceNo, setInvoiceNo] = useState("");
+  const [customerName, setCustomerName] = useState("");
+  const [items, setItems] = useState<PendingItem[]>([]);
+  const [activeInvoice, setActiveInvoice] = useState<Invoice | null>(null);
+  const [torchOn, setTorchOn] = useState(false);
+  const [processing, setProcessing] = useState(false);
+  const [ocrProgress, setOcrProgress] = useState(0);
+
+  // Return form
+  const [returnCustomer, setReturnCustomer] = useState("");
+  const [returnDriver, setReturnDriver] = useState("");
+  const [returnVoucher, setReturnVoucher] = useState("");
+  const [returnItems, setReturnItems] = useState<{ productCode: string; productName: string; qty: number; unit: string; expiryDate: string }[]>([]);
+  const [returnManualCode, setReturnManualCode] = useState("");
+  const [returnQty, setReturnQty] = useState(1);
+  const [returnExpiry, setReturnExpiry] = useState(new Date().toISOString().split("T")[0]);
+  const [showReturnQtyPicker, setShowReturnQtyPicker] = useState(false);
+  const [showReturnExpiryPicker, setShowReturnExpiryPicker] = useState(false);
+  const [returnScanning, setReturnScanning] = useState(false);
+
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const readerRef = useRef<BrowserMultiFormatReader | null>(null);
+  const lastScanRef = useRef<number>(0);
+  const lastBarcodeRef = useRef<string>("");
+  const fileRef = useRef<HTMLInputElement>(null);
+
   const lastInvoiceActivityAt = (invoice: Invoice) => {
     const dateTimeCandidate = Date.parse(`${invoice.date}T${invoice.time || "00:00:00"}`);
     if (!Number.isNaN(dateTimeCandidate)) return dateTimeCandidate;
