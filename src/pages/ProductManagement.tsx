@@ -1,10 +1,15 @@
 import { useState, useRef } from "react";
-import { Settings, Plus, Edit3, X, Check, Search, Barcode, Camera, Trash2, ChevronDown, ChevronUp } from "lucide-react";
+import { Settings, Plus, Edit3, X, Check, Search, Barcode, Camera, Trash2, ChevronDown, ChevronUp, CalendarIcon } from "lucide-react";
 import { useStockContext } from "@/contexts/StockContext";
 import { Product, Batch, StorageType } from "@/data/stockData";
 import { StorageBadge } from "@/components/StorageBadge";
 import { useBarcodeScanner } from "@/hooks/useBarcodeScanner";
 import { toast } from "sonner";
+import { format, parse } from "date-fns";
+import { cn } from "@/lib/utils";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { Button } from "@/components/ui/button";
 
 type View = "list" | "add" | "edit";
 
