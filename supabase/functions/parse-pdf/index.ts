@@ -54,7 +54,7 @@ const skuTool = {
   type: "function",
   function: {
     name: "extract_sku",
-    description: "Extract structured stock/SKU data from the stock report",
+    description: "Extract structured stock/SKU data from the stock report. Flag incomplete records instead of discarding them.",
     parameters: {
       type: "object",
       properties: {
@@ -63,19 +63,23 @@ const skuTool = {
           items: {
             type: "object",
             properties: {
-              itemCode: { type: "string" },
-              itemName: { type: "string" },
-              brand: { type: "string", description: "Brand name from 'Brand :' headers" },
-              baseUom: { type: "string", description: "Base unit of measure (KG, CTN, PCS, etc.)" },
-              totalStock: { type: "number" },
+              itemCode: { type: "string", description: "Product code / Item Code / SKU code" },
+              itemName: { type: "string", description: "Product name / Item Name / Description" },
+              brand: { type: "string", description: "Brand name from headers or context" },
+              baseUom: { type: "string", description: "Unit of measure (KG, CTN, PCS, BOX, etc.)" },
+              totalStock: { type: "number", description: "Total stock quantity if shown" },
+              warehouse: { type: "string", description: "Warehouse name/code if available, empty string if not" },
+              flagged: { type: "boolean", description: "true if any critical field (code, name, qty) is missing or unclear" },
+              flagReason: { type: "string", description: "Why this record is flagged, empty if not flagged" },
               batches: {
                 type: "array",
                 items: {
                   type: "object",
                   properties: {
-                    expiryDate: { type: "string", description: "YYYY-MM-DD (convert from DD/MM/YYYY)" },
+                    expiryDate: { type: "string", description: "YYYY-MM-DD (convert from any date format)" },
                     qty: { type: "number" },
                     batchNo: { type: "string" },
+                    warehouse: { type: "string", description: "Warehouse for this specific batch if different" },
                   },
                   required: ["expiryDate", "qty", "batchNo"],
                   additionalProperties: false,
