@@ -1,0 +1,70 @@
+import { useRef, useCallback, useEffect } from "react";
+import { BrowserMultiFormatReader, DecodeHintType, BarcodeFormat } from "@zxing/library";
+import { toast } from "sonner";
+
+export function useBarcodeScanner() {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const readerRef = useRef<BrowserMultiFormatReader | null>(null);
+  const lastScanRef = useRef<number>(0);
+  const lastBarcodeRef = useRef<string>("");
+
+  const stopCamera = useCallback(() => {
+    if (readerRef.current) { readerRef.current.reset(); readerRef.current = null; }
+    if (streamRef.current) { streamRef.current.getTracks().forEach(t => t.stop()); streamRef.current = null; }
+  }, []);
+
+  useEffect(() => () => stopCamera(), [stopCamera]);
+
+  const startScanning = useCallback(async (onScan: (barcode: string) => void) => {
+    stopCamera();
+    try {
+      const hints = new Map();
+      hints.set(DecodeHintType.POSSIBLE_FORMATS, [
+        BarcodeFormat.EAN_13, BarcodeFormat.EAN_8, BarcodeFormat.CODE_128,
+        BarcodeFormat.CODE_39, BarcodeFormat.QR_CODE, BarcodeFormat.UPC_A, BarcodeFormat.UPC_E,
+      ]);
+      hints.set(DecodeHintType.TRY_HARDER, true);
+      const reader = new BrowserMultiFormatReader(hints);
+      readerRef.current = reader;
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: "environment", width: { ideal: 1280 }, height: { ideal: 720 } },
+      });
+      streamRef.current = stream;
+      if (videoRef.current) { videoRef.current.srcObject = stream; await videoRef.current.play(); }
+      const scanLoop = async () => {
+        while (readerRef.current && videoRef.current && streamRef.current) {
+          try {
+            const result = await readerRef.current.decodeOnceFromVideoDevice(undefined, videoRef.current);
+            if (result) {
+              const now = Date.now();
+              const text = result.getText();
+              if (now - lastScanRef.current >= 500 && !(text === lastBarcodeRef.current && now - lastScanRef.current < 2000)) {
+                lastScanRef.current = now;
+                lastBarcodeRef.current = text;
+                onScan(text);
+              }
+            }
+          } catch {}
+          await new Promise(r => setTimeout(r, 100));
+        }
+      };
+      scanLoop();
+    } catch { toast.error("Cannot access camera"); }
+  }, [stopCamera]);
+
+  const toggleTorch = useCallback(async (currentState: boolean): Promise<boolean> => {
+    if (!streamRef.current) return currentState;
+    const track = streamRef.current.getVideoTracks()[0];
+    if (!track) return currentState;
+    try {
+      await (track as any).applyConstraints({ advanced: [{ torch: !currentState } as any] });
+      return !currentState;
+    } catch {
+      toast.error("Torch not supported");
+      return currentState;
+    }
+  }, []);
+
+  return { videoRef, startScanning, stopCamera, toggleTorch };
+}
