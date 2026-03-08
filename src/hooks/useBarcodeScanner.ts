@@ -18,32 +18,36 @@ export function useBarcodeScanner() {
 
   const startScanning = useCallback(async (onScan: (barcode: string) => void) => {
     stopCamera();
+    await new Promise(r => setTimeout(r, 200));
+    const videoEl = videoRef.current;
+    if (!videoEl) { toast.error("Camera element not ready"); return; }
     try {
       const hints = new Map();
       hints.set(DecodeHintType.POSSIBLE_FORMATS, [
         BarcodeFormat.EAN_13, BarcodeFormat.EAN_8, BarcodeFormat.CODE_128,
         BarcodeFormat.CODE_39, BarcodeFormat.QR_CODE, BarcodeFormat.UPC_A, BarcodeFormat.UPC_E,
       ]);
-      const reader = new BrowserMultiFormatReader(hints, 100);
+      const reader = new BrowserMultiFormatReader(hints, 80);
       readerRef.current = reader;
 
-      reader.decodeFromVideoDevice(undefined, videoRef.current!, (result, err) => {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: "environment", width: { ideal: 1920 }, height: { ideal: 1080 } },
+      });
+      streamRef.current = stream;
+      videoEl.srcObject = stream;
+      await videoEl.play();
+
+      reader.decodeFromStream(stream, videoEl, (result, err) => {
         if (result) {
           const now = Date.now();
           const text = result.getText();
-          if (now - lastScanRef.current >= 300 && !(text === lastBarcodeRef.current && now - lastScanRef.current < 1500)) {
+          if (now - lastScanRef.current >= 250 && !(text === lastBarcodeRef.current && now - lastScanRef.current < 1500)) {
             lastScanRef.current = now;
             lastBarcodeRef.current = text;
             onScan(text);
           }
         }
       });
-
-      setTimeout(() => {
-        if (videoRef.current?.srcObject) {
-          streamRef.current = videoRef.current.srcObject as MediaStream;
-        }
-      }, 500);
     } catch { toast.error("Cannot access camera"); }
   }, [stopCamera]);
 
