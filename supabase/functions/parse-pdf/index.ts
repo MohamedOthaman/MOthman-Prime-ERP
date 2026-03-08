@@ -212,6 +212,34 @@ async function callAI(
   }
 }
 
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function callAIWithRetry(
+  apiKey: string,
+  type: "invoices" | "sku" | "packing_list",
+  content: Array<{ type: string; text?: string; image_url?: { url: string } }>,
+  maxRetries = 2,
+) {
+  let lastResult: any = null;
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    const result = await callAI(apiKey, type, content);
+    if (!result?.error) return result;
+
+    lastResult = result;
+    const retriable =
+      result.status === 429 ||
+      result.error?.includes("empty response") ||
+      result.error?.includes("incomplete");
+
+    if (!retriable || attempt === maxRetries) break;
+    await sleep(500 * (attempt + 1));
+  }
+
+  return lastResult;
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
