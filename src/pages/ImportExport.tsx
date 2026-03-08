@@ -264,31 +264,24 @@ export default function ImportExport() {
 
         {tab === "import" && (
           <div className="space-y-3">
-            <div className="bg-card border border-border rounded-lg p-4">
-              <p className="text-sm font-semibold text-foreground mb-1">Import Excel File (.xlsx only)</p>
-              <p className="text-xs text-muted-foreground mb-1">Required columns: Product Code, Batch No, Production Date, Expiry Date, Quantity</p>
-              <p className="text-xs text-muted-foreground mb-3">Optional: Brand, Product Name, Storage Type, Unit</p>
-              <input ref={fileRef} type="file" accept=".xlsx" onChange={handleImport} className="hidden" />
-              <button onClick={() => fileRef.current?.click()} className="w-full bg-primary text-primary-foreground font-semibold py-2.5 rounded-md text-sm">
-                Select Excel File
-              </button>
+            {/* AI-Powered PDF Import */}
+            <div className="mb-2">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">PDF Import (AI-Powered)</p>
+              <PdfImportSection />
             </div>
 
-            <div className="bg-card border border-border rounded-lg p-4">
-              <p className="text-sm font-semibold text-foreground mb-1">Import PDF Packing List</p>
-              <p className="text-xs text-muted-foreground mb-3">Only structured packing list format supported</p>
-              <input ref={pdfFileRef} type="file" accept=".pdf" onChange={handlePDFImport} className="hidden" />
-              <button onClick={() => pdfFileRef.current?.click()} className="w-full bg-secondary text-secondary-foreground font-semibold py-2.5 rounded-md text-sm">
-                Select PDF File
-              </button>
-            </div>
-
-            {pdfError && (
-              <div className="bg-destructive/10 border border-destructive/30 rounded-lg p-3">
-                <p className="text-xs text-destructive">{pdfError}</p>
-                <button onClick={() => setPdfError(null)} className="text-xs text-muted-foreground mt-1 underline">Dismiss</button>
+            {/* Excel Import */}
+            <div className="mt-4">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Excel Import</p>
+              <div className="bg-card border border-border rounded-lg p-4">
+                <p className="text-sm font-semibold text-foreground mb-1">Import Excel File (.xlsx)</p>
+                <p className="text-xs text-muted-foreground mb-3">Columns: Product Code, Batch No, Production Date, Expiry Date, Qty</p>
+                <input ref={fileRef} type="file" accept=".xlsx" onChange={handleImport} className="hidden" />
+                <button onClick={() => fileRef.current?.click()} className="w-full bg-secondary text-secondary-foreground font-semibold py-2.5 rounded-md text-sm">
+                  Select Excel File
+                </button>
               </div>
-            )}
+            </div>
 
             {validationErrors.length > 0 && (
               <div className="bg-destructive/10 border border-destructive/30 rounded-lg p-3">
