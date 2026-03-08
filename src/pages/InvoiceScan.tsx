@@ -128,16 +128,36 @@ export default function InvoiceScan() {
     });
   };
 
+  const loadExistingInvoiceItems = (inv: Invoice) => {
+    setInvoiceNo(inv.invoiceNo);
+    setCustomerName(inv.customerName || "");
+    setItems(inv.items.map(it => {
+      const found = findProduct(it.productCode);
+      const nearestBatch = found ? [...found.product.batches].sort((a, b) => new Date(a.expiryDate).getTime() - new Date(b.expiryDate).getTime())[0] : null;
+      return {
+        productCode: it.productCode, productName: it.productName,
+        qty: it.qty, unit: it.unit,
+        nearestExpiry: nearestBatch?.expiryDate || it.expiryDate || "", scannedQty: 0,
+      };
+    }));
+    toast.success(`تم تحميل فاتورة ${inv.invoiceNo} - ${inv.items.length} منتج`);
+    setView("details");
+  };
+
   const handleManualInvoiceSubmit = () => {
     const trimmed = invoiceNo.trim();
     if (!trimmed) { 
-      // Auto-generate invoice number if empty
       setInvoiceNo(`INV-${Date.now().toString().slice(-6)}`);
       setView("details");
       return;
     }
     const existing = invoices.find(i => i.invoiceNo === trimmed);
-    if (existing && existing.status !== "ready") {
+    if (existing) {
+      if (existing.status === "ready") {
+        // Load existing ready invoice items
+        loadExistingInvoiceItems(existing);
+        return;
+      }
       setActiveInvoice(existing);
       setView("completed-view");
       return;
@@ -145,7 +165,6 @@ export default function InvoiceScan() {
     // Check if user typed a product code instead of invoice number
     const foundAsProduct = findProductByBarcode(trimmed) || findProduct(trimmed.toUpperCase());
     if (foundAsProduct) {
-      // Auto-generate invoice, go to details, and add this product
       const autoInv = `INV-${Date.now().toString().slice(-6)}`;
       setInvoiceNo(autoInv);
       const nearestBatch = [...foundAsProduct.product.batches].sort((a, b) => new Date(a.expiryDate).getTime() - new Date(b.expiryDate).getTime())[0];
