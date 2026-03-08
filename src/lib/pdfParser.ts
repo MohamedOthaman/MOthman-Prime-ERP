@@ -264,7 +264,6 @@ export async function parsePdf(
     const images = await renderPagesToImages(file);
     onProgress?.(`Analyzing ${images.length} page(s) with AI vision...`);
     body = { type, images };
-    }
   }
 
   onProgress?.("Processing with AI (this may take a few minutes for large files)...");
