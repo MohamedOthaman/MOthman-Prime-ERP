@@ -61,22 +61,23 @@ async function extractTextFromPdf(file: File): Promise<{ text: string; hasText: 
 async function renderPagesToImages(file: File, maxPages = 10): Promise<string[]> {
   const arrayBuffer = await file.arrayBuffer();
   const pdf = await pdfjsLib.getDocument({ data: new Uint8Array(arrayBuffer) }).promise;
-  const images: string[] = [];
   const pagesToRender = Math.min(pdf.numPages, maxPages);
 
-  for (let i = 1; i <= pagesToRender; i++) {
-    const page = await pdf.getPage(i);
-    const viewport = page.getViewport({ scale: 2 });
+  // Render all pages in parallel
+  const promises = Array.from({ length: pagesToRender }, async (_, i) => {
+    const page = await pdf.getPage(i + 1);
+    const viewport = page.getViewport({ scale: 1.5 });
     const canvas = document.createElement("canvas");
     canvas.width = viewport.width;
     canvas.height = viewport.height;
     const ctx = canvas.getContext("2d")!;
     await page.render({ canvasContext: ctx, viewport }).promise;
-    images.push(canvas.toDataURL("image/jpeg", 0.8));
+    const dataUrl = canvas.toDataURL("image/jpeg", 0.65);
     canvas.remove();
-  }
+    return dataUrl;
+  });
 
-  return images;
+  return Promise.all(promises);
 }
 
 function chunkText(text: string): string[] {
