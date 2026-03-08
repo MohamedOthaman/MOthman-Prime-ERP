@@ -280,7 +280,7 @@ serve(async (req) => {
 
     if (textChunks.length === 1) {
       const content = [{ type: "text", text: textChunks[0] }];
-      const result = await callAI(LOVABLE_API_KEY, type, content);
+      const result = await callAIWithRetry(LOVABLE_API_KEY, type, content);
       return new Response(JSON.stringify(result), {
         status: result.status || 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
