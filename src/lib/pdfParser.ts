@@ -283,7 +283,11 @@ export async function parsePdf(
 
   // Log summary
   if (type === "sku" && result?.products) {
-    console.log(`SKU import: ${result.products.length} products, ${result.products.reduce((s: number, p: any) => s + (p.batches?.length || 0), 0)} batches`);
+    const flagged = result.products.filter((p: any) => p.flagged);
+    console.log(`SKU import: ${result.products.length} products, ${result.products.reduce((s: number, p: any) => s + (p.batches?.length || 0), 0)} batches, ${flagged.length} flagged for review`);
+    if (flagged.length > 0) {
+      console.warn("Flagged products:", flagged.map((p: any) => `${p.itemCode || "?"}: ${p.flagReason}`));
+    }
   }
 
   return result;
