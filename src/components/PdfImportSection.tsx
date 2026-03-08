@@ -59,14 +59,6 @@ export function PdfImportSection() {
     let processed = 0;
     for (const inv of invoices) {
       try {
-        // Deduct stock for each item
-        const deductionLog: any[] = [];
-        for (const item of inv.items) {
-          const result = await deductFIFO(item.itemCode, item.qty, item.uom, inv.invoiceNo);
-          if (result?.deductionLog) deductionLog.push(...result.deductionLog);
-        }
-
-        // Create invoice record
         await addInvoice({
           invoiceNo: inv.invoiceNo,
           date: inv.date,
@@ -81,8 +73,7 @@ export function PdfImportSection() {
             expiryDate: "",
           })),
           type: "OUT",
-          status: "done",
-          deductionLog,
+          status: "ready",
         });
         processed++;
       } catch (err) {
