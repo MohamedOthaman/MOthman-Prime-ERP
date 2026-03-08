@@ -174,14 +174,8 @@ export default function ImportExport() {
     e.target.value = "";
   };
 
-  const handlePDFImport = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (!file.name.endsWith(".pdf")) { toast.error("Only .pdf files are accepted"); e.target.value = ""; return; }
-    setPdfError("PDF packing list import requires a structured format. Please convert to Excel (.xlsx) and use Excel import.");
-    toast.error("PDF import: structured parsing not available. Use Excel import.");
-    e.target.value = "";
-  };
+
+
 
   const applyImport = async () => {
     if (!importPreview) return;
