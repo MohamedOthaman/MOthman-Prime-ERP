@@ -74,6 +74,7 @@ export function PdfImportSection() {
           })),
           type: "OUT",
           status: "ready",
+          deductionLog: [],
         });
         processed++;
       } catch (err) {
