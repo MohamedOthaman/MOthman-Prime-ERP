@@ -288,13 +288,35 @@ export default function Reports() {
               <div className="grid grid-cols-2 gap-2">
                 <div>
                   <label className="text-[10px] text-muted-foreground">From</label>
-                  <input type="date" value={moveDateFrom} onChange={e => setMoveDateFrom(e.target.value)}
-                    className="w-full bg-secondary text-foreground text-xs rounded-md px-2 py-1.5 border border-border focus:outline-none focus:ring-1 focus:ring-ring" />
+                  <Drawer>
+                    <DrawerTrigger asChild>
+                      <Button variant="outline" className={cn("w-full justify-start text-left text-xs font-normal h-8 bg-secondary border-border", !moveDateFrom && "text-muted-foreground")}>
+                        <CalendarIcon className="mr-1 h-3 w-3 opacity-60" />
+                        {moveDateFrom ? format(new Date(moveDateFrom), "dd/MM/yyyy") : "Select"}
+                      </Button>
+                    </DrawerTrigger>
+                    <DrawerContent className="px-4 pb-8">
+                      <div className="mt-4">
+                        <DateWheel value={moveDateFrom || format(new Date(), "yyyy-MM-dd")} onChange={v => setMoveDateFrom(v)} label="From Date" />
+                      </div>
+                    </DrawerContent>
+                  </Drawer>
                 </div>
                 <div>
                   <label className="text-[10px] text-muted-foreground">To</label>
-                  <input type="date" value={moveDateTo} onChange={e => setMoveDateTo(e.target.value)}
-                    className="w-full bg-secondary text-foreground text-xs rounded-md px-2 py-1.5 border border-border focus:outline-none focus:ring-1 focus:ring-ring" />
+                  <Drawer>
+                    <DrawerTrigger asChild>
+                      <Button variant="outline" className={cn("w-full justify-start text-left text-xs font-normal h-8 bg-secondary border-border", !moveDateTo && "text-muted-foreground")}>
+                        <CalendarIcon className="mr-1 h-3 w-3 opacity-60" />
+                        {moveDateTo ? format(new Date(moveDateTo), "dd/MM/yyyy") : "Select"}
+                      </Button>
+                    </DrawerTrigger>
+                    <DrawerContent className="px-4 pb-8">
+                      <div className="mt-4">
+                        <DateWheel value={moveDateTo || format(new Date(), "yyyy-MM-dd")} onChange={v => setMoveDateTo(v)} label="To Date" />
+                      </div>
+                    </DrawerContent>
+                  </Drawer>
                 </div>
               </div>
               <div className="flex gap-2">
