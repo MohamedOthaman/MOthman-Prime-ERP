@@ -84,7 +84,7 @@ export default function ProductManagement() {
     }));
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!form.code.trim()) { toast.error("Product Code required"); return; }
     if (!form.name.trim()) { toast.error("Product Name required"); return; }
     if (!brandName.trim()) { toast.error("Brand required"); return; }
@@ -106,10 +106,10 @@ export default function ProductManagement() {
     product.totalQty = Object.entries(map).map(([unit, amount]) => ({ unit, amount }));
 
     if (view === "edit" && editingCode) {
-      updateProduct(editingCode, product, brandName.trim());
+      await updateProduct(editingCode, product, brandName.trim());
       toast.success("Product updated");
     } else {
-      addProduct(brandName.trim(), product);
+      await addProduct(brandName.trim(), product);
       toast.success("Product added");
     }
 

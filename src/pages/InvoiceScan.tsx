@@ -251,14 +251,14 @@ export default function InvoiceScan() {
   const allScanned = items.length > 0 && items.every(i => i.scannedQty >= i.qty);
 
   // --- CONFIRM / DONE ---
-  const confirmInvoice = (scanned: boolean) => {
+  const confirmInvoice = async (scanned: boolean) => {
     if (items.length === 0) { toast.error("No items"); return; }
     stopCamera();
 
     const allDeductions: Invoice["deductionLog"] = [];
     const invoiceItems: InvoiceItem[] = [];
     for (const item of items) {
-      const result = deductFIFO(item.productCode, item.qty, item.unit, invoiceNo);
+      const result = await deductFIFO(item.productCode, item.qty, item.unit, invoiceNo);
       allDeductions.push(...result.deductionLog);
       for (const d of result.deductionLog) {
         invoiceItems.push({
@@ -268,7 +268,7 @@ export default function InvoiceScan() {
       }
     }
     const now = new Date();
-    addInvoice({
+    await addInvoice({
       invoiceNo, customerName, date: now.toISOString().split("T")[0],
       time: now.toLocaleTimeString(), items: invoiceItems, type: "OUT",
       status: "done", deductionLog: allDeductions,
@@ -289,17 +289,13 @@ export default function InvoiceScan() {
     setView("details");
   };
 
-  const handleCancelInvoice = () => {
+  const handleCancelInvoice = async () => {
     if (!activeInvoice) return;
-    // Restore stock
-    for (const item of activeInvoice.deductionLog) {
-      restoreStock("", item.qty, item.unit, item.batchNo, item.expiryDate, "cancelled", activeInvoice.invoiceNo);
-    }
-    // For proper restore, find product codes from items
+    // Restore stock from items (which have product codes)
     for (const item of activeInvoice.items) {
-      restoreStock(item.productCode, item.qty, item.unit, item.batchNo, item.expiryDate, "cancelled", activeInvoice.invoiceNo);
+      await restoreStock(item.productCode, item.qty, item.unit, item.batchNo, item.expiryDate, "cancelled", activeInvoice.invoiceNo);
     }
-    updateInvoice(activeInvoice.invoiceNo, inv => ({ ...inv, status: "cancelled" }));
+    await updateInvoice(activeInvoice.invoiceNo, inv => ({ ...inv, status: "cancelled" }));
     toast.success(`Invoice ${activeInvoice.invoiceNo} cancelled. Stock restored.`);
     setActiveInvoice(null);
     setView("main");
@@ -319,7 +315,7 @@ export default function InvoiceScan() {
     toast.success(`Added ${found.product.name}`);
   };
 
-  const confirmReturn = () => {
+  const confirmReturn = async () => {
     if (returnItems.length === 0) { toast.error("No items to return"); return; }
     const now = new Date();
     const ret: MarketReturn = {
@@ -329,9 +325,9 @@ export default function InvoiceScan() {
     };
     // Restore stock for each returned item
     for (const item of ret.items) {
-      restoreStock(item.productCode, item.qty, item.unit, item.batchNo, item.expiryDate, "return", ret.id);
+      await restoreStock(item.productCode, item.qty, item.unit, item.batchNo, item.expiryDate, "return", ret.id);
     }
-    addReturn(ret);
+    await addReturn(ret);
     toast.success("Return processed. Stock restored.");
     setReturnCustomer(""); setReturnDriver(""); setReturnVoucher(""); setReturnItems([]);
     setView("main");

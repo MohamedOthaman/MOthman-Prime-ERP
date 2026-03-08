@@ -1,10 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
-import { Brand, Product, Invoice, MarketReturn, defaultStockData, recalcDaysLeft } from "@/data/stockData";
-
-const STOCK_KEY = "stock_data";
-const INVOICE_KEY = "invoices_data";
-const MOVEMENT_KEY = "movement_log";
-const RETURNS_KEY = "market_returns";
+import { supabase } from "@/integrations/supabase/client";
+import { Brand, Product, Invoice, InvoiceItem, MarketReturn, Batch, recalcDaysLeft } from "@/data/stockData";
+import { useAuth } from "@/hooks/useAuth";
 
 export interface MovementEntry {
   id: string;
@@ -20,48 +17,128 @@ export interface MovementEntry {
   returnId?: string;
 }
 
-function loadStock(): Brand[] {
-  try {
-    const saved = localStorage.getItem(STOCK_KEY);
-    if (saved) return recalcDaysLeft(JSON.parse(saved));
-  } catch {}
-  return recalcDaysLeft(defaultStockData);
-}
-
-function loadInvoices(): Invoice[] {
-  try {
-    const saved = localStorage.getItem(INVOICE_KEY);
-    if (saved) return JSON.parse(saved);
-  } catch {}
-  return [];
-}
-
-function loadMovements(): MovementEntry[] {
-  try {
-    const saved = localStorage.getItem(MOVEMENT_KEY);
-    if (saved) return JSON.parse(saved);
-  } catch {}
-  return [];
-}
-
-function loadReturns(): MarketReturn[] {
-  try {
-    const saved = localStorage.getItem(RETURNS_KEY);
-    if (saved) return JSON.parse(saved);
-  } catch {}
-  return [];
-}
-
 export function useStock() {
-  const [stock, setStock] = useState<Brand[]>(loadStock);
-  const [invoices, setInvoices] = useState<Invoice[]>(loadInvoices);
-  const [movements, setMovements] = useState<MovementEntry[]>(loadMovements);
-  const [returns, setReturns] = useState<MarketReturn[]>(loadReturns);
+  const { user } = useAuth();
+  const [stock, setStock] = useState<Brand[]>([]);
+  const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [movements, setMovements] = useState<MovementEntry[]>([]);
+  const [returns, setReturns] = useState<MarketReturn[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  useEffect(() => { localStorage.setItem(STOCK_KEY, JSON.stringify(stock)); }, [stock]);
-  useEffect(() => { localStorage.setItem(INVOICE_KEY, JSON.stringify(invoices)); }, [invoices]);
-  useEffect(() => { localStorage.setItem(MOVEMENT_KEY, JSON.stringify(movements)); }, [movements]);
-  useEffect(() => { localStorage.setItem(RETURNS_KEY, JSON.stringify(returns)); }, [returns]);
+  // Load all data from database
+  const loadData = useCallback(async () => {
+    if (!user) return;
+    setLoading(true);
+
+    try {
+      // Load brands + products + batches
+      const { data: brandsData } = await supabase.from("brands").select("*").order("name");
+      const { data: productsData } = await supabase.from("products").select("*").order("name");
+      const { data: batchesData } = await supabase.from("batches").select("*").order("expiry_date");
+
+      const brands: Brand[] = (brandsData || []).map(b => {
+        const prods = (productsData || []).filter(p => p.brand_id === b.id).map(p => {
+          const batches: Batch[] = (batchesData || []).filter(bt => bt.product_id === p.id).map(bt => ({
+            batchNo: bt.batch_no,
+            qty: bt.qty,
+            unit: bt.unit,
+            productionDate: bt.production_date || "",
+            expiryDate: bt.expiry_date,
+            daysLeft: 0,
+            receivedDate: bt.received_date || "",
+          }));
+          const totalQtyMap: Record<string, number> = {};
+          batches.forEach(bt => { totalQtyMap[bt.unit] = (totalQtyMap[bt.unit] || 0) + bt.qty; });
+          const product: Product = {
+            code: p.code,
+            name: p.name,
+            brand: b.name,
+            totalQty: Object.entries(totalQtyMap).map(([unit, amount]) => ({ amount, unit })),
+            packaging: p.packaging || "",
+            nearestExpiryDays: 999,
+            storageType: (p.storage_type as any) || "Dry",
+            batches,
+            barcodes: p.barcodes || [],
+            cartonHolds: p.carton_holds || undefined,
+          };
+          return product;
+        });
+        return { name: b.name, products: prods };
+      });
+
+      setStock(recalcDaysLeft(brands));
+
+      // Load invoices
+      const { data: invoicesData } = await supabase.from("invoices").select("*").order("created_at", { ascending: false });
+      const { data: invoiceItemsData } = await supabase.from("invoice_items").select("*");
+
+      const invs: Invoice[] = (invoicesData || []).map(inv => {
+        const items: InvoiceItem[] = (invoiceItemsData || [])
+          .filter(it => it.invoice_id === inv.id)
+          .map(it => ({
+            productCode: it.product_code,
+            productName: it.product_name,
+            qty: it.qty,
+            unit: it.unit,
+            batchNo: it.batch_no || "",
+            expiryDate: it.expiry_date || "",
+          }));
+        return {
+          invoiceNo: inv.invoice_no,
+          date: inv.date,
+          time: inv.time || "",
+          customerName: inv.customer_name || "",
+          items,
+          type: "OUT" as const,
+          status: inv.status as any,
+          deductionLog: items.map(it => ({ batchNo: it.batchNo, qty: it.qty, unit: it.unit, expiryDate: it.expiryDate })),
+        };
+      });
+      setInvoices(invs);
+
+      // Load movements
+      const { data: movementsData } = await supabase.from("movements").select("*").order("created_at", { ascending: false }).limit(200);
+      setMovements((movementsData || []).map(m => ({
+        id: m.id,
+        date: m.created_at?.split("T")[0] || "",
+        time: m.created_at?.split("T")[1]?.split(".")[0] || "",
+        type: m.type as "IN" | "OUT",
+        productCode: m.product_code,
+        productName: m.product_name,
+        batchNo: m.batch_no,
+        qty: m.qty,
+        unit: m.unit,
+        invoiceNo: m.invoice_no || undefined,
+        returnId: m.return_id || undefined,
+      })));
+
+      // Load returns
+      const { data: returnsData } = await supabase.from("market_returns").select("*").order("created_at", { ascending: false });
+      const { data: returnItemsData } = await supabase.from("return_items").select("*");
+
+      setReturns((returnsData || []).map(r => ({
+        id: r.id,
+        date: r.created_at?.split("T")[0] || "",
+        time: r.created_at?.split("T")[1]?.split(".")[0] || "",
+        customerName: r.customer_name || "",
+        driverName: r.driver_name || "",
+        voucherNumber: r.voucher_number || "",
+        items: (returnItemsData || []).filter(ri => ri.return_id === r.id).map(ri => ({
+          productCode: ri.product_code,
+          productName: ri.product_name,
+          qty: ri.qty,
+          unit: ri.unit,
+          expiryDate: ri.expiry_date || "",
+          batchNo: ri.batch_no || "",
+        })),
+      })));
+    } catch (err) {
+      console.error("Failed to load data:", err);
+    }
+    setLoading(false);
+  }, [user]);
+
+  useEffect(() => { loadData(); }, [loadData]);
 
   const findProduct = useCallback((code: string) => {
     for (const brand of stock) {
@@ -79,167 +156,248 @@ export function useStock() {
     return null;
   }, [stock]);
 
-  const addProduct = useCallback((brandName: string, product: Product) => {
-    setStock(prev => {
-      const updated = [...prev];
-      let brand = updated.find(b => b.name === brandName);
-      if (!brand) {
-        brand = { name: brandName, products: [] };
-        updated.push(brand);
-      }
-      const existing = brand.products.findIndex(p => p.code === product.code);
-      if (existing >= 0) {
-        brand.products[existing] = product;
-      } else {
-        brand.products.push(product);
-      }
-      return recalcDaysLeft(updated);
-    });
-  }, []);
+  const addProduct = useCallback(async (brandName: string, product: Product) => {
+    // Upsert brand
+    let { data: brand } = await supabase.from("brands").select("id").eq("name", brandName).single();
+    if (!brand) {
+      const { data: newBrand } = await supabase.from("brands").insert({ name: brandName }).select("id").single();
+      brand = newBrand;
+    }
+    if (!brand) return;
 
-  const updateProduct = useCallback((productCode: string, updatedProduct: Product, newBrandName: string) => {
-    setStock(prev => {
-      let updated = prev.map(brand => ({
-        ...brand,
-        products: brand.products.filter(p => p.code !== productCode),
-      })).filter(b => b.products.length > 0);
-      let brand = updated.find(b => b.name === newBrandName);
-      if (!brand) {
-        brand = { name: newBrandName, products: [] };
-        updated.push(brand);
-      }
-      brand.products.push(updatedProduct);
-      return recalcDaysLeft(updated);
-    });
-  }, []);
+    // Upsert product
+    const { data: existing } = await supabase.from("products").select("id").eq("code", product.code).single();
+    if (existing) {
+      await supabase.from("products").update({
+        name: product.name, brand_id: brand.id, packaging: product.packaging,
+        storage_type: product.storageType, barcodes: product.barcodes || [], carton_holds: product.cartonHolds,
+      }).eq("id", existing.id);
 
-  const deductFIFO = useCallback((productCode: string, qty: number, unit: string, invoiceNo: string) => {
+      // Replace batches
+      await supabase.from("batches").delete().eq("product_id", existing.id);
+      if (product.batches.length > 0) {
+        await supabase.from("batches").insert(product.batches.map(b => ({
+          product_id: existing.id, batch_no: b.batchNo, qty: b.qty, unit: b.unit,
+          production_date: b.productionDate || null, expiry_date: b.expiryDate, received_date: b.receivedDate || new Date().toISOString().split("T")[0],
+        })));
+      }
+    } else {
+      const { data: newProd } = await supabase.from("products").insert({
+        code: product.code, name: product.name, brand_id: brand.id, packaging: product.packaging,
+        storage_type: product.storageType, barcodes: product.barcodes || [], carton_holds: product.cartonHolds,
+      }).select("id").single();
+      if (newProd && product.batches.length > 0) {
+        await supabase.from("batches").insert(product.batches.map(b => ({
+          product_id: newProd.id, batch_no: b.batchNo, qty: b.qty, unit: b.unit,
+          production_date: b.productionDate || null, expiry_date: b.expiryDate, received_date: b.receivedDate || new Date().toISOString().split("T")[0],
+        })));
+      }
+    }
+    await loadData();
+  }, [loadData]);
+
+  const updateProduct = useCallback(async (productCode: string, updatedProduct: Product, newBrandName: string) => {
+    // Get or create brand
+    let { data: brand } = await supabase.from("brands").select("id").eq("name", newBrandName).single();
+    if (!brand) {
+      const { data: newBrand } = await supabase.from("brands").insert({ name: newBrandName }).select("id").single();
+      brand = newBrand;
+    }
+    if (!brand) return;
+
+    const { data: existing } = await supabase.from("products").select("id").eq("code", productCode).single();
+    if (existing) {
+      await supabase.from("products").update({
+        code: updatedProduct.code, name: updatedProduct.name, brand_id: brand.id,
+        packaging: updatedProduct.packaging, storage_type: updatedProduct.storageType,
+        barcodes: updatedProduct.barcodes || [], carton_holds: updatedProduct.cartonHolds,
+      }).eq("id", existing.id);
+
+      await supabase.from("batches").delete().eq("product_id", existing.id);
+      if (updatedProduct.batches.length > 0) {
+        await supabase.from("batches").insert(updatedProduct.batches.map(b => ({
+          product_id: existing.id, batch_no: b.batchNo, qty: b.qty, unit: b.unit,
+          production_date: b.productionDate || null, expiry_date: b.expiryDate, received_date: b.receivedDate || new Date().toISOString().split("T")[0],
+        })));
+      }
+    }
+
+    // Clean up empty brands
+    const { data: allBrands } = await supabase.from("brands").select("id, name");
+    if (allBrands) {
+      for (const b of allBrands) {
+        const { count } = await supabase.from("products").select("id", { count: "exact", head: true }).eq("brand_id", b.id);
+        if (count === 0) await supabase.from("brands").delete().eq("id", b.id);
+      }
+    }
+    await loadData();
+  }, [loadData]);
+
+  const deductFIFO = useCallback(async (productCode: string, qty: number, unit: string, invoiceNo: string) => {
     let remaining = qty;
     const deductionLog: { batchNo: string; qty: number; unit: string; expiryDate: string }[] = [];
     const movementEntries: MovementEntry[] = [];
 
-    setStock(prev => {
-      const updated = prev.map(brand => ({
-        ...brand,
-        products: brand.products.map(product => {
-          if (product.code !== productCode) return product;
-          const sortedBatches = [...product.batches]
-            .filter(b => b.unit === unit)
-            .sort((a, b) => new Date(a.expiryDate).getTime() - new Date(b.expiryDate).getTime());
-          const otherBatches = product.batches.filter(b => b.unit !== unit);
-          const updatedBatches = [];
-          for (const batch of sortedBatches) {
-            if (remaining <= 0) { updatedBatches.push(batch); continue; }
-            const deduct = Math.min(batch.qty, remaining);
-            remaining -= deduct;
-            deductionLog.push({ batchNo: batch.batchNo, qty: deduct, unit: batch.unit, expiryDate: batch.expiryDate });
-            movementEntries.push({
-              id: crypto.randomUUID(), date: new Date().toISOString().split("T")[0],
-              time: new Date().toLocaleTimeString(), type: "OUT", productCode,
-              productName: product.name, batchNo: batch.batchNo, qty: deduct, unit: batch.unit, invoiceNo,
-            });
-            if (batch.qty - deduct > 0) updatedBatches.push({ ...batch, qty: batch.qty - deduct });
-          }
-          const allBatches = [...updatedBatches, ...otherBatches];
-          const totalQtyMap: Record<string, number> = {};
-          allBatches.forEach(b => { totalQtyMap[b.unit] = (totalQtyMap[b.unit] || 0) + b.qty; });
-          const totalQty = Object.entries(totalQtyMap).map(([unit, amount]) => ({ amount, unit }));
-          return {
-            ...product, batches: allBatches, totalQty,
-            nearestExpiryDays: allBatches.length > 0 ? Math.min(...allBatches.map(b => b.daysLeft)) : 999,
-          };
-        }),
-      }));
-      return updated;
-    });
+    // Find product ID and batches
+    const { data: prod } = await supabase.from("products").select("id, name").eq("code", productCode).single();
+    if (!prod) return { deductionLog, movementEntries };
 
-    setMovements(prev => [...movementEntries, ...prev]);
+    const { data: batches } = await supabase.from("batches")
+      .select("*").eq("product_id", prod.id).eq("unit", unit)
+      .order("expiry_date", { ascending: true });
+
+    for (const batch of (batches || [])) {
+      if (remaining <= 0) break;
+      const deduct = Math.min(batch.qty, remaining);
+      remaining -= deduct;
+
+      deductionLog.push({ batchNo: batch.batch_no, qty: deduct, unit: batch.unit, expiryDate: batch.expiry_date });
+
+      const newQty = batch.qty - deduct;
+      if (newQty <= 0) {
+        await supabase.from("batches").delete().eq("id", batch.id);
+      } else {
+        await supabase.from("batches").update({ qty: newQty }).eq("id", batch.id);
+      }
+
+      // Record movement
+      await supabase.from("movements").insert({
+        type: "OUT", product_code: productCode, product_name: prod.name,
+        batch_no: batch.batch_no, qty: deduct, unit: batch.unit, invoice_no: invoiceNo,
+        created_by: user?.id,
+      });
+
+      movementEntries.push({
+        id: crypto.randomUUID(), date: new Date().toISOString().split("T")[0],
+        time: new Date().toLocaleTimeString(), type: "OUT", productCode,
+        productName: prod.name, batchNo: batch.batch_no, qty: deduct, unit: batch.unit, invoiceNo,
+      });
+    }
+
     return { deductionLog, movementEntries };
-  }, []);
+  }, [user]);
 
-  const restoreStock = useCallback((productCode: string, qty: number, unit: string, batchNo: string, expiryDate: string, reason: string, refId: string) => {
-    setStock(prev => {
-      const updated = prev.map(brand => ({
-        ...brand,
-        products: brand.products.map(product => {
-          if (product.code !== productCode) return product;
-          const existingBatch = product.batches.find(b => b.batchNo === batchNo);
-          let batches;
-          if (existingBatch) {
-            batches = product.batches.map(b => b.batchNo === batchNo ? { ...b, qty: b.qty + qty } : b);
-          } else {
-            batches = [...product.batches, { batchNo, qty, unit, productionDate: "", expiryDate, daysLeft: 0, receivedDate: new Date().toISOString().split("T")[0] }];
-          }
-          const totalQtyMap: Record<string, number> = {};
-          batches.forEach(b => { totalQtyMap[b.unit] = (totalQtyMap[b.unit] || 0) + b.qty; });
-          return {
-            ...product, batches,
-            totalQty: Object.entries(totalQtyMap).map(([u, a]) => ({ unit: u, amount: a })),
-          };
-        }),
-      }));
-      return recalcDaysLeft(updated);
+  const restoreStock = useCallback(async (productCode: string, qty: number, unit: string, batchNo: string, expiryDate: string, reason: string, refId: string) => {
+    if (!productCode) return;
+    const { data: prod } = await supabase.from("products").select("id, name").eq("code", productCode).single();
+    if (!prod) return;
+
+    // Check if batch exists
+    const { data: existing } = await supabase.from("batches")
+      .select("id, qty").eq("product_id", prod.id).eq("batch_no", batchNo).single();
+
+    if (existing) {
+      await supabase.from("batches").update({ qty: existing.qty + qty }).eq("id", existing.id);
+    } else {
+      await supabase.from("batches").insert({
+        product_id: prod.id, batch_no: batchNo, qty, unit, expiry_date: expiryDate,
+        received_date: new Date().toISOString().split("T")[0],
+      });
+    }
+
+    await supabase.from("movements").insert({
+      type: "IN", product_code: productCode, product_name: prod.name,
+      batch_no: batchNo, qty, unit, return_id: refId, created_by: user?.id,
     });
 
-    setMovements(prev => [{
-      id: crypto.randomUUID(), date: new Date().toISOString().split("T")[0],
-      time: new Date().toLocaleTimeString(), type: "IN", productCode,
-      productName: "", batchNo, qty, unit, returnId: refId,
-    }, ...prev]);
-  }, []);
+    await loadData();
+  }, [user, loadData]);
 
-  const addInvoice = useCallback((invoice: Invoice) => {
-    setInvoices(prev => [invoice, ...prev]);
-  }, []);
+  const addInvoice = useCallback(async (invoice: Invoice) => {
+    const { data: inv } = await supabase.from("invoices").insert({
+      invoice_no: invoice.invoiceNo, customer_name: invoice.customerName,
+      date: invoice.date, time: invoice.time, type: invoice.type,
+      status: invoice.status, created_by: user?.id,
+    }).select("id").single();
 
-  const updateInvoice = useCallback((invoiceNo: string, updater: (inv: Invoice) => Invoice) => {
-    setInvoices(prev => prev.map(inv => inv.invoiceNo === invoiceNo ? updater(inv) : inv));
-  }, []);
+    if (inv && invoice.items.length > 0) {
+      await supabase.from("invoice_items").insert(invoice.items.map(it => ({
+        invoice_id: inv.id, product_code: it.productCode, product_name: it.productName,
+        qty: it.qty, unit: it.unit, batch_no: it.batchNo, expiry_date: it.expiryDate || null,
+      })));
+    }
+    await loadData();
+  }, [user, loadData]);
 
-  const addReturn = useCallback((ret: MarketReturn) => {
-    setReturns(prev => [ret, ...prev]);
-  }, []);
+  const updateInvoice = useCallback(async (invoiceNo: string, updater: (inv: Invoice) => Invoice) => {
+    const inv = invoices.find(i => i.invoiceNo === invoiceNo);
+    if (!inv) return;
+    const updated = updater(inv);
+    await supabase.from("invoices").update({ status: updated.status }).eq("invoice_no", invoiceNo);
+    await loadData();
+  }, [invoices, loadData]);
 
-  const importProducts = useCallback((newBrands: Brand[]) => {
-    setStock(prev => {
-      const merged = [...prev];
-      for (const newBrand of newBrands) {
-        const existingBrand = merged.find(b => b.name === newBrand.name);
-        if (existingBrand) {
-          for (const newProd of newBrand.products) {
-            const existingProd = existingBrand.products.find(p => p.code === newProd.code);
-            if (existingProd) {
-              for (const newBatch of newProd.batches) {
-                const existingBatch = existingProd.batches.find(b => b.batchNo === newBatch.batchNo);
-                if (existingBatch) { existingBatch.qty = newBatch.qty; }
-                else { existingProd.batches.push(newBatch); }
-              }
-              const totalQtyMap: Record<string, number> = {};
-              existingProd.batches.forEach(b => { totalQtyMap[b.unit] = (totalQtyMap[b.unit] || 0) + b.qty; });
-              existingProd.totalQty = Object.entries(totalQtyMap).map(([unit, amount]) => ({ amount, unit }));
-            } else {
-              existingBrand.products.push(newProd);
-            }
+  const addReturn = useCallback(async (ret: MarketReturn) => {
+    const { data: newRet } = await supabase.from("market_returns").insert({
+      customer_name: ret.customerName, driver_name: ret.driverName,
+      voucher_number: ret.voucherNumber, created_by: user?.id,
+    }).select("id").single();
+
+    if (newRet && ret.items.length > 0) {
+      await supabase.from("return_items").insert(ret.items.map(it => ({
+        return_id: newRet.id, product_code: it.productCode, product_name: it.productName,
+        qty: it.qty, unit: it.unit, expiry_date: it.expiryDate || null, batch_no: it.batchNo,
+      })));
+    }
+    await loadData();
+  }, [user, loadData]);
+
+  const importProducts = useCallback(async (newBrands: Brand[]) => {
+    for (const newBrand of newBrands) {
+      let { data: brand } = await supabase.from("brands").select("id").eq("name", newBrand.name).single();
+      if (!brand) {
+        const { data: created } = await supabase.from("brands").insert({ name: newBrand.name }).select("id").single();
+        brand = created;
+      }
+      if (!brand) continue;
+
+      for (const newProd of newBrand.products) {
+        let { data: prod } = await supabase.from("products").select("id").eq("code", newProd.code).single();
+        if (!prod) {
+          const { data: created } = await supabase.from("products").insert({
+            code: newProd.code, name: newProd.name, brand_id: brand.id,
+            packaging: newProd.packaging, storage_type: newProd.storageType,
+            barcodes: newProd.barcodes || [],
+          }).select("id").single();
+          prod = created;
+        }
+        if (!prod) continue;
+
+        for (const newBatch of newProd.batches) {
+          const { data: existBatch } = await supabase.from("batches")
+            .select("id").eq("product_id", prod.id).eq("batch_no", newBatch.batchNo).single();
+          if (existBatch) {
+            await supabase.from("batches").update({ qty: newBatch.qty }).eq("id", existBatch.id);
+          } else {
+            await supabase.from("batches").insert({
+              product_id: prod.id, batch_no: newBatch.batchNo, qty: newBatch.qty, unit: newBatch.unit,
+              production_date: newBatch.productionDate || null, expiry_date: newBatch.expiryDate,
+              received_date: newBatch.receivedDate || new Date().toISOString().split("T")[0],
+            });
           }
-        } else {
-          merged.push(newBrand);
         }
       }
-      return recalcDaysLeft(merged);
-    });
-  }, []);
+    }
+    await loadData();
+  }, [loadData]);
 
-  const resetStock = useCallback(() => {
-    setStock(recalcDaysLeft(defaultStockData));
-    setInvoices([]);
-    setMovements([]);
-    setReturns([]);
-  }, []);
+  const resetStock = useCallback(async () => {
+    // Clear all data
+    await supabase.from("invoice_items").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+    await supabase.from("invoices").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+    await supabase.from("return_items").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+    await supabase.from("market_returns").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+    await supabase.from("movements").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+    await supabase.from("batches").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+    await supabase.from("products").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+    await supabase.from("brands").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+    await loadData();
+  }, [loadData]);
 
   return {
-    stock, invoices, movements, returns,
+    stock, invoices, movements, returns, loading,
     findProduct, findProductByBarcode, addProduct, updateProduct,
     deductFIFO, restoreStock, addInvoice, updateInvoice, addReturn,
-    importProducts, resetStock, setStock,
+    importProducts, resetStock, setStock, loadData,
   };
 }
