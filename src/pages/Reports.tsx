@@ -1,12 +1,49 @@
-import { useState, useMemo } from "react";
-import { BarChart3, AlertTriangle, TrendingUp, History, Building2, Settings, FileText, RotateCcw, Download, ArrowUpDown, Filter } from "lucide-react";
+import { useState, useMemo, useRef, useEffect } from "react";
+import { BarChart3, AlertTriangle, TrendingUp, History, Building2, Settings, FileText, RotateCcw, Download, ArrowUpDown, Filter, FileSpreadsheet, File } from "lucide-react";
 import { useStockContext } from "@/contexts/StockContext";
 import { ExpiryIndicator } from "@/components/ExpiryIndicator";
 import { StorageBadge } from "@/components/StorageBadge";
 import { WheelPicker, NumberWheel } from "@/components/WheelPicker";
 import { getMovingThreshold, setMovingThreshold } from "@/components/MovingBadge";
-import * as XLSX from "xlsx";
-import { toast } from "sonner";
+import {
+  exportExcel, exportPDF,
+  getExpiryExportConfig, getMovementsExportConfig,
+  getInvoicesExportConfig, getBrandsExportConfig, getReturnsExportConfig,
+} from "@/lib/exportUtils";
+
+
+// Export dropdown component
+function ExportDropdown({ onExcel, onPDF }: { onExcel: () => void; onPDF: () => void }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const handle = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); };
+    document.addEventListener("mousedown", handle);
+    return () => document.removeEventListener("mousedown", handle);
+  }, [open]);
+  return (
+    <div ref={ref} className="relative">
+      <button onClick={() => setOpen(!open)}
+        className="text-xs font-semibold text-primary flex items-center gap-1 bg-primary/10 px-2.5 py-1.5 rounded-md hover:bg-primary/20 transition-colors">
+        <Download className="w-3 h-3" /> Export
+      </button>
+      {open && (
+        <div className="absolute right-0 top-full mt-1 z-50 bg-card border border-border rounded-lg shadow-lg overflow-hidden min-w-[140px]">
+          <button onClick={() => { onExcel(); setOpen(false); }}
+            className="w-full px-3 py-2.5 text-xs font-semibold text-foreground flex items-center gap-2 hover:bg-muted transition-colors text-left">
+            <FileSpreadsheet className="w-4 h-4 text-success" /> Excel
+          </button>
+          <div className="border-t border-border" />
+          <button onClick={() => { onPDF(); setOpen(false); }}
+            className="w-full px-3 py-2.5 text-xs font-semibold text-foreground flex items-center gap-2 hover:bg-muted transition-colors text-left">
+            <File className="w-4 h-4 text-destructive" /> PDF
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
 
 type ReportTab = "expiry" | "forecast" | "movements" | "brands" | "invoices" | "settings";
 type InvoiceSubTab = "ready" | "done" | "cancelled" | "returns";
@@ -104,35 +141,27 @@ export default function Reports() {
     return data;
   }, [invoices, invoiceSubTab, invDateFrom, invDateTo, invSortDir]);
 
-  // Export helpers
-  const exportToExcel = (rows: any[], filename: string, sheetName: string) => {
-    if (rows.length === 0) { toast.info("No data to export"); return; }
-    const ws = XLSX.utils.json_to_sheet(rows);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, sheetName);
-    XLSX.writeFile(wb, `${filename}_${new Date().toISOString().split("T")[0]}.xlsx`);
-    toast.success("Exported successfully");
+  // Export handlers
+  const handleExportExpiry = (format: "excel" | "pdf") => {
+    const config = getExpiryExportConfig(nearExpiry, expiryFilter);
+    format === "excel" ? exportExcel(config) : exportPDF(config);
   };
-
-  const exportExpiry = () => exportToExcel(
-    nearExpiry.map(b => ({ Brand: b.brand, Code: b.code, Name: b.name, Batch: b.batchNo, Qty: b.qty, Unit: b.unit, Expiry: b.expiryDate, "D.Left": b.daysLeft })),
-    `expiry_${expiryFilter}d`, "Near Expiry"
-  );
-
-  const exportMovements = () => exportToExcel(
-    filteredMovements.map(m => ({ Date: m.date, Type: m.type, Code: m.productCode, Product: m.productName, Batch: m.batchNo, Qty: m.qty, Unit: m.unit, Invoice: m.invoiceNo || "" })),
-    "movements", "Movements"
-  );
-
-  const exportInvoices = () => exportToExcel(
-    filteredInvoices.flatMap(inv => inv.items.map(it => ({ Invoice: inv.invoiceNo, Date: inv.date, Customer: inv.customerName, Status: inv.status, Code: it.productCode, Product: it.productName, Qty: it.qty, Unit: it.unit }))),
-    `invoices_${invoiceSubTab}`, "Invoices"
-  );
-
-  const exportBrands = () => exportToExcel(
-    brandSummary.map(b => ({ Brand: b.name, Products: b.products, Batches: b.totalBatches, "Total Qty": b.totalQty, "Nearest Expiry": b.nearestExpiry < 999 ? `${b.nearestExpiry}d` : "—" })),
-    "brands", "Brands"
-  );
+  const handleExportMovements = (format: "excel" | "pdf") => {
+    const config = getMovementsExportConfig(filteredMovements);
+    format === "excel" ? exportExcel(config) : exportPDF(config);
+  };
+  const handleExportInvoices = (format: "excel" | "pdf") => {
+    const config = getInvoicesExportConfig(filteredInvoices, invoiceSubTab);
+    format === "excel" ? exportExcel(config) : exportPDF(config);
+  };
+  const handleExportBrands = (format: "excel" | "pdf") => {
+    const config = getBrandsExportConfig(brandSummary);
+    format === "excel" ? exportExcel(config) : exportPDF(config);
+  };
+  const handleExportReturns = (format: "excel" | "pdf") => {
+    const config = getReturnsExportConfig(returns);
+    format === "excel" ? exportExcel(config) : exportPDF(config);
+  };
 
   const tabs: { key: ReportTab; icon: any; label: string }[] = [
     { key: "expiry", icon: AlertTriangle, label: "Expiry" },
@@ -149,12 +178,6 @@ export default function Reports() {
     { key: "cancelled", label: "Cancelled", count: invoices.filter(i => i.status === "cancelled").length },
     { key: "returns", label: "Returns", count: returns.length },
   ];
-
-  const ExportBtn = ({ onClick }: { onClick: () => void }) => (
-    <button onClick={onClick} className="text-xs font-semibold text-primary flex items-center gap-1 bg-primary/10 px-2 py-1 rounded-md">
-      <Download className="w-3 h-3" /> Export
-    </button>
-  );
 
   return (
     <div className="min-h-screen bg-background pb-16">
@@ -183,7 +206,7 @@ export default function Reports() {
                 className="text-sm font-semibold text-foreground flex items-center gap-1">
                 <Filter className="w-3.5 h-3.5 text-muted-foreground" /> {expiryFilter} days
               </button>
-              <ExportBtn onClick={exportExpiry} />
+              <ExportDropdown onExcel={() => handleExportExpiry("excel")} onPDF={() => handleExportExpiry("pdf")} />
             </div>
             {showExpiryPicker && (
               <div className="bg-card border border-border rounded-lg p-3">
@@ -248,7 +271,7 @@ export default function Reports() {
                 <span className="text-xs font-semibold text-foreground uppercase tracking-wide flex items-center gap-1">
                   <Filter className="w-3 h-3" /> Filters
                 </span>
-                <ExportBtn onClick={exportMovements} />
+                <ExportDropdown onExcel={() => handleExportMovements("excel")} onPDF={() => handleExportMovements("pdf")} />
               </div>
               <div className="flex gap-1">
                 {(["ALL", "IN", "OUT"] as const).map(t => (
@@ -318,7 +341,7 @@ export default function Reports() {
         {tab === "brands" && (
           <div className="space-y-3">
             <div className="flex justify-end">
-              <ExportBtn onClick={exportBrands} />
+              <ExportDropdown onExcel={() => handleExportBrands("excel")} onPDF={() => handleExportBrands("pdf")} />
             </div>
             {brandSummary.map(brand => (
               <div key={brand.name} className="bg-card border border-border rounded-lg p-4">
@@ -359,7 +382,7 @@ export default function Reports() {
                         className="text-xs text-muted-foreground flex items-center gap-1">
                         <ArrowUpDown className="w-3 h-3" /> {invSortDir === "asc" ? "Oldest" : "Newest"}
                       </button>
-                      <ExportBtn onClick={exportInvoices} />
+                      <ExportDropdown onExcel={() => handleExportInvoices("excel")} onPDF={() => handleExportInvoices("pdf")} />
                     </div>
                   </div>
                   <div className="grid grid-cols-2 gap-2">
@@ -421,6 +444,10 @@ export default function Reports() {
               returns.length === 0 ? (
                 <div className="text-center py-10 text-muted-foreground text-sm">No returns recorded</div>
               ) : (
+                <>
+                <div className="flex justify-end">
+                  <ExportDropdown onExcel={() => handleExportReturns("excel")} onPDF={() => handleExportReturns("pdf")} />
+                </div>
                 <div className="bg-card border border-border rounded-lg overflow-hidden">
                   {returns.map(ret => (
                     <div key={ret.id} className="px-3 py-2.5 border-b border-border/50">
@@ -435,6 +462,7 @@ export default function Reports() {
                     </div>
                   ))}
                 </div>
+                </>
               )
             )}
           </div>
