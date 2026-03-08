@@ -142,25 +142,25 @@ export default function Reports() {
   }, [invoices, invoiceSubTab, invDateFrom, invDateTo, invSortDir]);
 
   // Export handlers
-  const handleExportExpiry = (format: "excel" | "pdf") => {
+  const handleExportExpiry = async (format: "excel" | "pdf") => {
     const config = getExpiryExportConfig(nearExpiry, expiryFilter);
-    format === "excel" ? exportExcel(config) : exportPDF(config);
+    format === "excel" ? await exportExcel(config) : exportPDF(config);
   };
-  const handleExportMovements = (format: "excel" | "pdf") => {
+  const handleExportMovements = async (format: "excel" | "pdf") => {
     const config = getMovementsExportConfig(filteredMovements);
-    format === "excel" ? exportExcel(config) : exportPDF(config);
+    format === "excel" ? await exportExcel(config) : exportPDF(config);
   };
-  const handleExportInvoices = (format: "excel" | "pdf") => {
+  const handleExportInvoices = async (format: "excel" | "pdf") => {
     const config = getInvoicesExportConfig(filteredInvoices, invoiceSubTab);
-    format === "excel" ? exportExcel(config) : exportPDF(config);
+    format === "excel" ? await exportExcel(config) : exportPDF(config);
   };
-  const handleExportBrands = (format: "excel" | "pdf") => {
+  const handleExportBrands = async (format: "excel" | "pdf") => {
     const config = getBrandsExportConfig(brandSummary);
-    format === "excel" ? exportExcel(config) : exportPDF(config);
+    format === "excel" ? await exportExcel(config) : exportPDF(config);
   };
-  const handleExportReturns = (format: "excel" | "pdf") => {
+  const handleExportReturns = async (format: "excel" | "pdf") => {
     const config = getReturnsExportConfig(returns);
-    format === "excel" ? exportExcel(config) : exportPDF(config);
+    format === "excel" ? await exportExcel(config) : exportPDF(config);
   };
 
   const tabs: { key: ReportTab; icon: any; label: string }[] = [

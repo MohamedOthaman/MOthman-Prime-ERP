@@ -1,4 +1,5 @@
-import * as XLSX from "xlsx";
+import ExcelJS from "exceljs";
+import { saveAs } from "file-saver";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { toast } from "sonner";
@@ -6,7 +7,7 @@ import { toast } from "sonner";
 interface ExportColumn {
   header: string;
   key: string;
-  width?: number; // Excel col width
+  width?: number;
 }
 
 interface ExportConfig {
@@ -18,40 +19,98 @@ interface ExportConfig {
   subtitle?: string;
 }
 
-// ─── Excel Export ───
-export function exportExcel(config: ExportConfig) {
+// ─── Excel Export (styled like PDF) ───
+export async function exportExcel(config: ExportConfig) {
   const { columns, rows, filename, sheetName, title, subtitle } = config;
   if (rows.length === 0) { toast.info("No data to export"); return; }
 
-  // Build header row + data rows using column keys
-  const headerRow = columns.map(c => c.header);
-  const dataRows = rows.map(row => columns.map(c => row[c.key] ?? ""));
+  const wb = new ExcelJS.Workbook();
+  wb.creator = "Stock Manager";
+  wb.created = new Date();
+  const ws = wb.addWorksheet(sheetName);
 
-  // Create worksheet with title rows
-  const wsData: any[][] = [];
-  wsData.push([title]);
-  if (subtitle) wsData.push([subtitle]);
-  wsData.push([]); // empty row
-  wsData.push(headerRow);
-  dataRows.forEach(r => wsData.push(r));
-
-  const ws = XLSX.utils.aoa_to_sheet(wsData);
-
-  // Merge title cell across all columns
   const colCount = columns.length;
-  ws["!merges"] = [
-    { s: { r: 0, c: 0 }, e: { r: 0, c: colCount - 1 } },
-  ];
+
+  // ── Title row ──
+  const titleRow = ws.addRow([title]);
+  ws.mergeCells(1, 1, 1, colCount);
+  titleRow.getCell(1).font = { bold: true, size: 16, color: { argb: "FF292929" } };
+  titleRow.getCell(1).alignment = { horizontal: "left", vertical: "middle" };
+  titleRow.height = 28;
+
+  // ── Subtitle row ──
+  let currentRow = 2;
   if (subtitle) {
-    ws["!merges"].push({ s: { r: 1, c: 0 }, e: { r: 1, c: colCount - 1 } });
+    const subRow = ws.addRow([subtitle]);
+    ws.mergeCells(currentRow, 1, currentRow, colCount);
+    subRow.getCell(1).font = { size: 10, italic: true, color: { argb: "FF666666" } };
+    subRow.getCell(1).alignment = { horizontal: "left", vertical: "middle" };
+    currentRow++;
   }
 
-  // Set column widths
-  ws["!cols"] = columns.map(c => ({ wch: c.width || 14 }));
+  // ── Date row ──
+  const dateStr = `Generated: ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString()}`;
+  const dateRow = ws.addRow([dateStr]);
+  ws.mergeCells(currentRow, 1, currentRow, colCount);
+  dateRow.getCell(1).font = { size: 8, color: { argb: "FF828282" } };
+  currentRow++;
 
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, sheetName);
-  XLSX.writeFile(wb, `${filename}_${new Date().toISOString().split("T")[0]}.xlsx`);
+  // ── Empty spacer row ──
+  ws.addRow([]);
+  currentRow++;
+
+  // ── Header row (dark background like PDF) ──
+  const headerValues = columns.map(c => c.header);
+  const headerRow = ws.addRow(headerValues);
+  headerRow.height = 24;
+  headerRow.eachCell((cell, colNumber) => {
+    cell.font = { bold: true, size: 9, color: { argb: "FFFFFFFF" } };
+    cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF292929" } };
+    cell.alignment = { horizontal: "center", vertical: "middle" };
+    cell.border = {
+      top: { style: "thin", color: { argb: "FFC8C8C8" } },
+      bottom: { style: "thin", color: { argb: "FFC8C8C8" } },
+      left: { style: "thin", color: { argb: "FFC8C8C8" } },
+      right: { style: "thin", color: { argb: "FFC8C8C8" } },
+    };
+  });
+  currentRow++;
+
+  // ── Data rows with alternating colors ──
+  rows.forEach((row, idx) => {
+    const values = columns.map(c => row[c.key] ?? "");
+    const dataRow = ws.addRow(values);
+    dataRow.height = 20;
+    const isAlt = idx % 2 === 1;
+    dataRow.eachCell((cell, colNumber) => {
+      cell.font = { size: 9, color: { argb: "FF333333" } };
+      if (isAlt) {
+        cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF5F5F5" } };
+      }
+      cell.border = {
+        top: { style: "thin", color: { argb: "FFE0E0E0" } },
+        bottom: { style: "thin", color: { argb: "FFE0E0E0" } },
+        left: { style: "thin", color: { argb: "FFE0E0E0" } },
+        right: { style: "thin", color: { argb: "FFE0E0E0" } },
+      };
+      // Center qty/days columns
+      const colKey = columns[colNumber - 1]?.key;
+      if (colKey === "qty" || colKey === "Qty" || colKey === "daysLeft") {
+        cell.alignment = { horizontal: "center", vertical: "middle" };
+      } else {
+        cell.alignment = { vertical: "middle" };
+      }
+    });
+  });
+
+  // ── Column widths ──
+  columns.forEach((col, i) => {
+    ws.getColumn(i + 1).width = col.width || 14;
+  });
+
+  // ── Save ──
+  const buffer = await wb.xlsx.writeBuffer();
+  saveAs(new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }), `${filename}_${new Date().toISOString().split("T")[0]}.xlsx`);
   toast.success("Excel exported ✔");
 }
 
