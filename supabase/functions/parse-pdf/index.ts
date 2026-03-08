@@ -308,7 +308,7 @@ serve(async (req) => {
           error: `Chunk ${i + 1}/${textChunks.length} failed: ${result.error}`,
           status: result.status || 500,
         }), {
-          status: result.status || 500,
+          status: 200,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
