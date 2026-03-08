@@ -229,18 +229,41 @@ export default function Reports() {
               ) : (
                 <div className="bg-card border border-border rounded-lg overflow-hidden">
                   {filteredInvoices.map(inv => (
-                    <div key={inv.invoiceNo} className="px-3 py-2.5 border-b border-border/50 flex items-center gap-2">
-                      <div className="flex-1 min-w-0">
-                        <p className="font-mono text-sm text-primary font-bold">{inv.invoiceNo}</p>
-                        <p className="text-xs text-muted-foreground">{inv.customerName || "—"} · {inv.date}</p>
-                      </div>
-                      <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
-                        inv.status === "done" ? "bg-success/20 text-success" :
-                        inv.status === "edited" ? "bg-warning/20 text-warning" :
-                        inv.status === "cancelled" ? "bg-destructive/20 text-destructive" :
-                        "bg-primary/20 text-primary"
-                      }`}>{inv.status}</span>
-                      <span className="font-mono text-xs text-muted-foreground">{inv.items.length} items</span>
+                    <div key={inv.invoiceNo} className="border-b border-border/50">
+                      <button
+                        onClick={() => setExpandedInvoice(expandedInvoice === inv.invoiceNo ? null : inv.invoiceNo)}
+                        className="w-full px-3 py-2.5 flex items-center gap-2 text-left hover:bg-muted/50 transition-colors"
+                      >
+                        <div className="flex-1 min-w-0">
+                          <p className="font-mono text-sm text-primary font-bold">{inv.invoiceNo}</p>
+                          <p className="text-xs text-muted-foreground">{inv.customerName || "—"} · {inv.date}</p>
+                        </div>
+                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
+                          inv.status === "done" ? "bg-success/20 text-success" :
+                          inv.status === "edited" ? "bg-warning/20 text-warning" :
+                          inv.status === "cancelled" ? "bg-destructive/20 text-destructive" :
+                          "bg-primary/20 text-primary"
+                        }`}>{inv.status}</span>
+                        <span className="font-mono text-xs text-muted-foreground">{inv.items.length} items</span>
+                      </button>
+                      {expandedInvoice === inv.invoiceNo && (
+                        <div className="bg-muted/30 border-t border-border/50">
+                          <div className="px-3 py-1.5 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider flex gap-2">
+                            <span className="w-20">Code</span>
+                            <span className="flex-1">Product</span>
+                            <span className="w-14 text-right">Qty</span>
+                            <span className="w-12 text-right">Unit</span>
+                          </div>
+                          {inv.items.map((item, idx) => (
+                            <div key={idx} className="px-3 py-1.5 flex items-center gap-2 border-t border-border/30">
+                              <span className="font-mono text-xs text-primary w-20 truncate">{item.productCode}</span>
+                              <span className="text-xs text-foreground flex-1 truncate">{item.productName}</span>
+                              <span className="font-mono text-xs text-foreground w-14 text-right">{item.qty}</span>
+                              <span className="text-xs text-muted-foreground w-12 text-right">{item.unit}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
