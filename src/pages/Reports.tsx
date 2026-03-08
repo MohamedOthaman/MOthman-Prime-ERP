@@ -13,6 +13,7 @@ export default function Reports() {
   const { stock, movements, invoices, returns } = useStockContext();
   const [tab, setTab] = useState<ReportTab>("expiry");
   const [invoiceSubTab, setInvoiceSubTab] = useState<InvoiceSubTab>("done");
+  const [expandedInvoice, setExpandedInvoice] = useState<string | null>(null);
   const [expiryFilter, setExpiryFilter] = useState(30);
   const [threshold, setThresholdState] = useState(getMovingThreshold());
   const [showExpiryPicker, setShowExpiryPicker] = useState(false);
