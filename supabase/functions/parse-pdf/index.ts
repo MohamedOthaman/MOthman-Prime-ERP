@@ -312,10 +312,6 @@ serve(async (req) => {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-          status: result.status || 500,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
 
       allResults.push(result.data);
 
