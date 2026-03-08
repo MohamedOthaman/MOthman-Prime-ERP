@@ -14,7 +14,6 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 
-...
 
 type View = "main" | "details" | "scanning" | "returns" | "return-scan" | "completed-view";
 
