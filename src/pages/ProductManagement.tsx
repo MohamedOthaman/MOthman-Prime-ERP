@@ -255,9 +255,21 @@ export default function ProductManagement() {
                 </div>
                 <div>
                   <label className="text-xs text-muted-foreground block mb-1">Packaging</label>
-                  <input type="text" value={packaging} onChange={e => setPackaging(e.target.value)}
-                    placeholder="CTN / PCS"
-                    className="w-full bg-secondary text-foreground text-sm rounded-md px-3 py-2.5 border border-border focus:outline-none focus:ring-1 focus:ring-ring placeholder:text-muted-foreground" />
+                  <div className="flex flex-wrap gap-1">
+                    {unitOptions.map(u => {
+                      const selected = packaging.split(" / ").includes(u);
+                      return (
+                        <button key={u} type="button" onClick={() => {
+                          const current = packaging ? packaging.split(" / ").filter(Boolean) : [];
+                          const next = selected ? current.filter(c => c !== u) : [...current, u];
+                          setPackaging(next.join(" / "));
+                        }}
+                          className={`text-xs font-semibold px-2.5 py-1.5 rounded-md transition-colors ${selected ? "bg-primary text-primary-foreground" : "bg-secondary text-muted-foreground border border-border"}`}>
+                          {u}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
               </div>
 
