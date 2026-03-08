@@ -389,7 +389,7 @@ export default function ProductManagement() {
                           <label className="text-[10px] text-muted-foreground block mb-0.5">Unit</label>
                           <select value={batch.unit} onChange={e => updateBatch(idx, "unit", e.target.value)}
                             className="w-full bg-secondary text-foreground text-sm rounded-md px-2.5 py-2 border border-border focus:outline-none focus:ring-1 focus:ring-ring">
-                            {unitOptions.map(u => <option key={u} value={u}>{u}</option>)}
+                            {(packaging ? packaging.split(" / ").filter(Boolean) : unitOptions).map(u => <option key={u} value={u}>{u}</option>)}
                           </select>
                         </div>
                       </div>
