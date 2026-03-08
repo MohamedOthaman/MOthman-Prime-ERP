@@ -7,7 +7,7 @@ import { useStockContext } from "@/contexts/StockContext";
 import { Invoice, InvoiceItem, MarketReturn } from "@/data/stockData";
 import { toast } from "sonner";
 import { BrowserMultiFormatReader, DecodeHintType, BarcodeFormat } from "@zxing/library";
-import Tesseract from "tesseract.js";
+import { parsePdf } from "@/lib/pdfParser";
 import { NumberWheel, DateWheel } from "@/components/WheelPicker";
 
 type View = "main" | "details" | "scanning" | "returns" | "return-scan" | "completed-view";
@@ -141,18 +141,60 @@ export default function InvoiceScan() {
   const handlePDFUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    
+    const isPdf = file.name.toLowerCase().endsWith(".pdf");
     setProcessing(true);
     setOcrProgress(0);
+    
     try {
-      // Convert PDF page to image via canvas isn't possible directly, use file as image if it's an image
-      // For PDF we use Tesseract on the file directly
-      const result = await Tesseract.recognize(file, "eng", {
-        logger: (m) => { if (m.status === "recognizing text") setOcrProgress(Math.round((m.progress || 0) * 100)); },
-      });
-      const text = result.data.text;
-      parseInvoiceText(text);
-    } catch {
-      toast.error("Failed to process file. Try a clearer image or PDF.");
+      if (isPdf) {
+        // Use AI-powered parser for PDFs
+        setOcrProgress(10);
+        const result = await parsePdf(file, "invoices", (msg) => {
+          setOcrProgress(prev => Math.min(prev + 15, 90));
+        });
+        setOcrProgress(100);
+        
+        if (result.error) {
+          toast.error(result.error);
+          setProcessing(false);
+          e.target.value = "";
+          return;
+        }
+        
+        if (result.invoices && result.invoices.length > 0) {
+          // Take the first invoice for the scan flow
+          const inv = result.invoices[0];
+          setInvoiceNo(inv.invoiceNo);
+          setCustomerName(inv.customerName || "");
+          setItems(inv.items.map(it => {
+            const found = findProduct(it.itemCode);
+            const nearestBatch = found ? [...found.product.batches].sort((a, b) => new Date(a.expiryDate).getTime() - new Date(b.expiryDate).getTime())[0] : null;
+            return {
+              productCode: it.itemCode,
+              productName: it.itemName,
+              qty: it.qty,
+              unit: it.uom,
+              nearestExpiry: nearestBatch?.expiryDate || "",
+              scannedQty: 0,
+            };
+          }));
+          toast.success(`Found ${result.invoices.length} invoice(s), ${inv.items.length} items`);
+          if (result.invoices.length > 1) {
+            toast.info(`${result.invoices.length - 1} more invoice(s) can be imported from IO page`);
+          }
+          setView("details");
+        } else {
+          toast.error("No invoices found in the PDF");
+        }
+      } else {
+        // For images, fall back to text-based parsing
+        parseInvoiceText("");
+        toast.info("For best results, upload PDF files");
+      }
+    } catch (err: any) {
+      console.error("PDF parse error:", err);
+      toast.error(err.message || "Failed to process file");
     }
     setProcessing(false);
     e.target.value = "";

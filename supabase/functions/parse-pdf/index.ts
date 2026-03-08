@@ -271,8 +271,8 @@ serve(async (req) => {
 
     if (!type) throw new Error("Missing 'type' parameter");
 
-    // Use pro model for SKU (accuracy matters), flash for others (speed matters)
-    const model = type === "sku" ? "google/gemini-2.5-pro" : "google/gemini-2.5-flash";
+    // Use pro for SKU (accuracy critical), flash-preview for others (fast + accurate)
+    const model = type === "sku" ? "google/gemini-2.5-pro" : "google/gemini-3-flash-preview";
 
     // For packing lists with images, use vision
     if (type === "packing_list" && images && images.length > 0) {

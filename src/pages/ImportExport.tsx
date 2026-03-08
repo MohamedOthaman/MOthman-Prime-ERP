@@ -1,10 +1,11 @@
 import { useState, useRef } from "react";
-import { FileSpreadsheet, Download, Upload, FileText, AlertTriangle, Check, X } from "lucide-react";
+import { FileSpreadsheet, Download, Upload, FileText, AlertTriangle, Check, X, Building2, Package, History } from "lucide-react";
 import { useStockContext } from "@/contexts/StockContext";
 import { Brand, recalcDaysLeft } from "@/data/stockData";
 import { toast } from "sonner";
 import { WheelPicker } from "@/components/WheelPicker";
 import { PdfImportSection } from "@/components/PdfImportSection";
+import { MovementEntry } from "@/hooks/useStock";
 import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
@@ -18,7 +19,7 @@ interface ValidationError {
 }
 
 export default function ImportExport() {
-  const { stock, importProducts } = useStockContext();
+  const { stock, movements, importProducts } = useStockContext();
   const [tab, setTab] = useState<Tab>("export");
   const [expiryDays, setExpiryDays] = useState(30);
   const [showExpiryPicker, setShowExpiryPicker] = useState(false);
@@ -88,6 +89,77 @@ export default function ImportExport() {
     XLSX.utils.book_append_sheet(wb, ws, "Near Expiry");
     XLSX.writeFile(wb, `near_expiry_${expiryDays}d_${new Date().toISOString().split("T")[0]}.xlsx`);
     toast.success(`Near expiry report (${expiryDays}d) exported`);
+  };
+
+  const exportByBrand = () => {
+    const wb = XLSX.utils.book_new();
+    stock.forEach(brand => {
+      const rows: any[] = [];
+      brand.products.forEach(product => {
+        product.batches.forEach(batch => {
+          rows.push({
+            "Product Code": product.code,
+            "Product Name": product.name,
+            "Storage Type": product.storageType,
+            "Batch No": batch.batchNo,
+            Qty: batch.qty,
+            Unit: batch.unit,
+            "Expiry Date": batch.expiryDate,
+            "D.Left": batch.daysLeft,
+          });
+        });
+      });
+      if (rows.length > 0) {
+        const sheetName = brand.name.slice(0, 31); // Excel sheet name limit
+        const ws = XLSX.utils.json_to_sheet(rows);
+        XLSX.utils.book_append_sheet(wb, ws, sheetName);
+      }
+    });
+    XLSX.writeFile(wb, `stock_by_brand_${new Date().toISOString().split("T")[0]}.xlsx`);
+    toast.success("Stock by Brand exported");
+  };
+
+  const exportInventorySnapshot = () => {
+    const rows = stock.flatMap(brand =>
+      brand.products.map(product => ({
+        Brand: brand.name,
+        "Product Code": product.code,
+        "Product Name": product.name,
+        "Storage Type": product.storageType,
+        "Total Qty": product.totalQty.map(q => `${q.amount} ${q.unit}`).join(", "),
+        "Batches": product.batches.length,
+        "Nearest Expiry": product.nearestExpiryDays < 999 ? `${product.nearestExpiryDays}d` : "—",
+      }))
+    );
+    const ws = XLSX.utils.json_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Inventory");
+    XLSX.writeFile(wb, `inventory_snapshot_${new Date().toISOString().split("T")[0]}.xlsx`);
+    toast.success("Inventory snapshot exported");
+  };
+
+  const exportMovements = () => {
+    if (movements.length === 0) {
+      toast.info("No movements to export");
+      return;
+    }
+    const rows = movements.map(m => ({
+      Date: m.date,
+      Time: m.time,
+      Type: m.type,
+      "Product Code": m.productCode,
+      "Product Name": m.productName,
+      "Batch No": m.batchNo,
+      Qty: m.qty,
+      Unit: m.unit,
+      "Invoice No": m.invoiceNo || "",
+      "Return ID": m.returnId || "",
+    }));
+    const ws = XLSX.utils.json_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Movements");
+    XLSX.writeFile(wb, `movements_${new Date().toISOString().split("T")[0]}.xlsx`);
+    toast.success("Movements report exported");
   };
 
   const validateRow = (row: any, rowNum: number): ValidationError[] => {
@@ -251,6 +323,30 @@ export default function ImportExport() {
                 Export Near Expiry ({expiryDays} days)
               </button>
             </div>
+
+            <button onClick={exportByBrand} className="w-full bg-card border border-border rounded-lg p-4 text-left hover:bg-row-hover transition-colors flex items-center gap-3">
+              <Building2 className="w-8 h-8 text-primary" />
+              <div>
+                <p className="text-sm font-semibold text-foreground">Stock by Brand</p>
+                <p className="text-xs text-muted-foreground">Each brand in a separate sheet (.xlsx)</p>
+              </div>
+            </button>
+
+            <button onClick={exportInventorySnapshot} className="w-full bg-card border border-border rounded-lg p-4 text-left hover:bg-row-hover transition-colors flex items-center gap-3">
+              <Package className="w-8 h-8 text-primary" />
+              <div>
+                <p className="text-sm font-semibold text-foreground">Inventory Snapshot</p>
+                <p className="text-xs text-muted-foreground">Summary of all products with totals (.xlsx)</p>
+              </div>
+            </button>
+
+            <button onClick={exportMovements} className="w-full bg-card border border-border rounded-lg p-4 text-left hover:bg-row-hover transition-colors flex items-center gap-3">
+              <History className="w-8 h-8 text-storage-chilled" />
+              <div>
+                <p className="text-sm font-semibold text-foreground">Movements Report</p>
+                <p className="text-xs text-muted-foreground">All stock IN/OUT movements (.xlsx)</p>
+              </div>
+            </button>
           </div>
         )}
 
