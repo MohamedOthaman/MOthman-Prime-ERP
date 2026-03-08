@@ -11,6 +11,40 @@ import {
   getInvoicesExportConfig, getBrandsExportConfig, getReturnsExportConfig,
 } from "@/lib/exportUtils";
 
+
+// Export dropdown component
+function ExportDropdown({ onExcel, onPDF }: { onExcel: () => void; onPDF: () => void }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const handle = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); };
+    document.addEventListener("mousedown", handle);
+    return () => document.removeEventListener("mousedown", handle);
+  }, [open]);
+  return (
+    <div ref={ref} className="relative">
+      <button onClick={() => setOpen(!open)}
+        className="text-xs font-semibold text-primary flex items-center gap-1 bg-primary/10 px-2.5 py-1.5 rounded-md hover:bg-primary/20 transition-colors">
+        <Download className="w-3 h-3" /> Export
+      </button>
+      {open && (
+        <div className="absolute right-0 top-full mt-1 z-50 bg-card border border-border rounded-lg shadow-lg overflow-hidden min-w-[140px]">
+          <button onClick={() => { onExcel(); setOpen(false); }}
+            className="w-full px-3 py-2.5 text-xs font-semibold text-foreground flex items-center gap-2 hover:bg-muted transition-colors text-left">
+            <FileSpreadsheet className="w-4 h-4 text-success" /> Excel
+          </button>
+          <div className="border-t border-border" />
+          <button onClick={() => { onPDF(); setOpen(false); }}
+            className="w-full px-3 py-2.5 text-xs font-semibold text-foreground flex items-center gap-2 hover:bg-muted transition-colors text-left">
+            <File className="w-4 h-4 text-destructive" /> PDF
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 type ReportTab = "expiry" | "forecast" | "movements" | "brands" | "invoices" | "settings";
 type InvoiceSubTab = "ready" | "done" | "cancelled" | "returns";
 type SortDir = "asc" | "desc";
