@@ -772,8 +772,19 @@ export default function InvoiceScan() {
                 </div>
                 <div>
                   <label className="text-xs text-muted-foreground block mb-1">Expiry Date</label>
-                  <input type="date" value={returnExpiry} onChange={e => setReturnExpiry(e.target.value)}
-                    className="w-full bg-secondary text-foreground text-sm rounded-md px-3 py-2 border border-border focus:outline-none focus:ring-1 focus:ring-ring" />
+                  <Drawer>
+                    <DrawerTrigger asChild>
+                      <Button variant="outline" className={cn("w-full justify-start text-left text-sm font-normal h-10 bg-secondary border-border", !returnExpiry && "text-muted-foreground")}>
+                        <CalendarIcon className="mr-1.5 h-3.5 w-3.5 opacity-60" />
+                        {returnExpiry ? format(new Date(returnExpiry), "dd/MM/yyyy") : "Select"}
+                      </Button>
+                    </DrawerTrigger>
+                    <DrawerContent className="px-4 pb-8">
+                      <div className="mt-4">
+                        <DateWheel value={returnExpiry || format(new Date(), "yyyy-MM-dd")} onChange={v => setReturnExpiry(v)} label="Expiry Date" />
+                      </div>
+                    </DrawerContent>
+                  </Drawer>
                 </div>
               </div>
 

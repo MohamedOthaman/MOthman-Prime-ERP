@@ -414,13 +414,35 @@ export default function Reports() {
                   <div className="grid grid-cols-2 gap-2">
                     <div>
                       <label className="text-[10px] text-muted-foreground">From</label>
-                      <input type="date" value={invDateFrom} onChange={e => setInvDateFrom(e.target.value)}
-                        className="w-full bg-secondary text-foreground text-xs rounded-md px-2 py-1.5 border border-border focus:outline-none focus:ring-1 focus:ring-ring" />
+                      <Drawer>
+                        <DrawerTrigger asChild>
+                          <Button variant="outline" className={cn("w-full justify-start text-left text-xs font-normal h-8 bg-secondary border-border", !invDateFrom && "text-muted-foreground")}>
+                            <CalendarIcon className="mr-1 h-3 w-3 opacity-60" />
+                            {invDateFrom ? format(new Date(invDateFrom), "dd/MM/yyyy") : "Select"}
+                          </Button>
+                        </DrawerTrigger>
+                        <DrawerContent className="px-4 pb-8">
+                          <div className="mt-4">
+                            <DateWheel value={invDateFrom || format(new Date(), "yyyy-MM-dd")} onChange={v => setInvDateFrom(v)} label="From Date" />
+                          </div>
+                        </DrawerContent>
+                      </Drawer>
                     </div>
                     <div>
                       <label className="text-[10px] text-muted-foreground">To</label>
-                      <input type="date" value={invDateTo} onChange={e => setInvDateTo(e.target.value)}
-                        className="w-full bg-secondary text-foreground text-xs rounded-md px-2 py-1.5 border border-border focus:outline-none focus:ring-1 focus:ring-ring" />
+                      <Drawer>
+                        <DrawerTrigger asChild>
+                          <Button variant="outline" className={cn("w-full justify-start text-left text-xs font-normal h-8 bg-secondary border-border", !invDateTo && "text-muted-foreground")}>
+                            <CalendarIcon className="mr-1 h-3 w-3 opacity-60" />
+                            {invDateTo ? format(new Date(invDateTo), "dd/MM/yyyy") : "Select"}
+                          </Button>
+                        </DrawerTrigger>
+                        <DrawerContent className="px-4 pb-8">
+                          <div className="mt-4">
+                            <DateWheel value={invDateTo || format(new Date(), "yyyy-MM-dd")} onChange={v => setInvDateTo(v)} label="To Date" />
+                          </div>
+                        </DrawerContent>
+                      </Drawer>
                     </div>
                   </div>
                 </div>
