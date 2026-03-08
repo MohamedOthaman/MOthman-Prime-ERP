@@ -258,16 +258,12 @@ export async function parsePdf(
 
     onProgress?.(`Extracted text from ${numPages} pages → ${textChunks.length} chunks. Sending to AI...`);
     body = { type, textChunks };
-  } else if (type === "packing_list" || !hasText) {
-    // Image-based PDF
-    onProgress?.("Rendering PDF pages...");
+  } else if (!hasText) {
+    // Image-based / scanned PDF — render pages for OCR
+    onProgress?.("Rendering PDF pages for OCR...");
     const images = await renderPagesToImages(file);
-    onProgress?.(`Analyzing ${images.length} page(s) with AI...`);
-
-    if (hasText) {
-      body = { type, textChunks: [text.slice(0, MAX_CHARS_PER_CHUNK)], images };
-    } else {
-      body = { type, images };
+    onProgress?.(`Analyzing ${images.length} page(s) with AI vision...`);
+    body = { type, images };
     }
   }
 
