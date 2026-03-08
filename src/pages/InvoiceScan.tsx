@@ -251,14 +251,14 @@ export default function InvoiceScan() {
   const allScanned = items.length > 0 && items.every(i => i.scannedQty >= i.qty);
 
   // --- CONFIRM / DONE ---
-  const confirmInvoice = (scanned: boolean) => {
+  const confirmInvoice = async (scanned: boolean) => {
     if (items.length === 0) { toast.error("No items"); return; }
     stopCamera();
 
     const allDeductions: Invoice["deductionLog"] = [];
     const invoiceItems: InvoiceItem[] = [];
     for (const item of items) {
-      const result = deductFIFO(item.productCode, item.qty, item.unit, invoiceNo);
+      const result = await deductFIFO(item.productCode, item.qty, item.unit, invoiceNo);
       allDeductions.push(...result.deductionLog);
       for (const d of result.deductionLog) {
         invoiceItems.push({
@@ -268,7 +268,7 @@ export default function InvoiceScan() {
       }
     }
     const now = new Date();
-    addInvoice({
+    await addInvoice({
       invoiceNo, customerName, date: now.toISOString().split("T")[0],
       time: now.toLocaleTimeString(), items: invoiceItems, type: "OUT",
       status: "done", deductionLog: allDeductions,
