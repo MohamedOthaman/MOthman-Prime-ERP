@@ -19,7 +19,7 @@ interface ValidationError {
 }
 
 export default function ImportExport() {
-  const { stock, importProducts } = useStockContext();
+  const { stock, movements, importProducts } = useStockContext();
   const [tab, setTab] = useState<Tab>("export");
   const [expiryDays, setExpiryDays] = useState(30);
   const [showExpiryPicker, setShowExpiryPicker] = useState(false);
