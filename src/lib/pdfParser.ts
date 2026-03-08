@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 // Configure worker
 pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`;
 
-const MAX_CHARS_PER_CHUNK = 28000;
+const MAX_CHARS_PER_CHUNK = 18000;
 
 export type PdfType = "invoices" | "sku" | "packing_list";
 
