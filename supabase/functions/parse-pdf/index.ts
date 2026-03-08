@@ -266,7 +266,7 @@ serve(async (req) => {
       for (const img of images) {
         content.push({ type: "image_url", image_url: { url: img } });
       }
-      const result = await callAI(LOVABLE_API_KEY, type, content);
+      const result = await callAIWithRetry(LOVABLE_API_KEY, type, content);
       return new Response(JSON.stringify(result), {
         status: result.status || 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
