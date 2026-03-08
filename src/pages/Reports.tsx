@@ -1,12 +1,15 @@
-import { useState, useMemo } from "react";
-import { BarChart3, AlertTriangle, TrendingUp, History, Building2, Settings, FileText, RotateCcw, Download, ArrowUpDown, Filter } from "lucide-react";
+import { useState, useMemo, useRef, useEffect } from "react";
+import { BarChart3, AlertTriangle, TrendingUp, History, Building2, Settings, FileText, RotateCcw, Download, ArrowUpDown, Filter, FileSpreadsheet, File } from "lucide-react";
 import { useStockContext } from "@/contexts/StockContext";
 import { ExpiryIndicator } from "@/components/ExpiryIndicator";
 import { StorageBadge } from "@/components/StorageBadge";
 import { WheelPicker, NumberWheel } from "@/components/WheelPicker";
 import { getMovingThreshold, setMovingThreshold } from "@/components/MovingBadge";
-import * as XLSX from "xlsx";
-import { toast } from "sonner";
+import {
+  exportExcel, exportPDF,
+  getExpiryExportConfig, getMovementsExportConfig,
+  getInvoicesExportConfig, getBrandsExportConfig, getReturnsExportConfig,
+} from "@/lib/exportUtils";
 
 type ReportTab = "expiry" | "forecast" | "movements" | "brands" | "invoices" | "settings";
 type InvoiceSubTab = "ready" | "done" | "cancelled" | "returns";
