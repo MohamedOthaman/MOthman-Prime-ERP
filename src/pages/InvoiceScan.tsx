@@ -480,7 +480,7 @@ export default function InvoiceScan() {
               <label className="text-sm font-semibold text-foreground block">Or Enter Manually</label>
               <input type="text" value={invoiceNo} onChange={e => setInvoiceNo(e.target.value)}
                 onKeyDown={e => e.key === "Enter" && handleManualInvoiceSubmit()}
-                placeholder="Invoice number..."
+                placeholder="رقم الفاتورة أو كود المنتج..."
                 className="w-full bg-secondary text-foreground text-sm rounded-md px-3 py-2.5 border border-border focus:outline-none focus:ring-1 focus:ring-ring placeholder:text-muted-foreground font-mono" />
               <button onClick={handleManualInvoiceSubmit}
                 className="w-full bg-secondary text-secondary-foreground font-semibold py-2.5 rounded-md text-sm">
