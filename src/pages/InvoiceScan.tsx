@@ -129,11 +129,33 @@ export default function InvoiceScan() {
   };
 
   const handleManualInvoiceSubmit = () => {
-    if (!invoiceNo.trim()) { toast.error("Enter invoice number"); return; }
-    const existing = invoices.find(i => i.invoiceNo === invoiceNo.trim());
+    const trimmed = invoiceNo.trim();
+    if (!trimmed) { 
+      // Auto-generate invoice number if empty
+      setInvoiceNo(`INV-${Date.now().toString().slice(-6)}`);
+      setView("details");
+      return;
+    }
+    const existing = invoices.find(i => i.invoiceNo === trimmed);
     if (existing && existing.status !== "ready") {
       setActiveInvoice(existing);
       setView("completed-view");
+      return;
+    }
+    // Check if user typed a product code instead of invoice number
+    const foundAsProduct = findProductByBarcode(trimmed) || findProduct(trimmed.toUpperCase());
+    if (foundAsProduct) {
+      // Auto-generate invoice, go to details, and add this product
+      const autoInv = `INV-${Date.now().toString().slice(-6)}`;
+      setInvoiceNo(autoInv);
+      const nearestBatch = [...foundAsProduct.product.batches].sort((a, b) => new Date(a.expiryDate).getTime() - new Date(b.expiryDate).getTime())[0];
+      setItems([{
+        productCode: foundAsProduct.product.code, productName: foundAsProduct.product.name,
+        qty: 1, unit: foundAsProduct.product.batches[0]?.unit || "PCS",
+        nearestExpiry: nearestBatch?.expiryDate || "", scannedQty: 0,
+      }]);
+      toast.success(`Added ${foundAsProduct.product.name}`);
+      setView("details");
       return;
     }
     setView("details");
