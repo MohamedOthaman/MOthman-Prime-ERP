@@ -1,9 +1,13 @@
 import { useState, useMemo, useRef, useEffect } from "react";
-import { BarChart3, AlertTriangle, TrendingUp, History, Building2, Settings, FileText, RotateCcw, Download, ArrowUpDown, Filter, FileSpreadsheet, File } from "lucide-react";
+import { BarChart3, AlertTriangle, TrendingUp, History, Building2, Settings, FileText, RotateCcw, Download, ArrowUpDown, Filter, FileSpreadsheet, File, CalendarIcon } from "lucide-react";
 import { useStockContext } from "@/contexts/StockContext";
 import { ExpiryIndicator } from "@/components/ExpiryIndicator";
 import { StorageBadge } from "@/components/StorageBadge";
-import { WheelPicker, NumberWheel } from "@/components/WheelPicker";
+import { WheelPicker, NumberWheel, DateWheel } from "@/components/WheelPicker";
+import { Drawer, DrawerContent, DrawerTrigger } from "@/components/ui/drawer";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+import { format } from "date-fns";
 import { getMovingThreshold, setMovingThreshold } from "@/components/MovingBadge";
 import {
   exportExcel, exportPDF,
