@@ -24,16 +24,8 @@ export function useBarcodeScanner() {
         BarcodeFormat.EAN_13, BarcodeFormat.EAN_8, BarcodeFormat.CODE_128,
         BarcodeFormat.CODE_39, BarcodeFormat.QR_CODE, BarcodeFormat.UPC_A, BarcodeFormat.UPC_E,
       ]);
-      const reader = new BrowserMultiFormatReader(hints);
+      const reader = new BrowserMultiFormatReader(hints, 100);
       readerRef.current = reader;
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: "environment", width: { ideal: 1920 }, height: { ideal: 1080 } },
-      });
-      streamRef.current = stream;
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        await videoRef.current.play();
-      }
 
       reader.decodeFromVideoDevice(undefined, videoRef.current!, (result, err) => {
         if (result) {
@@ -46,6 +38,12 @@ export function useBarcodeScanner() {
           }
         }
       });
+
+      setTimeout(() => {
+        if (videoRef.current?.srcObject) {
+          streamRef.current = videoRef.current.srcObject as MediaStream;
+        }
+      }, 500);
     } catch { toast.error("Cannot access camera"); }
   }, [stopCamera]);
 
