@@ -137,24 +137,38 @@ Items are in a table with columns: Item Code, Item Name, Uom, Sales Qty, LC Valu
 Extract the Item Code, Item Name, Uom, and Sales Qty (as a number) for each item.
 Be thorough - extract EVERY invoice and EVERY item from the document.`,
 
-  sku: `You are a precise data extraction expert for warehouse stock reports. Extract ALL products from this "Stock Report By Warehouse & Expiry" text.
+  sku: `You are a precise data extraction expert for warehouse stock reports. Extract ALL products from the provided stock report content.
+
+COLUMN NAME DETECTION — use semantic understanding, column names vary across systems:
+- "Item Code" / "Product Code" / "SKU" / "Code" → itemCode
+- "Item Name" / "Product Name" / "Description" / "Desc" → itemName  
+- "Stock Qty" / "Quantity" / "Qty" / "On Hand" / "Balance" → qty
+- "Wh Expiry Date" / "Expiry" / "Exp Date" / "Best Before" → expiryDate
+- "UOM" / "Unit" / "Base UOM" / "Uom" → baseUom
+- "Brand" / "Brand Name" / "Brand :" → brand
+- "Batch" / "Batch #" / "Batch No" / "Lot" → batchNo
+- "Wh" / "Warehouse" / "Location" / "Store" → warehouse
 
 DOCUMENT STRUCTURE:
-- Products are grouped under Brand headers like "Brand : XX - BRAND NAME"
+- Products may be grouped under Brand headers like "Brand : XX - BRAND NAME"
 - Each product row has: Item Code, Item Name, Packing, Origin, Total Stock, Base UOM
-- Below each product are batch rows with: Warehouse (Wh), Expiry Date (DD/MM/YYYY), Stock Qty, Batch #
-- Continuation rows (same product) have EMPTY Item Code and Item Name columns
-- Some batches have empty qty (0 stock) — skip those
+- Below each product are batch rows with: Warehouse, Expiry Date, Stock Qty, Batch #
+- Continuation rows (same product) may have EMPTY Item Code and Item Name columns
+- Data may be fragmented across pages — reconstruct by combining related fields
+- Tables may span multiple pages with repeated headers — detect and skip repeated headers
 
 CRITICAL RULES:
-1. Convert ALL dates from DD/MM/YYYY to YYYY-MM-DD
+1. Convert ALL dates to YYYY-MM-DD (from DD/MM/YYYY, MM/DD/YYYY, or any format)
 2. Extract EVERY product and EVERY batch with qty > 0
-3. Keep track of the current Brand — each product belongs to the last "Brand :" header seen
+3. Keep track of the current Brand — each product belongs to the last brand header seen
 4. Products before the first Brand header use "General" as brand
-5. If a product spans multiple pages, combine all its batches
-6. Pay close attention to column alignment — the text columns may shift across pages
-7. Do NOT miss any products or batches. Accuracy is critical.
-8. totalStock should be the number shown in the "Total Stock" column (not recalculated)`,
+5. If a product spans multiple pages, combine all its batches into one record
+6. Pay close attention to column alignment — text columns may shift across pages
+7. Do NOT miss any products or batches. Accuracy is critical
+8. totalStock should be the number shown in the "Total Stock" column (not recalculated)
+9. If a product row is split across multiple lines, reconstruct it as a single record
+10. NEVER discard a record because a field is missing — set flagged=true and flagReason instead
+11. Extract warehouse info per batch when available`,
 
   packing_list: `You are a data extraction expert for warehouse management. Extract ALL products from this packing list document.
 Look for item codes, product names, quantities, units, batch numbers, expiry dates, and production dates.
