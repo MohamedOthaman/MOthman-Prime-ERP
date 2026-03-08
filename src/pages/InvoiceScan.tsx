@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import {
   ScanLine, Flashlight, FlashlightOff, Check, X, Plus, Minus,
-  FileText, Upload, RotateCcw, Edit3, Ban, ChevronRight, Camera, Loader2
+  FileText, Upload, RotateCcw, Edit3, Ban, ChevronRight, Camera, Loader2, CalendarIcon
 } from "lucide-react";
 import { useStockContext } from "@/contexts/StockContext";
 import { Invoice, InvoiceItem, MarketReturn } from "@/data/stockData";
@@ -9,6 +9,10 @@ import { toast } from "sonner";
 import { BrowserMultiFormatReader, DecodeHintType, BarcodeFormat } from "@zxing/library";
 import { parsePdf } from "@/lib/pdfParser";
 import { NumberWheel, DateWheel } from "@/components/WheelPicker";
+import { Drawer, DrawerContent, DrawerTrigger } from "@/components/ui/drawer";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+import { format } from "date-fns";
 
 type View = "main" | "details" | "scanning" | "returns" | "return-scan" | "completed-view";
 
