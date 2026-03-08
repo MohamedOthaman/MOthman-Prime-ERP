@@ -323,6 +323,30 @@ export default function ImportExport() {
                 Export Near Expiry ({expiryDays} days)
               </button>
             </div>
+
+            <button onClick={exportByBrand} className="w-full bg-card border border-border rounded-lg p-4 text-left hover:bg-row-hover transition-colors flex items-center gap-3">
+              <Building2 className="w-8 h-8 text-primary" />
+              <div>
+                <p className="text-sm font-semibold text-foreground">Stock by Brand</p>
+                <p className="text-xs text-muted-foreground">Each brand in a separate sheet (.xlsx)</p>
+              </div>
+            </button>
+
+            <button onClick={exportInventorySnapshot} className="w-full bg-card border border-border rounded-lg p-4 text-left hover:bg-row-hover transition-colors flex items-center gap-3">
+              <Package className="w-8 h-8 text-primary" />
+              <div>
+                <p className="text-sm font-semibold text-foreground">Inventory Snapshot</p>
+                <p className="text-xs text-muted-foreground">Summary of all products with totals (.xlsx)</p>
+              </div>
+            </button>
+
+            <button onClick={exportMovements} className="w-full bg-card border border-border rounded-lg p-4 text-left hover:bg-row-hover transition-colors flex items-center gap-3">
+              <History className="w-8 h-8 text-storage-chilled" />
+              <div>
+                <p className="text-sm font-semibold text-foreground">Movements Report</p>
+                <p className="text-xs text-muted-foreground">All stock IN/OUT movements (.xlsx)</p>
+              </div>
+            </button>
           </div>
         )}
 
