@@ -284,7 +284,7 @@ serve(async (req) => {
       }
       const result = await callAIWithRetry(LOVABLE_API_KEY, type, content, model);
       return new Response(JSON.stringify(result), {
-        status: 200,
+        status: result.status || 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
@@ -308,7 +308,7 @@ serve(async (req) => {
           error: `Chunk ${i + 1}/${textChunks.length} failed: ${result.error}`,
           status: result.status || 500,
         }), {
-          status: 200,
+          status: result.status || 500,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }

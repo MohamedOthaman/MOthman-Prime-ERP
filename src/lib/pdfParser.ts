@@ -236,18 +236,7 @@ export async function parsePdf(
 
         if (error) {
           console.error(`Chunk ${i + 1} failed:`, error);
-          return { error: error.message || `Failed at chunk ${i + 1}/${textChunks.length}. Please retry.` };
-        }
-
-        if (data?.error) {
-          const status = data?.status as number | undefined;
-          if (status === 402 || String(data.error).toLowerCase().includes("credits exhausted")) {
-            return { error: "AI credits are exhausted. Add credits from Settings → Workspace → Usage, then retry import." };
-          }
-          if (status === 429) {
-            return { error: "Too many AI requests right now. Please wait a minute and retry." };
-          }
-          return { error: data.error };
+          return { error: `Failed at chunk ${i + 1}/${textChunks.length}. Please retry.` };
         }
 
         const chunkResult = data?.data || data;
@@ -289,13 +278,6 @@ export async function parsePdf(
   }
 
   if (data?.error) {
-    const status = data?.status as number | undefined;
-    if (status === 402 || String(data.error).toLowerCase().includes("credits exhausted")) {
-      return { error: "AI credits are exhausted. Add credits from Settings → Workspace → Usage, then retry." };
-    }
-    if (status === 429) {
-      return { error: "Too many AI requests right now. Please wait a minute and retry." };
-    }
     return { error: data.error };
   }
 
