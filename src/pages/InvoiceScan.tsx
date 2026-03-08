@@ -272,8 +272,9 @@ export default function InvoiceScan() {
 
   // --- DETAILS VIEW ---
   const addProductToInvoice = (code: string) => {
-    const found = findProductByBarcode(code) || findProduct(code.toUpperCase());
-    if (!found) { toast.error(`Product not found: ${code}`); return; }
+    const trimmed = code.trim();
+    const found = findProductByBarcode(trimmed) || findProduct(trimmed.toUpperCase()) || findProduct(trimmed);
+    if (!found) { toast.error(`منتج غير موجود: ${trimmed}`); return; }
     const existing = items.findIndex(i => i.productCode === found.product.code);
     if (existing >= 0) {
       setItems(prev => prev.map((item, i) => i === existing ? { ...item, qty: item.qty + 1 } : item));
@@ -285,7 +286,7 @@ export default function InvoiceScan() {
         nearestExpiry: nearestBatch?.expiryDate || "", scannedQty: 0,
       }]);
     }
-    toast.success(`Added ${found.product.name}`);
+    toast.success(`✔ ${found.product.name}`);
   };
 
   const updateItemQty = (idx: number, delta: number) => {
