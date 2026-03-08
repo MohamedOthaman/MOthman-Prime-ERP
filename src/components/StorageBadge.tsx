@@ -1,9 +1,10 @@
 import { type StorageType } from "@/data/stockData";
 import { Snowflake, Thermometer, Package } from "lucide-react";
 
-const config: Record<StorageType, { icon: typeof Snowflake; bg: string; text: string; label: string }> = {
+const config: Record<string, { icon: typeof Snowflake; bg: string; text: string; label: string }> = {
   Frozen: { icon: Snowflake, bg: "bg-storage-frozen-bg", text: "text-storage-frozen", label: "F" },
   Chilled: { icon: Thermometer, bg: "bg-storage-chilled-bg", text: "text-storage-chilled", label: "C" },
+  Cold: { icon: Thermometer, bg: "bg-storage-chilled-bg", text: "text-storage-chilled", label: "C" },
   Dry: { icon: Package, bg: "bg-storage-dry-bg", text: "text-storage-dry", label: "D" },
 };
 
