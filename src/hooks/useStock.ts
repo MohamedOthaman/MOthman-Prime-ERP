@@ -171,6 +171,7 @@ export function useStock() {
       await supabase.from("products").update({
         name: product.name, brand_id: brand.id, packaging: product.packaging,
         storage_type: product.storageType, barcodes: product.barcodes || [], carton_holds: product.cartonHolds,
+        name_ar: product.nameAr || "",
       }).eq("id", existing.id);
 
       // Replace batches
