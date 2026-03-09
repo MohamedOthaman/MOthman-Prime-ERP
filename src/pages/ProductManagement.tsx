@@ -288,9 +288,16 @@ export default function ProductManagement() {
               </div>
 
               <div>
-                <label className="text-xs text-muted-foreground block mb-1">Product Name *</label>
+                <label className="text-xs text-muted-foreground block mb-1">{t("productName")} *</label>
                 <input type="text" value={name} onChange={e => setName(e.target.value)}
                   placeholder="e.g. Monin Mango Syrup 700ml"
+                  className="w-full bg-secondary text-foreground text-sm rounded-md px-3 py-2.5 border border-border focus:outline-none focus:ring-1 focus:ring-ring placeholder:text-muted-foreground" />
+              </div>
+
+              <div>
+                <label className="text-xs text-muted-foreground block mb-1">{t("arabicName")}</label>
+                <input type="text" value={nameAr} onChange={e => setNameAr(e.target.value)}
+                  placeholder="مثال: شراب مانجو مونين ٧٠٠مل" dir="rtl"
                   className="w-full bg-secondary text-foreground text-sm rounded-md px-3 py-2.5 border border-border focus:outline-none focus:ring-1 focus:ring-ring placeholder:text-muted-foreground" />
               </div>
 
