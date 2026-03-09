@@ -6,6 +6,72 @@
 
 @layer base {
   :root {
+    --background: 0 0% 97%;
+    --foreground: 220 20% 14%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 220 20% 14%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 220 20% 14%;
+
+    --primary: 200 80% 45%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 220 14% 93%;
+    --secondary-foreground: 220 16% 30%;
+
+    --muted: 220 14% 92%;
+    --muted-foreground: 215 12% 45%;
+
+    --accent: 200 60% 92%;
+    --accent-foreground: 200 80% 30%;
+
+    --destructive: 0 70% 50%;
+    --destructive-foreground: 0 0% 98%;
+
+    --border: 220 14% 86%;
+    --input: 220 14% 86%;
+    --ring: 200 80% 45%;
+
+    --radius: 0.5rem;
+
+    --storage-frozen: 210 90% 45%;
+    --storage-frozen-bg: 210 90% 92%;
+    --storage-chilled: 170 70% 35%;
+    --storage-chilled-bg: 170 70% 92%;
+    --storage-dry: 35 85% 45%;
+    --storage-dry-bg: 35 85% 92%;
+
+    --brand-header: 220 14% 94%;
+    --brand-border: 200 60% 50%;
+
+    --row-hover: 220 14% 95%;
+
+    --success: 145 65% 38%;
+    --success-bg: 145 65% 92%;
+
+    --warning: 35 85% 50%;
+    --warning-bg: 35 85% 92%;
+
+    --sidebar-background: 0 0% 98%;
+    --sidebar-foreground: 220 20% 14%;
+    --sidebar-primary: 200 80% 45%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 220 14% 93%;
+    --sidebar-accent-foreground: 220 20% 14%;
+    --sidebar-border: 220 14% 86%;
+    --sidebar-ring: 200 80% 45%;
+
+    --font-sans: 'Inter', system-ui, sans-serif;
+    --font-mono: 'JetBrains Mono', monospace;
+
+    --nav-bg: 0 0% 100%;
+    --nav-active: 200 80% 45%;
+    --nav-inactive: 215 12% 55%;
+  }
+
+  .dark {
     --background: 220 20% 10%;
     --foreground: 210 20% 92%;
 
@@ -34,9 +100,6 @@
     --input: 220 14% 20%;
     --ring: 200 80% 55%;
 
-    --radius: 0.5rem;
-
-    /* Storage badges */
     --storage-frozen: 210 90% 55%;
     --storage-frozen-bg: 210 90% 15%;
     --storage-chilled: 170 70% 45%;
@@ -44,18 +107,14 @@
     --storage-dry: 35 85% 55%;
     --storage-dry-bg: 35 85% 14%;
 
-    /* Brand section */
     --brand-header: 220 16% 15%;
     --brand-border: 200 60% 30%;
 
-    /* Row hover */
     --row-hover: 220 16% 16%;
 
-    /* Success */
     --success: 145 65% 42%;
     --success-bg: 145 65% 12%;
 
-    /* Warning */
     --warning: 35 85% 55%;
     --warning-bg: 35 85% 14%;
 
@@ -68,10 +127,6 @@
     --sidebar-border: 220 14% 20%;
     --sidebar-ring: 200 80% 55%;
 
-    --font-sans: 'Inter', system-ui, sans-serif;
-    --font-mono: 'JetBrains Mono', monospace;
-
-    /* Bottom nav */
     --nav-bg: 220 20% 8%;
     --nav-active: 200 80% 55%;
     --nav-inactive: 215 12% 45%;
