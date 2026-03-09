@@ -326,7 +326,7 @@ export default function ProductManagement() {
             <div className="bg-card border border-border rounded-lg p-4 space-y-3">
               <div className="flex items-center justify-between">
                 <h3 className="text-xs font-semibold text-foreground uppercase tracking-wide flex items-center gap-1">
-                  <Barcode className="w-3.5 h-3.5" /> Barcodes ({barcodes.length})
+                  <Barcode className="w-3.5 h-3.5" /> {t("barcodes")} ({barcodes.length})
                 </h3>
                 <button onClick={scanning ? stopBarcodeScanning : startBarcodeScanning}
                   className={`text-xs font-semibold px-2 py-1 rounded-md flex items-center gap-1 ${scanning ? "bg-destructive/20 text-destructive" : "bg-primary/20 text-primary"}`}>
