@@ -469,9 +469,20 @@ export default function InvoiceScan() {
     if (!activeInvoice) return;
     // Restore stock from items (which have product codes)
     for (const item of activeInvoice.items) {
-      await restoreStock(item.productCode, item.qty, item.unit, item.batchNo, item.expiryDate, "cancelled", activeInvoice.invoiceNo);
+      if (!item.batchNo || !item.expiryDate) continue;
+      await restoreStock(
+        item.productCode,
+        item.qty,
+        item.unit,
+        item.batchNo,
+        item.expiryDate,
+        "cancelled",
+        activeInvoice.invoiceNo,
+        true
+      );
     }
     await updateInvoice(activeInvoice.invoiceNo, inv => ({ ...inv, status: "cancelled" }));
+    setLastActedInvoiceNo(activeInvoice.invoiceNo);
     toast.success(`Invoice ${activeInvoice.invoiceNo} cancelled. Stock restored.`);
     setActiveInvoice(null);
     setView("main");
