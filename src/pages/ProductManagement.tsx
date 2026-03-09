@@ -348,7 +348,7 @@ export default function ProductManagement() {
                   onKeyDown={e => e.key === "Enter" && (e.preventDefault(), addBarcodeToForm())}
                   placeholder="Enter barcode..."
                   className="flex-1 bg-secondary text-foreground text-sm rounded-md px-3 py-2 border border-border focus:outline-none focus:ring-1 focus:ring-ring placeholder:text-muted-foreground font-mono" />
-                <button onClick={addBarcodeToForm} className="bg-primary text-primary-foreground px-3 py-2 rounded-md text-xs font-semibold">Add</button>
+                <button onClick={addBarcodeToForm} className="bg-primary text-primary-foreground px-3 py-2 rounded-md text-xs font-semibold">{t("add")}</button>
               </div>
 
               {barcodes.length > 0 && (
