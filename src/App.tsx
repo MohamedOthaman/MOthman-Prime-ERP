@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import { StockProvider } from "@/contexts/StockContext";
+import { LanguageProvider } from "@/contexts/LanguageContext";
 import { BottomNav } from "@/components/BottomNav";
 import Index from "./pages/Index";
 import InvoiceScan from "./pages/InvoiceScan";
