@@ -344,11 +344,69 @@ export function useStock() {
     await loadData();
   }, [user, loadData]);
 
-  const updateInvoice = useCallback(async (invoiceNo: string, updater: (inv: Invoice) => Invoice) => {
+  const updateInvoice = useCallback(async (
+    invoiceNo: string,
+    updater: (inv: Invoice) => Invoice,
+    newItems?: InvoiceItem[]
+  ) => {
     const inv = invoices.find(i => i.invoiceNo === invoiceNo);
     if (!inv) return;
+
     const updated = updater(inv);
-    await supabase.from("invoices").update({ status: updated.status }).eq("invoice_no", invoiceNo);
+
+    const { data: dbInv, error: dbInvErr } = await supabase
+      .from("invoices")
+      .select("id")
+      .eq("invoice_no", invoiceNo)
+      .single();
+
+    if (dbInvErr || !dbInv) {
+      console.error("Failed to find invoice in DB:", dbInvErr);
+      return;
+    }
+
+    const { error: updErr } = await supabase
+      .from("invoices")
+      .update({
+        status: updated.status,
+        customer_name: updated.customerName || null,
+        date: updated.date,
+        time: updated.time || "",
+        type: updated.type,
+      })
+      .eq("id", dbInv.id);
+
+    if (updErr) {
+      console.error("Failed to update invoice:", updErr);
+      return;
+    }
+
+    if (newItems) {
+      const { error: delErr } = await supabase.from("invoice_items").delete().eq("invoice_id", dbInv.id);
+      if (delErr) {
+        console.error("Failed to delete old invoice items:", delErr);
+        return;
+      }
+
+      if (newItems.length > 0) {
+        const { error: insErr } = await supabase.from("invoice_items").insert(
+          newItems.map(it => ({
+            invoice_id: dbInv.id,
+            product_code: it.productCode,
+            product_name: it.productName,
+            qty: it.qty,
+            unit: it.unit,
+            batch_no: it.batchNo || "",
+            expiry_date: it.expiryDate || null,
+          }))
+        );
+        if (insErr) {
+          console.error("Failed to insert updated invoice items:", insErr);
+          return;
+        }
+      }
+    }
+
     await loadData();
   }, [invoices, loadData]);
 

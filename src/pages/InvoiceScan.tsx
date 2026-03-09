@@ -530,7 +530,8 @@ export default function InvoiceScan() {
     };
     // Restore stock for each returned item
     for (const item of ret.items) {
-      await restoreStock(item.productCode, item.qty, item.unit, item.batchNo, item.expiryDate, "return", ret.id);
+      if (!item.batchNo || !item.expiryDate) continue;
+      await restoreStock(item.productCode, item.qty, item.unit, item.batchNo, item.expiryDate, "return", ret.id, true);
     }
     await addReturn(ret);
     toast.success("Return processed. Stock restored.");
