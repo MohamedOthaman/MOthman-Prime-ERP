@@ -43,6 +43,7 @@ const emptyBatch = (): BatchForm => ({
 
 export default function ProductManagement() {
   const { stock, addProduct, updateProduct } = useStockContext();
+  const { t, lang } = useLang();
   const { videoRef, startScanning, stopCamera } = useBarcodeScanner();
   const [view, setView] = useState<View>("list");
   const [search, setSearch] = useState("");
