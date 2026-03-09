@@ -151,6 +151,7 @@ export default function ProductManagement() {
     const product: Product = {
       code: code.trim().toUpperCase(),
       name: name.trim(),
+      nameAr: nameAr.trim(),
       packaging: packaging.trim(),
       storageType,
       batches: batches.map(b => ({
