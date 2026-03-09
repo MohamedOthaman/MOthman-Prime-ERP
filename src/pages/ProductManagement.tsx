@@ -247,7 +247,7 @@ export default function ProductManagement() {
             {/* Basic Info */}
             <div className="bg-card border border-border rounded-lg p-4 space-y-3">
               <h2 className="text-sm font-semibold text-foreground uppercase tracking-wide">
-                {view === "add" ? "Add New Product" : "Edit Product"}
+                {view === "add" ? t("addNewProduct") : t("editProduct")}
               </h2>
 
               <div>
