@@ -234,6 +234,7 @@ export type Database = {
           created_at: string
           id: string
           name: string
+          name_ar: string | null
           packaging: string
           storage_type: string
         }
@@ -245,6 +246,7 @@ export type Database = {
           created_at?: string
           id?: string
           name: string
+          name_ar?: string | null
           packaging?: string
           storage_type?: string
         }
@@ -256,6 +258,7 @@ export type Database = {
           created_at?: string
           id?: string
           name?: string
+          name_ar?: string | null
           packaging?: string
           storage_type?: string
         }
