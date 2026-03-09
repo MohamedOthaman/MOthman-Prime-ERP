@@ -230,8 +230,8 @@ export default function ProductManagement() {
                   >
                     <span className="font-mono text-xs text-primary w-16 shrink-0">{p.code}</span>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm text-foreground truncate">{p.name}</p>
-                      <p className="text-xs text-muted-foreground">{p.brand} · {p.batches.length} batches · {p.totalQty.map(q => `${q.amount} ${q.unit}`).join(", ") || "0"}</p>
+                      <p className="text-sm text-foreground truncate">{lang === "ar" && p.nameAr ? p.nameAr : p.name}</p>
+                      <p className="text-xs text-muted-foreground">{p.brand} · {p.batches.length} {t("batches")} · {p.totalQty.map(q => `${q.amount} ${q.unit}`).join(", ") || "0"}</p>
                     </div>
                     <StorageBadge type={p.storageType} />
                     <Edit3 className="w-3.5 h-3.5 text-muted-foreground" />
