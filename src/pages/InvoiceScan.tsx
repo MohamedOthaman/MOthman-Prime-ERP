@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import {
   ScanLine, Flashlight, FlashlightOff, Check, X, Plus, Minus,
   FileText, Upload, RotateCcw, Edit3, Ban, ChevronRight, Camera, Loader2, CalendarIcon
@@ -59,7 +59,29 @@ export default function InvoiceScan() {
   const lastBarcodeRef = useRef<string>("");
   const fileRef = useRef<HTMLInputElement>(null);
 
-  const lastCompletedInvoice = invoices.find(i => i.status !== "ready");
+  const [lastActedInvoiceNo, setLastActedInvoiceNo] = useState<string | null>(() => {
+    try {
+      return localStorage.getItem("lastActedInvoiceNo");
+    } catch {
+      return null;
+    }
+  });
+
+  useEffect(() => {
+    try {
+      if (lastActedInvoiceNo) localStorage.setItem("lastActedInvoiceNo", lastActedInvoiceNo);
+    } catch {
+      // ignore
+    }
+  }, [lastActedInvoiceNo]);
+
+  const lastCompletedInvoice = useMemo(() => {
+    if (lastActedInvoiceNo) {
+      const inv = invoices.find(i => i.invoiceNo === lastActedInvoiceNo);
+      if (inv && inv.status !== "ready") return inv;
+    }
+    return invoices.find(i => i.status !== "ready") || null;
+  }, [invoices, lastActedInvoiceNo]);
 
   const stopCamera = useCallback(() => {
     if (readerRef.current) { readerRef.current.reset(); readerRef.current = null; }
@@ -352,36 +374,82 @@ export default function InvoiceScan() {
 
   // --- CONFIRM / DONE ---
   const confirmInvoice = async (scanned: boolean) => {
-    if (items.length === 0) { toast.error("No items"); return; }
+    if (items.length === 0) {
+      toast.error("No items");
+      return;
+    }
+
     stopCamera();
+
+    const existingInvoice = invoices.find(i => i.invoiceNo === invoiceNo);
+
+    // If we're editing a completed invoice, revert its previous deductions first
+    if (existingInvoice && existingInvoice.status !== "ready") {
+      for (const oldItem of existingInvoice.items) {
+        if (!oldItem.batchNo || !oldItem.expiryDate) continue;
+        await restoreStock(
+          oldItem.productCode,
+          oldItem.qty,
+          oldItem.unit,
+          oldItem.batchNo,
+          oldItem.expiryDate,
+          "edited",
+          existingInvoice.invoiceNo,
+          true
+        );
+      }
+    }
 
     const allDeductions: Invoice["deductionLog"] = [];
     const invoiceItems: InvoiceItem[] = [];
+
     for (const item of items) {
       const result = await deductFIFO(item.productCode, item.qty, item.unit, invoiceNo);
       allDeductions.push(...result.deductionLog);
       for (const d of result.deductionLog) {
         invoiceItems.push({
-          productCode: item.productCode, productName: item.productName,
-          qty: d.qty, unit: d.unit, batchNo: d.batchNo, expiryDate: d.expiryDate,
+          productCode: item.productCode,
+          productName: item.productName,
+          qty: d.qty,
+          unit: d.unit,
+          batchNo: d.batchNo,
+          expiryDate: d.expiryDate,
         });
       }
     }
 
-    // Check if this invoice already exists (e.g. status "ready") → update it
-    const existingInvoice = invoices.find(i => i.invoiceNo === invoiceNo);
     if (existingInvoice) {
-      await updateInvoice(invoiceNo, inv => ({ ...inv, status: "done" }));
-      toast.success(`Invoice ${invoiceNo} → Done ✔`);
+      const nextStatus = existingInvoice.status === "ready" ? "done" : "edited";
+
+      await updateInvoice(
+        invoiceNo,
+        (inv) => ({
+          ...inv,
+          customerName,
+          status: nextStatus,
+          items: invoiceItems,
+          deductionLog: allDeductions,
+        }),
+        invoiceItems
+      );
+
+      toast.success(`Invoice ${invoiceNo} → ${nextStatus.toUpperCase()} ✔`);
     } else {
       const now = new Date();
       await addInvoice({
-        invoiceNo, customerName, date: now.toISOString().split("T")[0],
-        time: now.toLocaleTimeString(), items: invoiceItems, type: "OUT",
-        status: "done", deductionLog: allDeductions,
+        invoiceNo,
+        customerName,
+        date: now.toISOString().split("T")[0],
+        time: now.toLocaleTimeString(),
+        items: invoiceItems,
+        type: "OUT",
+        status: "done",
+        deductionLog: allDeductions,
       });
       toast.success(`Invoice ${invoiceNo} completed`);
     }
+
+    setLastActedInvoiceNo(invoiceNo);
     resetForm();
   };
 
@@ -401,9 +469,20 @@ export default function InvoiceScan() {
     if (!activeInvoice) return;
     // Restore stock from items (which have product codes)
     for (const item of activeInvoice.items) {
-      await restoreStock(item.productCode, item.qty, item.unit, item.batchNo, item.expiryDate, "cancelled", activeInvoice.invoiceNo);
+      if (!item.batchNo || !item.expiryDate) continue;
+      await restoreStock(
+        item.productCode,
+        item.qty,
+        item.unit,
+        item.batchNo,
+        item.expiryDate,
+        "cancelled",
+        activeInvoice.invoiceNo,
+        true
+      );
     }
     await updateInvoice(activeInvoice.invoiceNo, inv => ({ ...inv, status: "cancelled" }));
+    setLastActedInvoiceNo(activeInvoice.invoiceNo);
     toast.success(`Invoice ${activeInvoice.invoiceNo} cancelled. Stock restored.`);
     setActiveInvoice(null);
     setView("main");
@@ -451,7 +530,8 @@ export default function InvoiceScan() {
     };
     // Restore stock for each returned item
     for (const item of ret.items) {
-      await restoreStock(item.productCode, item.qty, item.unit, item.batchNo, item.expiryDate, "return", ret.id);
+      if (!item.batchNo || !item.expiryDate) continue;
+      await restoreStock(item.productCode, item.qty, item.unit, item.batchNo, item.expiryDate, "return", ret.id, true);
     }
     await addReturn(ret);
     toast.success("Return processed. Stock restored.");
