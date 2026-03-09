@@ -219,7 +219,7 @@ export default function ProductManagement() {
             <p className="text-xs text-muted-foreground">{filtered.length} {t("products")}</p>
 
             {filtered.length === 0 ? (
-              <div className="text-center py-10 text-muted-foreground text-sm">No products found</div>
+              <div className="text-center py-10 text-muted-foreground text-sm">{t("noProducts")}</div>
             ) : (
               <div className="bg-card border border-border rounded-lg overflow-hidden">
                 {filtered.map((p) => (
