@@ -262,7 +262,7 @@ export default function ProductManagement() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs text-muted-foreground block mb-1">Product Code *</label>
+                  <label className="text-xs text-muted-foreground block mb-1">{t("productCode")} *</label>
                   <input type="text" value={code} onChange={e => setCode(e.target.value)}
                     placeholder="e.g. MN001" disabled={view === "edit"}
                     className="w-full bg-secondary text-foreground text-sm rounded-md px-3 py-2.5 border border-border focus:outline-none focus:ring-1 focus:ring-ring placeholder:text-muted-foreground font-mono disabled:opacity-50" />
