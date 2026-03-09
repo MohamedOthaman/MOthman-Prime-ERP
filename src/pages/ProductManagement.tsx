@@ -369,10 +369,10 @@ export default function ProductManagement() {
             <div className="bg-card border border-border rounded-lg overflow-hidden">
               <div className="px-4 py-3 flex items-center justify-between border-b border-border">
                 <h3 className="text-xs font-semibold text-foreground uppercase tracking-wide">
-                  Batches ({batches.length})
+                  {t("batches")} ({batches.length})
                 </h3>
                 <button onClick={addBatch} className="text-xs font-semibold text-primary flex items-center gap-1">
-                  <Plus className="w-3 h-3" /> Add Batch
+                  <Plus className="w-3 h-3" /> {t("addBatch")}
                 </button>
               </div>
 
