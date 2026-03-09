@@ -303,7 +303,7 @@ export default function ProductManagement() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs text-muted-foreground block mb-1">Storage Type</label>
+                  <label className="text-xs text-muted-foreground block mb-1">{t("storageType")}</label>
                   <div className="flex gap-1">
                     {storageOptions.map(opt => (
                       <button key={opt.value} onClick={() => setStorageType(opt.value)}
