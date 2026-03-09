@@ -5,10 +5,13 @@ import { StorageBadge } from "./StorageBadge";
 import { ExpiryIndicator } from "./ExpiryIndicator";
 import { BatchDetails } from "./BatchDetails";
 import { MovingBadge } from "./MovingBadge";
+import { useLang } from "@/contexts/LanguageContext";
 
-export function ProductRow({ product }: {product: Product;}) {
+export function ProductRow({ product }: { product: Product }) {
   const [expanded, setExpanded] = useState(false);
+  const { lang } = useLang();
 
+  const displayName = lang === "ar" && product.nameAr ? product.nameAr : product.name;
   const qtyString = product.totalQty.map((q) => `${q.amount} ${q.unit}`).join(", ");
 
   return (
@@ -19,16 +22,14 @@ export function ProductRow({ product }: {product: Product;}) {
         
         {expanded ?
         <ChevronDown className="w-4 h-4 text-muted-foreground shrink-0" /> :
-
-        <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
-        }
+        <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />}
 
         <span className="font-mono text-xs text-primary font-semibold w-16 shrink-0">
           {product.code}
         </span>
 
         <span className="text-sm font-medium text-foreground truncate flex-1 min-w-0 flex items-center gap-1">
-          {product.name}
+          {displayName}
           <MovingBadge productCode={product.code} />
         </span>
 
@@ -46,6 +47,6 @@ export function ProductRow({ product }: {product: Product;}) {
       </button>
 
       {expanded && <BatchDetails batches={product.batches} />}
-    </div>);
-
+    </div>
+  );
 }

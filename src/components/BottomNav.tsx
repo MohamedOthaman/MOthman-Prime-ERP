@@ -1,17 +1,19 @@
 import { Package, ScanLine, FileSpreadsheet, BarChart3, Settings } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
-
-const tabs = [
-  { path: "/", icon: Package, label: "Stock" },
-  { path: "/invoice-scan", icon: ScanLine, label: "Invoices" },
-  { path: "/import-export", icon: FileSpreadsheet, label: "IO" },
-  { path: "/reports", icon: BarChart3, label: "Reports" },
-  { path: "/products", icon: Settings, label: "Products" },
-];
+import { useLang } from "@/contexts/LanguageContext";
 
 export function BottomNav() {
   const location = useLocation();
   const navigate = useNavigate();
+  const { t } = useLang();
+
+  const tabs = [
+    { path: "/", icon: Package, label: t("stock") },
+    { path: "/invoice-scan", icon: ScanLine, label: t("invoices") },
+    { path: "/import-export", icon: FileSpreadsheet, label: t("io") },
+    { path: "/reports", icon: BarChart3, label: t("reports") },
+    { path: "/products", icon: Settings, label: t("productsNav") },
+  ];
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 bg-nav-bg border-t border-border">
