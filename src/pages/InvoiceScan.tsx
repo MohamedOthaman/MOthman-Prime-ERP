@@ -59,7 +59,29 @@ export default function InvoiceScan() {
   const lastBarcodeRef = useRef<string>("");
   const fileRef = useRef<HTMLInputElement>(null);
 
-  const lastCompletedInvoice = invoices.find(i => i.status !== "ready");
+  const [lastActedInvoiceNo, setLastActedInvoiceNo] = useState<string | null>(() => {
+    try {
+      return localStorage.getItem("lastActedInvoiceNo");
+    } catch {
+      return null;
+    }
+  });
+
+  useEffect(() => {
+    try {
+      if (lastActedInvoiceNo) localStorage.setItem("lastActedInvoiceNo", lastActedInvoiceNo);
+    } catch {
+      // ignore
+    }
+  }, [lastActedInvoiceNo]);
+
+  const lastCompletedInvoice = useMemo(() => {
+    if (lastActedInvoiceNo) {
+      const inv = invoices.find(i => i.invoiceNo === lastActedInvoiceNo);
+      if (inv && inv.status !== "ready") return inv;
+    }
+    return invoices.find(i => i.status !== "ready") || null;
+  }, [invoices, lastActedInvoiceNo]);
 
   const stopCamera = useCallback(() => {
     if (readerRef.current) { readerRef.current.reset(); readerRef.current = null; }
