@@ -216,7 +216,7 @@ export default function ProductManagement() {
               />
             </div>
 
-            <p className="text-xs text-muted-foreground">{filtered.length} products</p>
+            <p className="text-xs text-muted-foreground">{filtered.length} {t("products")}</p>
 
             {filtered.length === 0 ? (
               <div className="text-center py-10 text-muted-foreground text-sm">No products found</div>
