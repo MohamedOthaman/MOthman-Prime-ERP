@@ -378,7 +378,7 @@ export default function ProductManagement() {
 
               {batches.length === 0 && (
                 <div className="px-4 py-6 text-center text-sm text-muted-foreground">
-                  No batches. Tap "Add Batch" to create one.
+                  {t("noBatches")}
                 </div>
               )}
 
