@@ -277,30 +277,55 @@ export function useStock() {
     return { deductionLog, movementEntries };
   }, [user]);
 
-  const restoreStock = useCallback(async (productCode: string, qty: number, unit: string, batchNo: string, expiryDate: string, reason: string, refId: string) => {
+  const restoreStock = useCallback(async (
+    productCode: string,
+    qty: number,
+    unit: string,
+    batchNo: string,
+    expiryDate: string,
+    reason: string,
+    refId: string,
+    skipReload?: boolean
+  ) => {
     if (!productCode) return;
     const { data: prod } = await supabase.from("products").select("id, name").eq("code", productCode).single();
     if (!prod) return;
 
     // Check if batch exists
-    const { data: existing } = await supabase.from("batches")
-      .select("id, qty").eq("product_id", prod.id).eq("batch_no", batchNo).single();
+    const { data: existing } = await supabase
+      .from("batches")
+      .select("id, qty")
+      .eq("product_id", prod.id)
+      .eq("batch_no", batchNo)
+      .single();
 
     if (existing) {
       await supabase.from("batches").update({ qty: existing.qty + qty }).eq("id", existing.id);
     } else {
       await supabase.from("batches").insert({
-        product_id: prod.id, batch_no: batchNo, qty, unit, expiry_date: expiryDate,
+        product_id: prod.id,
+        batch_no: batchNo,
+        qty,
+        unit,
+        expiry_date: expiryDate,
         received_date: new Date().toISOString().split("T")[0],
       });
     }
 
     await supabase.from("movements").insert({
-      type: "IN", product_code: productCode, product_name: prod.name,
-      batch_no: batchNo, qty, unit, return_id: refId, created_by: user?.id,
+      type: "IN",
+      product_code: productCode,
+      product_name: prod.name,
+      batch_no: batchNo,
+      qty,
+      unit,
+      return_id: refId,
+      created_by: user?.id,
     });
 
-    await loadData();
+    if (!skipReload) {
+      await loadData();
+    }
   }, [user, loadData]);
 
   const addInvoice = useCallback(async (invoice: Invoice) => {

@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import {
   ScanLine, Flashlight, FlashlightOff, Check, X, Plus, Minus,
   FileText, Upload, RotateCcw, Edit3, Ban, ChevronRight, Camera, Loader2, CalendarIcon
