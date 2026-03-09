@@ -52,6 +52,7 @@ export function useStock() {
           const product: Product = {
             code: p.code,
             name: p.name,
+            nameAr: (p as any).name_ar || "",
             brand: b.name,
             totalQty: Object.entries(totalQtyMap).map(([unit, amount]) => ({ amount, unit })),
             packaging: p.packaging || "",
@@ -171,6 +172,7 @@ export function useStock() {
       await supabase.from("products").update({
         name: product.name, brand_id: brand.id, packaging: product.packaging,
         storage_type: product.storageType, barcodes: product.barcodes || [], carton_holds: product.cartonHolds,
+        name_ar: product.nameAr || "",
       }).eq("id", existing.id);
 
       // Replace batches
@@ -185,6 +187,7 @@ export function useStock() {
       const { data: newProd } = await supabase.from("products").insert({
         code: product.code, name: product.name, brand_id: brand.id, packaging: product.packaging,
         storage_type: product.storageType, barcodes: product.barcodes || [], carton_holds: product.cartonHolds,
+        name_ar: product.nameAr || "",
       }).select("id").single();
       if (newProd && product.batches.length > 0) {
         await supabase.from("batches").insert(product.batches.map(b => ({
@@ -211,6 +214,7 @@ export function useStock() {
         code: updatedProduct.code, name: updatedProduct.name, brand_id: brand.id,
         packaging: updatedProduct.packaging, storage_type: updatedProduct.storageType,
         barcodes: updatedProduct.barcodes || [], carton_holds: updatedProduct.cartonHolds,
+        name_ar: updatedProduct.nameAr || "",
       }).eq("id", existing.id);
 
       await supabase.from("batches").delete().eq("product_id", existing.id);

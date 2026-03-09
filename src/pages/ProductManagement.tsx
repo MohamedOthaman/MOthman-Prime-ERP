@@ -10,6 +10,8 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Drawer, DrawerContent, DrawerTrigger } from "@/components/ui/drawer";
 import { DateWheel } from "@/components/WheelPicker";
+import { useLang } from "@/contexts/LanguageContext";
+import { LanguageToggle } from "@/components/LanguageToggle";
 
 type View = "list" | "add" | "edit";
 
@@ -41,6 +43,7 @@ const emptyBatch = (): BatchForm => ({
 
 export default function ProductManagement() {
   const { stock, addProduct, updateProduct } = useStockContext();
+  const { t, lang } = useLang();
   const { videoRef, startScanning, stopCamera } = useBarcodeScanner();
   const [view, setView] = useState<View>("list");
   const [search, setSearch] = useState("");
@@ -51,6 +54,7 @@ export default function ProductManagement() {
   // Product form
   const [code, setCode] = useState("");
   const [name, setName] = useState("");
+  const [nameAr, setNameAr] = useState("");
   const [packaging, setPackaging] = useState("");
   const [storageType, setStorageType] = useState<StorageType>("Dry");
   const [barcodes, setBarcodes] = useState<string[]>([]);
@@ -69,7 +73,7 @@ export default function ProductManagement() {
   );
 
   const resetForm = () => {
-    setCode(""); setName(""); setPackaging(""); setStorageType("Dry");
+    setCode(""); setName(""); setNameAr(""); setPackaging(""); setStorageType("Dry");
     setBarcodes([]); setCartonHolds(undefined); setBatches([]);
     setNewBarcode(""); setExpandedBatch(null); setBrandName("");
     setEditingCode(null);
@@ -83,6 +87,7 @@ export default function ProductManagement() {
   const startEdit = (product: Product & { brand: string }) => {
     setCode(product.code);
     setName(product.name);
+    setNameAr(product.nameAr || "");
     setPackaging(product.packaging);
     setStorageType(product.storageType);
     setBarcodes(product.barcodes || []);
@@ -146,6 +151,7 @@ export default function ProductManagement() {
     const product: Product = {
       code: code.trim().toUpperCase(),
       name: name.trim(),
+      nameAr: nameAr.trim(),
       packaging: packaging.trim(),
       storageType,
       batches: batches.map(b => ({
@@ -186,11 +192,14 @@ export default function ProductManagement() {
       <header className="sticky top-0 z-10 bg-background/95 backdrop-blur border-b border-border px-4 py-3">
         <div className="max-w-3xl mx-auto flex items-center gap-2">
           <Settings className="w-5 h-5 text-primary" />
-          <h1 className="text-lg font-bold text-foreground tracking-tight">Product Management</h1>
+          <h1 className="text-lg font-bold text-foreground tracking-tight">{t("productManagement")}</h1>
           {view === "list" && (
-            <button onClick={startAdd} className="ml-auto bg-primary text-primary-foreground px-3 py-1.5 rounded-md text-xs font-semibold flex items-center gap-1">
-              <Plus className="w-3 h-3" /> Add
-            </button>
+            <span className="ml-auto flex items-center gap-2">
+              <LanguageToggle />
+              <button onClick={startAdd} className="bg-primary text-primary-foreground px-3 py-1.5 rounded-md text-xs font-semibold flex items-center gap-1">
+                <Plus className="w-3 h-3" /> {t("add")}
+              </button>
+            </span>
           )}
         </div>
       </header>
@@ -202,15 +211,15 @@ export default function ProductManagement() {
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <input
                 type="text" value={search} onChange={e => setSearch(e.target.value)}
-                placeholder="Search products..."
-                className="w-full bg-secondary text-foreground text-sm rounded-md pl-9 pr-3 py-2.5 border border-border focus:outline-none focus:ring-1 focus:ring-ring placeholder:text-muted-foreground"
+                placeholder={t("searchProducts")}
+                className="w-full bg-secondary text-foreground text-sm rounded-md pl-9 pr-3 py-2.5 border border-border focus:outline-none focus:ring-1 focus:ring-ring placeholder:text-muted-foreground rtl:pl-3 rtl:pr-9"
               />
             </div>
 
-            <p className="text-xs text-muted-foreground">{filtered.length} products</p>
+            <p className="text-xs text-muted-foreground">{filtered.length} {t("products")}</p>
 
             {filtered.length === 0 ? (
-              <div className="text-center py-10 text-muted-foreground text-sm">No products found</div>
+              <div className="text-center py-10 text-muted-foreground text-sm">{t("noProducts")}</div>
             ) : (
               <div className="bg-card border border-border rounded-lg overflow-hidden">
                 {filtered.map((p) => (
@@ -221,8 +230,8 @@ export default function ProductManagement() {
                   >
                     <span className="font-mono text-xs text-primary w-16 shrink-0">{p.code}</span>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm text-foreground truncate">{p.name}</p>
-                      <p className="text-xs text-muted-foreground">{p.brand} · {p.batches.length} batches · {p.totalQty.map(q => `${q.amount} ${q.unit}`).join(", ") || "0"}</p>
+                      <p className="text-sm text-foreground truncate">{lang === "ar" && p.nameAr ? p.nameAr : p.name}</p>
+                      <p className="text-xs text-muted-foreground">{p.brand} · {p.batches.length} {t("batches")} · {p.totalQty.map(q => `${q.amount} ${q.unit}`).join(", ") || "0"}</p>
                     </div>
                     <StorageBadge type={p.storageType} />
                     <Edit3 className="w-3.5 h-3.5 text-muted-foreground" />
@@ -238,11 +247,11 @@ export default function ProductManagement() {
             {/* Basic Info */}
             <div className="bg-card border border-border rounded-lg p-4 space-y-3">
               <h2 className="text-sm font-semibold text-foreground uppercase tracking-wide">
-                {view === "add" ? "Add New Product" : "Edit Product"}
+                {view === "add" ? t("addNewProduct") : t("editProduct")}
               </h2>
 
               <div>
-                <label className="text-xs text-muted-foreground block mb-1">Brand *</label>
+                <label className="text-xs text-muted-foreground block mb-1">{t("brand")} *</label>
                 <input type="text" value={brandName} onChange={e => setBrandName(e.target.value)}
                   placeholder="e.g. Monin" list="brand-suggestions"
                   className="w-full bg-secondary text-foreground text-sm rounded-md px-3 py-2.5 border border-border focus:outline-none focus:ring-1 focus:ring-ring placeholder:text-muted-foreground" />
@@ -253,13 +262,13 @@ export default function ProductManagement() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs text-muted-foreground block mb-1">Product Code *</label>
+                  <label className="text-xs text-muted-foreground block mb-1">{t("productCode")} *</label>
                   <input type="text" value={code} onChange={e => setCode(e.target.value)}
                     placeholder="e.g. MN001" disabled={view === "edit"}
                     className="w-full bg-secondary text-foreground text-sm rounded-md px-3 py-2.5 border border-border focus:outline-none focus:ring-1 focus:ring-ring placeholder:text-muted-foreground font-mono disabled:opacity-50" />
                 </div>
                 <div>
-                  <label className="text-xs text-muted-foreground block mb-1">Packaging</label>
+                  <label className="text-xs text-muted-foreground block mb-1">{t("packaging")}</label>
                   <div className="flex flex-wrap gap-1">
                     {unitOptions.map(u => {
                       const selected = packaging.split(" / ").includes(u);
@@ -279,15 +288,22 @@ export default function ProductManagement() {
               </div>
 
               <div>
-                <label className="text-xs text-muted-foreground block mb-1">Product Name *</label>
+                <label className="text-xs text-muted-foreground block mb-1">{t("productName")} *</label>
                 <input type="text" value={name} onChange={e => setName(e.target.value)}
                   placeholder="e.g. Monin Mango Syrup 700ml"
                   className="w-full bg-secondary text-foreground text-sm rounded-md px-3 py-2.5 border border-border focus:outline-none focus:ring-1 focus:ring-ring placeholder:text-muted-foreground" />
               </div>
 
+              <div>
+                <label className="text-xs text-muted-foreground block mb-1">{t("arabicName")}</label>
+                <input type="text" value={nameAr} onChange={e => setNameAr(e.target.value)}
+                  placeholder="مثال: شراب مانجو مونين ٧٠٠مل" dir="rtl"
+                  className="w-full bg-secondary text-foreground text-sm rounded-md px-3 py-2.5 border border-border focus:outline-none focus:ring-1 focus:ring-ring placeholder:text-muted-foreground" />
+              </div>
+
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs text-muted-foreground block mb-1">Storage Type</label>
+                  <label className="text-xs text-muted-foreground block mb-1">{t("storageType")}</label>
                   <div className="flex gap-1">
                     {storageOptions.map(opt => (
                       <button key={opt.value} onClick={() => setStorageType(opt.value)}
@@ -298,7 +314,7 @@ export default function ProductManagement() {
                   </div>
                 </div>
                 <div>
-                  <label className="text-xs text-muted-foreground block mb-1">Carton Holds</label>
+                  <label className="text-xs text-muted-foreground block mb-1">{t("cartonHolds")}</label>
                   <input type="number" value={cartonHolds || ""} onChange={e => setCartonHolds(e.target.value ? parseInt(e.target.value) : undefined)}
                     placeholder="pcs" min="1"
                     className="w-full bg-secondary text-foreground text-sm rounded-md px-3 py-2.5 border border-border focus:outline-none focus:ring-1 focus:ring-ring placeholder:text-muted-foreground" />
@@ -310,11 +326,11 @@ export default function ProductManagement() {
             <div className="bg-card border border-border rounded-lg p-4 space-y-3">
               <div className="flex items-center justify-between">
                 <h3 className="text-xs font-semibold text-foreground uppercase tracking-wide flex items-center gap-1">
-                  <Barcode className="w-3.5 h-3.5" /> Barcodes ({barcodes.length})
+                  <Barcode className="w-3.5 h-3.5" /> {t("barcodes")} ({barcodes.length})
                 </h3>
                 <button onClick={scanning ? stopBarcodeScanning : startBarcodeScanning}
                   className={`text-xs font-semibold px-2 py-1 rounded-md flex items-center gap-1 ${scanning ? "bg-destructive/20 text-destructive" : "bg-primary/20 text-primary"}`}>
-                  <Camera className="w-3 h-3" /> {scanning ? "Stop" : "Scan"}
+                  <Camera className="w-3 h-3" /> {scanning ? t("stop") : t("scan")}
                 </button>
               </div>
 
@@ -332,7 +348,7 @@ export default function ProductManagement() {
                   onKeyDown={e => e.key === "Enter" && (e.preventDefault(), addBarcodeToForm())}
                   placeholder="Enter barcode..."
                   className="flex-1 bg-secondary text-foreground text-sm rounded-md px-3 py-2 border border-border focus:outline-none focus:ring-1 focus:ring-ring placeholder:text-muted-foreground font-mono" />
-                <button onClick={addBarcodeToForm} className="bg-primary text-primary-foreground px-3 py-2 rounded-md text-xs font-semibold">Add</button>
+                <button onClick={addBarcodeToForm} className="bg-primary text-primary-foreground px-3 py-2 rounded-md text-xs font-semibold">{t("add")}</button>
               </div>
 
               {barcodes.length > 0 && (
@@ -353,16 +369,16 @@ export default function ProductManagement() {
             <div className="bg-card border border-border rounded-lg overflow-hidden">
               <div className="px-4 py-3 flex items-center justify-between border-b border-border">
                 <h3 className="text-xs font-semibold text-foreground uppercase tracking-wide">
-                  Batches ({batches.length})
+                  {t("batches")} ({batches.length})
                 </h3>
                 <button onClick={addBatch} className="text-xs font-semibold text-primary flex items-center gap-1">
-                  <Plus className="w-3 h-3" /> Add Batch
+                  <Plus className="w-3 h-3" /> {t("addBatch")}
                 </button>
               </div>
 
               {batches.length === 0 && (
                 <div className="px-4 py-6 text-center text-sm text-muted-foreground">
-                  No batches. Tap "Add Batch" to create one.
+                  {t("noBatches")}
                 </div>
               )}
 
@@ -456,7 +472,7 @@ export default function ProductManagement() {
                       </div>
                       <button onClick={() => removeBatch(idx)}
                         className="w-full bg-destructive/10 text-destructive font-semibold py-2 rounded-md text-xs flex items-center justify-center gap-1">
-                        <Trash2 className="w-3 h-3" /> Remove Batch
+                        <Trash2 className="w-3 h-3" /> {t("removeBatch")}
                       </button>
                     </div>
                   )}
@@ -467,10 +483,10 @@ export default function ProductManagement() {
             {/* Save/Cancel */}
             <div className="flex gap-2">
               <button onClick={cancel} className="flex-1 bg-secondary text-secondary-foreground font-semibold py-3 rounded-md text-sm">
-                Cancel
+                {t("cancel")}
               </button>
               <button onClick={handleSave} className="flex-1 bg-success text-primary-foreground font-semibold py-3 rounded-md text-sm flex items-center justify-center gap-1">
-                <Check className="w-4 h-4" /> {view === "add" ? "Add Product" : "Save Changes"}
+                <Check className="w-4 h-4" /> {view === "add" ? t("addProduct") : t("saveChanges")}
               </button>
             </div>
           </div>
