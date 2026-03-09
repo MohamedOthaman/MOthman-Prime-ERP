@@ -87,6 +87,7 @@ export default function ProductManagement() {
   const startEdit = (product: Product & { brand: string }) => {
     setCode(product.code);
     setName(product.name);
+    setNameAr(product.nameAr || "");
     setPackaging(product.packaging);
     setStorageType(product.storageType);
     setBarcodes(product.barcodes || []);
