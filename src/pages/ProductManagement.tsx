@@ -251,7 +251,7 @@ export default function ProductManagement() {
               </h2>
 
               <div>
-                <label className="text-xs text-muted-foreground block mb-1">Brand *</label>
+                <label className="text-xs text-muted-foreground block mb-1">{t("brand")} *</label>
                 <input type="text" value={brandName} onChange={e => setBrandName(e.target.value)}
                   placeholder="e.g. Monin" list="brand-suggestions"
                   className="w-full bg-secondary text-foreground text-sm rounded-md px-3 py-2.5 border border-border focus:outline-none focus:ring-1 focus:ring-ring placeholder:text-muted-foreground" />
