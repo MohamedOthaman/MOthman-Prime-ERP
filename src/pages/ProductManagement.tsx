@@ -73,7 +73,7 @@ export default function ProductManagement() {
   );
 
   const resetForm = () => {
-    setCode(""); setName(""); setPackaging(""); setStorageType("Dry");
+    setCode(""); setName(""); setNameAr(""); setPackaging(""); setStorageType("Dry");
     setBarcodes([]); setCartonHolds(undefined); setBatches([]);
     setNewBarcode(""); setExpandedBatch(null); setBrandName("");
     setEditingCode(null);
