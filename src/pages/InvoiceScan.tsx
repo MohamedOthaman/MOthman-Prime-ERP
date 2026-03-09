@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback, useMemo } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import {
   ScanLine, Flashlight, FlashlightOff, Check, X, Plus, Minus,
   FileText, Upload, RotateCcw, Edit3, Ban, ChevronRight, Camera, Loader2, CalendarIcon
@@ -13,7 +13,6 @@ import { Drawer, DrawerContent, DrawerTrigger } from "@/components/ui/drawer";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
-
 
 type View = "main" | "details" | "scanning" | "returns" | "return-scan" | "completed-view";
 
@@ -60,24 +59,7 @@ export default function InvoiceScan() {
   const lastBarcodeRef = useRef<string>("");
   const fileRef = useRef<HTMLInputElement>(null);
 
-  const lastInvoiceActivityAt = (invoice: Invoice) => {
-    const dateTimeCandidate = Date.parse(`${invoice.date}T${invoice.time || "00:00:00"}`);
-    if (!Number.isNaN(dateTimeCandidate)) return dateTimeCandidate;
-
-    const dateCandidate = Date.parse(invoice.date);
-    if (!Number.isNaN(dateCandidate)) return dateCandidate;
-
-    return 0;
-  };
-
-  const lastCompletedInvoice = useMemo(() => {
-    return invoices
-      .filter(i => i.status !== "ready")
-      .reduce<Invoice | null>((latest, current) => {
-        if (!latest) return current;
-        return lastInvoiceActivityAt(current) > lastInvoiceActivityAt(latest) ? current : latest;
-      }, null);
-  }, [invoices]);
+  const lastCompletedInvoice = invoices.find(i => i.status !== "ready");
 
   const stopCamera = useCallback(() => {
     if (readerRef.current) { readerRef.current.reset(); readerRef.current = null; }

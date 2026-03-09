@@ -322,16 +322,8 @@ export function useStock() {
   const updateInvoice = useCallback(async (invoiceNo: string, updater: (inv: Invoice) => Invoice) => {
     const inv = invoices.find(i => i.invoiceNo === invoiceNo);
     if (!inv) return;
-
     const updated = updater(inv);
-    const now = new Date();
-
-    await supabase.from("invoices").update({
-      status: updated.status,
-      date: now.toISOString().split("T")[0],
-      time: now.toTimeString().split(" ")[0],
-    }).eq("invoice_no", invoiceNo);
-
+    await supabase.from("invoices").update({ status: updated.status }).eq("invoice_no", invoiceNo);
     await loadData();
   }, [invoices, loadData]);
 
