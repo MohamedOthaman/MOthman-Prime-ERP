@@ -213,6 +213,7 @@ export function useStock() {
         code: updatedProduct.code, name: updatedProduct.name, brand_id: brand.id,
         packaging: updatedProduct.packaging, storage_type: updatedProduct.storageType,
         barcodes: updatedProduct.barcodes || [], carton_holds: updatedProduct.cartonHolds,
+        name_ar: updatedProduct.nameAr || "",
       }).eq("id", existing.id);
 
       await supabase.from("batches").delete().eq("product_id", existing.id);
