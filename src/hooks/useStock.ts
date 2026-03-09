@@ -186,6 +186,7 @@ export function useStock() {
       const { data: newProd } = await supabase.from("products").insert({
         code: product.code, name: product.name, brand_id: brand.id, packaging: product.packaging,
         storage_type: product.storageType, barcodes: product.barcodes || [], carton_holds: product.cartonHolds,
+        name_ar: product.nameAr || "",
       }).select("id").single();
       if (newProd && product.batches.length > 0) {
         await supabase.from("batches").insert(product.batches.map(b => ({
