@@ -314,7 +314,7 @@ export default function ProductManagement() {
                   </div>
                 </div>
                 <div>
-                  <label className="text-xs text-muted-foreground block mb-1">Carton Holds</label>
+                  <label className="text-xs text-muted-foreground block mb-1">{t("cartonHolds")}</label>
                   <input type="number" value={cartonHolds || ""} onChange={e => setCartonHolds(e.target.value ? parseInt(e.target.value) : undefined)}
                     placeholder="pcs" min="1"
                     className="w-full bg-secondary text-foreground text-sm rounded-md px-3 py-2.5 border border-border focus:outline-none focus:ring-1 focus:ring-ring placeholder:text-muted-foreground" />
