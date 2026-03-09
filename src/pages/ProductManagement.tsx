@@ -472,7 +472,7 @@ export default function ProductManagement() {
                       </div>
                       <button onClick={() => removeBatch(idx)}
                         className="w-full bg-destructive/10 text-destructive font-semibold py-2 rounded-md text-xs flex items-center justify-center gap-1">
-                        <Trash2 className="w-3 h-3" /> Remove Batch
+                        <Trash2 className="w-3 h-3" /> {t("removeBatch")}
                       </button>
                     </div>
                   )}
