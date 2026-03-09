@@ -483,10 +483,10 @@ export default function ProductManagement() {
             {/* Save/Cancel */}
             <div className="flex gap-2">
               <button onClick={cancel} className="flex-1 bg-secondary text-secondary-foreground font-semibold py-3 rounded-md text-sm">
-                Cancel
+                {t("cancel")}
               </button>
               <button onClick={handleSave} className="flex-1 bg-success text-primary-foreground font-semibold py-3 rounded-md text-sm flex items-center justify-center gap-1">
-                <Check className="w-4 h-4" /> {view === "add" ? "Add Product" : "Save Changes"}
+                <Check className="w-4 h-4" /> {view === "add" ? t("addProduct") : t("saveChanges")}
               </button>
             </div>
           </div>
