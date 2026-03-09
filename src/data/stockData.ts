@@ -14,6 +14,7 @@ export interface Batch {
 export interface Product {
   code: string;
   name: string;
+  nameAr?: string;
   brand?: string;
   totalQty: { amount: number; unit: string }[];
   packaging: string;
