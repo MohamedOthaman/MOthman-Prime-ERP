@@ -52,6 +52,7 @@ export function useStock() {
           const product: Product = {
             code: p.code,
             name: p.name,
+            nameAr: (p as any).name_ar || "",
             brand: b.name,
             totalQty: Object.entries(totalQtyMap).map(([unit, amount]) => ({ amount, unit })),
             packaging: p.packaging || "",
