@@ -330,7 +330,7 @@ export default function ProductManagement() {
                 </h3>
                 <button onClick={scanning ? stopBarcodeScanning : startBarcodeScanning}
                   className={`text-xs font-semibold px-2 py-1 rounded-md flex items-center gap-1 ${scanning ? "bg-destructive/20 text-destructive" : "bg-primary/20 text-primary"}`}>
-                  <Camera className="w-3 h-3" /> {scanning ? "Stop" : "Scan"}
+                  <Camera className="w-3 h-3" /> {scanning ? t("stop") : t("scan")}
                 </button>
               </div>
 
