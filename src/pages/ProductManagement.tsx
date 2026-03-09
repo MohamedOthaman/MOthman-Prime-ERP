@@ -54,6 +54,7 @@ export default function ProductManagement() {
   // Product form
   const [code, setCode] = useState("");
   const [name, setName] = useState("");
+  const [nameAr, setNameAr] = useState("");
   const [packaging, setPackaging] = useState("");
   const [storageType, setStorageType] = useState<StorageType>("Dry");
   const [barcodes, setBarcodes] = useState<string[]>([]);
