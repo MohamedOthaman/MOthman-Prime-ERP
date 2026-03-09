@@ -268,7 +268,7 @@ export default function ProductManagement() {
                     className="w-full bg-secondary text-foreground text-sm rounded-md px-3 py-2.5 border border-border focus:outline-none focus:ring-1 focus:ring-ring placeholder:text-muted-foreground font-mono disabled:opacity-50" />
                 </div>
                 <div>
-                  <label className="text-xs text-muted-foreground block mb-1">Packaging</label>
+                  <label className="text-xs text-muted-foreground block mb-1">{t("packaging")}</label>
                   <div className="flex flex-wrap gap-1">
                     {unitOptions.map(u => {
                       const selected = packaging.split(" / ").includes(u);
