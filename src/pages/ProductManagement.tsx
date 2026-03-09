@@ -192,11 +192,14 @@ export default function ProductManagement() {
       <header className="sticky top-0 z-10 bg-background/95 backdrop-blur border-b border-border px-4 py-3">
         <div className="max-w-3xl mx-auto flex items-center gap-2">
           <Settings className="w-5 h-5 text-primary" />
-          <h1 className="text-lg font-bold text-foreground tracking-tight">Product Management</h1>
+          <h1 className="text-lg font-bold text-foreground tracking-tight">{t("productManagement")}</h1>
           {view === "list" && (
-            <button onClick={startAdd} className="ml-auto bg-primary text-primary-foreground px-3 py-1.5 rounded-md text-xs font-semibold flex items-center gap-1">
-              <Plus className="w-3 h-3" /> Add
-            </button>
+            <span className="ml-auto flex items-center gap-2">
+              <LanguageToggle />
+              <button onClick={startAdd} className="bg-primary text-primary-foreground px-3 py-1.5 rounded-md text-xs font-semibold flex items-center gap-1">
+                <Plus className="w-3 h-3" /> {t("add")}
+              </button>
+            </span>
           )}
         </div>
       </header>
