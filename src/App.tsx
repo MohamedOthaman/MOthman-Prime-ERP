@@ -23,6 +23,9 @@ import CustomerForm from "./pages/customers/CustomerForm";
 
 import SalesmenPage from "./pages/salesmen/SalesmenPage";
 import SalesmanForm from "./pages/salesmen/SalesmanForm";
+import GRNListPage from "./pages/grn/GRNListPage";
+import GRNFormPage from "./pages/grn/GRNFormPage";
+import GRNDetailsPage from "./pages/grn/GRNDetailsPage";
 
 import CustomersBySalesman from "./pages/reports/CustomersBySalesman";
 import CustomersWithoutSalesman from "./pages/reports/CustomersWithoutSalesman";
@@ -174,6 +177,39 @@ function ProtectedRoutes() {
             element={
               <RoleGuard allowedRoles={["admin", "ops_manager", "sales_manager"]}>
                 <SalesmanForm />
+              </RoleGuard>
+            }
+          />
+
+          <Route
+            path="/grn"
+            element={
+              <RoleGuard
+                allowedRoles={["admin", "ops_manager", "purchase_manager", "warehouse_manager"]}
+              >
+                <GRNListPage />
+              </RoleGuard>
+            }
+          />
+
+          <Route
+            path="/grn/new"
+            element={
+              <RoleGuard
+                allowedRoles={["admin", "ops_manager", "purchase_manager", "warehouse_manager"]}
+              >
+                <GRNFormPage />
+              </RoleGuard>
+            }
+          />
+
+          <Route
+            path="/grn/:id"
+            element={
+              <RoleGuard
+                allowedRoles={["admin", "ops_manager", "purchase_manager", "warehouse_manager"]}
+              >
+                <GRNDetailsPage />
               </RoleGuard>
             }
           />
