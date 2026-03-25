@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Brand, Product, Invoice, InvoiceItem, MarketReturn, Batch, recalcDaysLeft } from "@/data/stockData";
-import { useAuth } from "@/hooks/useAuth";
+import { useAuth } from "@/features/reports/hooks/useAuth";
 
 export interface MovementEntry {
   id: string;

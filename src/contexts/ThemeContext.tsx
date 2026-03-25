@@ -1,34 +1,45 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 
-type Theme = "light" | "dark";
+type Theme = "light" | "soft-gray" | "dim" | "dark";
 
 interface ThemeContextType {
   theme: Theme;
-  toggleTheme: () => void;
+  setTheme: (t: Theme) => void;
+  cycleTheme: () => void;
 }
 
 const ThemeContext = createContext<ThemeContextType | null>(null);
 
+const THEME_ORDER: Theme[] = ["light", "soft-gray", "dim", "dark"];
+
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [theme, setTheme] = useState<Theme>(() => {
+  const [theme, setThemeState] = useState<Theme>(() => {
     const saved = localStorage.getItem("app-theme");
-    return (saved === "light" ? "light" : "dark") as Theme;
+    if (saved === "light" || saved === "dim" || saved === "soft-gray" || saved === "dark") {
+      return saved as Theme;
+    }
+    return "light"; // default to light
   });
 
   useEffect(() => {
     const root = document.documentElement;
-    if (theme === "dark") {
-      root.classList.add("dark");
-    } else {
-      root.classList.remove("dark");
-    }
+    // Remove all theme classes
+    root.classList.remove("light", "dim", "soft-gray", "dark");
+    // Add current theme class
+    root.classList.add(theme);
     localStorage.setItem("app-theme", theme);
   }, [theme]);
 
-  const toggleTheme = () => setTheme(t => (t === "dark" ? "light" : "dark"));
+  const setTheme = (t: Theme) => setThemeState(t);
+  const cycleTheme = () => {
+    setThemeState((current) => {
+      const idx = THEME_ORDER.indexOf(current);
+      return THEME_ORDER[(idx + 1) % THEME_ORDER.length];
+    });
+  };
 
   return (
-    <ThemeContext.Provider value={{ theme, toggleTheme }}>
+    <ThemeContext.Provider value={{ theme, setTheme, cycleTheme }}>
       {children}
     </ThemeContext.Provider>
   );

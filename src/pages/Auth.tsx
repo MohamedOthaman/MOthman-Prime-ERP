@@ -1,10 +1,12 @@
 import { useState } from "react";
-import { useAuth } from "@/hooks/useAuth";
+import { useAuth } from "@/features/reports/hooks/useAuth";
 import { Package, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { useLang } from "@/contexts/LanguageContext";
 
 export default function Auth() {
   const { signIn, signUp } = useAuth();
+  const { t } = useLang();
   const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -20,7 +22,7 @@ export default function Auth() {
       if (error) {
         toast.error(error.message);
       } else {
-        toast.success("Check your email to confirm your account");
+        toast.success(t("checkEmail"));
       }
     } else {
       const { error } = await signIn(email, password);
@@ -38,9 +40,9 @@ export default function Auth() {
           <div className="w-14 h-14 bg-primary/10 rounded-2xl flex items-center justify-center mx-auto">
             <Package className="w-7 h-7 text-primary" />
           </div>
-          <h1 className="text-xl font-bold text-foreground tracking-tight">Warehouse Stock</h1>
+          <h1 className="text-xl font-bold text-foreground tracking-tight">{t("warehouseStock")}</h1>
           <p className="text-sm text-muted-foreground">
-            {isSignUp ? "Create your account" : "Sign in to continue"}
+            {isSignUp ? t("signUpTitle") : t("signInTitle")}
           </p>
         </div>
 
@@ -50,7 +52,7 @@ export default function Auth() {
               type="text"
               value={fullName}
               onChange={e => setFullName(e.target.value)}
-              placeholder="Full name"
+              placeholder={t("fullName")}
               required
               className="w-full bg-secondary text-foreground text-sm rounded-md px-3 py-2.5 border border-border focus:outline-none focus:ring-1 focus:ring-ring placeholder:text-muted-foreground"
             />
@@ -59,7 +61,7 @@ export default function Auth() {
             type="email"
             value={email}
             onChange={e => setEmail(e.target.value)}
-            placeholder="Email"
+            placeholder={t("email")}
             required
             className="w-full bg-secondary text-foreground text-sm rounded-md px-3 py-2.5 border border-border focus:outline-none focus:ring-1 focus:ring-ring placeholder:text-muted-foreground"
           />
@@ -67,7 +69,7 @@ export default function Auth() {
             type="password"
             value={password}
             onChange={e => setPassword(e.target.value)}
-            placeholder="Password"
+            placeholder={t("password")}
             required
             minLength={6}
             className="w-full bg-secondary text-foreground text-sm rounded-md px-3 py-2.5 border border-border focus:outline-none focus:ring-1 focus:ring-ring placeholder:text-muted-foreground"
@@ -78,7 +80,7 @@ export default function Auth() {
             className="w-full bg-primary text-primary-foreground font-semibold py-2.5 rounded-md text-sm flex items-center justify-center gap-2 disabled:opacity-50"
           >
             {loading && <Loader2 className="w-4 h-4 animate-spin" />}
-            {isSignUp ? "Sign Up" : "Sign In"}
+            {isSignUp ? t("signUpBtn") : t("signInBtn")}
           </button>
         </form>
 
@@ -86,7 +88,7 @@ export default function Auth() {
           onClick={() => setIsSignUp(!isSignUp)}
           className="w-full text-center text-sm text-muted-foreground hover:text-foreground transition-colors"
         >
-          {isSignUp ? "Already have an account? Sign in" : "Need an account? Sign up"}
+          {isSignUp ? t("alreadyHaveAccount") : t("needAccount")}
         </button>
       </div>
     </div>

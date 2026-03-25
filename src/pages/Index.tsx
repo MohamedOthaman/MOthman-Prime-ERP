@@ -2,7 +2,6 @@ import { useState } from "react";
 import { Search, Package } from "lucide-react";
 import { useStockContext } from "@/contexts/StockContext";
 import { BrandSection } from "@/components/BrandSection";
-import { LanguageToggle } from "@/components/LanguageToggle";
 import { useLang } from "@/contexts/LanguageContext";
 
 const Index = () => {
@@ -33,7 +32,6 @@ const Index = () => {
             <h1 className="text-lg font-bold text-foreground tracking-tight">{t("stockOverview")}</h1>
             <span className="ml-auto text-xs text-muted-foreground font-mono flex items-center gap-2">
               {totalProducts} {t("items")}
-              <LanguageToggle />
             </span>
           </div>
           <div className="relative">

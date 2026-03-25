@@ -3,7 +3,7 @@ import { Settings, Plus, Edit3, X, Check, Search, Barcode, Camera, Trash2, Chevr
 import { useStockContext } from "@/contexts/StockContext";
 import { Product, Batch, StorageType } from "@/data/stockData";
 import { StorageBadge } from "@/components/StorageBadge";
-import { useBarcodeScanner } from "@/hooks/useBarcodeScanner";
+import { useBarcodeScanner } from "@/features/reports/hooks/useBarcodeScanner";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
@@ -11,7 +11,6 @@ import { Button } from "@/components/ui/button";
 import { Drawer, DrawerContent, DrawerTrigger } from "@/components/ui/drawer";
 import { DateWheel } from "@/components/WheelPicker";
 import { useLang } from "@/contexts/LanguageContext";
-import { LanguageToggle } from "@/components/LanguageToggle";
 
 type View = "list" | "add" | "edit";
 
@@ -195,7 +194,6 @@ export default function ProductManagement() {
           <h1 className="text-lg font-bold text-foreground tracking-tight">{t("productManagement")}</h1>
           {view === "list" && (
             <span className="ml-auto flex items-center gap-2">
-              <LanguageToggle />
               <button onClick={startAdd} className="bg-primary text-primary-foreground px-3 py-1.5 rounded-md text-xs font-semibold flex items-center gap-1">
                 <Plus className="w-3 h-3" /> {t("add")}
               </button>

@@ -1,5 +1,5 @@
 import { createContext, useContext, ReactNode } from "react";
-import { useStock, MovementEntry } from "@/hooks/useStock";
+import { useStock, MovementEntry } from "@/features/reports/hooks/useStock";
 import { Brand, Product, Invoice, InvoiceItem, MarketReturn } from "@/data/stockData";
 
 interface StockContextType {

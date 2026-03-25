@@ -1,8 +1,8 @@
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
-@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap');
 
 @layer base {
   :root {
@@ -69,6 +69,128 @@
     --nav-bg: 0 0% 100%;
     --nav-active: 200 80% 45%;
     --nav-inactive: 215 12% 55%;
+  }
+
+  .dim {
+    --background: 215 22% 16%;
+    --foreground: 210 20% 88%;
+
+    --card: 215 20% 19%;
+    --card-foreground: 210 20% 88%;
+
+    --popover: 215 20% 19%;
+    --popover-foreground: 210 20% 88%;
+
+    --primary: 200 80% 55%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 215 18% 24%;
+    --secondary-foreground: 210 20% 88%;
+
+    --muted: 215 16% 22%;
+    --muted-foreground: 215 15% 65%;
+
+    --accent: 200 60% 25%;
+    --accent-foreground: 200 80% 75%;
+
+    --destructive: 0 70% 55%;
+    --destructive-foreground: 0 0% 98%;
+
+    --border: 215 18% 26%;
+    --input: 215 18% 26%;
+    --ring: 200 80% 55%;
+
+    --storage-frozen: 210 90% 55%;
+    --storage-frozen-bg: 210 90% 22%;
+    --storage-chilled: 170 70% 45%;
+    --storage-chilled-bg: 170 70% 18%;
+    --storage-dry: 35 85% 55%;
+    --storage-dry-bg: 35 85% 20%;
+
+    --brand-header: 215 20% 20%;
+    --brand-border: 200 60% 40%;
+
+    --row-hover: 215 20% 21%;
+
+    --success: 145 65% 45%;
+    --success-bg: 145 65% 18%;
+
+    --warning: 35 85% 60%;
+    --warning-bg: 35 85% 20%;
+
+    --sidebar-background: 215 22% 14%;
+    --sidebar-foreground: 210 20% 88%;
+    --sidebar-primary: 200 80% 55%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 215 18% 24%;
+    --sidebar-accent-foreground: 210 20% 88%;
+    --sidebar-border: 215 18% 26%;
+    --sidebar-ring: 200 80% 55%;
+
+    --nav-bg: 215 22% 14%;
+    --nav-active: 200 80% 55%;
+    --nav-inactive: 215 15% 55%;
+  }
+
+  .soft-gray {
+    --background: 220 15% 92%;
+    --foreground: 220 25% 20%;
+
+    --card: 220 15% 94%;
+    --card-foreground: 220 25% 20%;
+
+    --popover: 220 15% 94%;
+    --popover-foreground: 220 25% 20%;
+
+    --primary: 210 80% 45%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 220 10% 86%;
+    --secondary-foreground: 220 20% 30%;
+
+    --muted: 220 10% 86%;
+    --muted-foreground: 220 15% 45%;
+
+    --accent: 210 40% 88%;
+    --accent-foreground: 210 80% 30%;
+
+    --destructive: 0 70% 50%;
+    --destructive-foreground: 0 0% 98%;
+
+    --border: 220 10% 84%;
+    --input: 220 10% 84%;
+    --ring: 210 80% 45%;
+
+    --storage-frozen: 210 90% 45%;
+    --storage-frozen-bg: 210 90% 88%;
+    --storage-chilled: 170 70% 35%;
+    --storage-chilled-bg: 170 70% 88%;
+    --storage-dry: 35 85% 45%;
+    --storage-dry-bg: 35 85% 88%;
+
+    --brand-header: 220 15% 88%;
+    --brand-border: 210 60% 50%;
+
+    --row-hover: 220 15% 90%;
+
+    --success: 145 65% 38%;
+    --success-bg: 145 65% 88%;
+
+    --warning: 35 85% 50%;
+    --warning-bg: 35 85% 88%;
+
+    --sidebar-background: 220 15% 94%;
+    --sidebar-foreground: 220 25% 20%;
+    --sidebar-primary: 210 80% 45%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 220 10% 86%;
+    --sidebar-accent-foreground: 220 25% 20%;
+    --sidebar-border: 220 10% 84%;
+    --sidebar-ring: 210 80% 45%;
+
+    --nav-bg: 220 15% 94%;
+    --nav-active: 210 80% 45%;
+    --nav-inactive: 220 15% 50%;
   }
 
   .dark {
@@ -143,7 +265,8 @@
     font-family: var(--font-sans);
   }
 
-  code, .font-mono {
+  code,
+  .font-mono {
     font-family: var(--font-mono);
   }
 }
