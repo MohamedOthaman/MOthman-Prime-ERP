@@ -11,6 +11,8 @@ import {
   Package,
   ThermometerSnowflake,
   Settings,
+  AlertTriangle,
+  ShieldCheck,
 } from "lucide-react";
 import { usePermissions } from "@/hooks/usePermissions";
 
@@ -87,6 +89,18 @@ const REPORT_CATALOG: ReportCategory[] = [
     showFor: ["sales", "invoicing", "finance", "operations", "executive"],
     reports: [
       {
+        title: "Sales Performance",
+        description: "Per-salesman revenue ranking, invoice breakdown, and date-range analysis.",
+        path: "/reports/sales",
+        allowedDepts: ["sales", "finance", "operations", "executive"],
+      },
+      {
+        title: "Customer Analysis",
+        description: "Revenue, invoice history, and salesman assignment for all customers.",
+        path: "/reports/customers",
+        allowedDepts: ["sales", "finance", "operations", "executive"],
+      },
+      {
         title: "Customers by Salesman",
         description: "Each salesman with their assigned customers and activity status.",
         path: "/reports/customers-by-salesman",
@@ -113,6 +127,22 @@ const REPORT_CATALOG: ReportCategory[] = [
     border: "border-cyan-500/20",
     showFor: ["warehouse", "purchasing", "operations", "executive"],
     reports: [
+      {
+        title: "Stock Report",
+        description: "All batches with status, expiry, storage type, and available quantity.",
+        path: "/reports/stock",
+      },
+      {
+        title: "Expiry Alerts",
+        description: "Batches expiring within 7, 14, and 30 days — plus expired stock still in warehouse.",
+        path: "/reports/expiry",
+        allowedDepts: ["warehouse", "purchasing", "operations"],
+      },
+      {
+        title: "Product Performance",
+        description: "Stock levels, batch counts, nearest expiry, and 30-day outbound velocity per SKU.",
+        path: "/reports/products",
+      },
       {
         title: "Stock Overview",
         description: "Live stock levels by product, batch, storage type, and expiry.",
@@ -172,8 +202,14 @@ const REPORT_CATALOG: ReportCategory[] = [
     color: "text-slate-400",
     bg: "bg-slate-500/10",
     border: "border-slate-500/20",
-    showFor: ["operations"],
+    showFor: ["operations", "executive"],
     reports: [
+      {
+        title: "Audit Log",
+        description: "Full system activity log — all recorded actions, status changes, and user events.",
+        path: "/audit",
+        allowedDepts: ["operations", "executive"],
+      },
       {
         title: "System Settings",
         description: "Role permission matrix, navigation shortcuts, and system configuration.",

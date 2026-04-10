@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { usePermissions } from "@/hooks/usePermissions";
+import { useSalesmanScope } from "@/hooks/useSalesmanScope";
 import {
   cancelInvoice,
   fetchInvoiceList,
@@ -55,7 +56,8 @@ type Invoice = Awaited<ReturnType<typeof fetchInvoiceList>>[number];
 
 export default function InvoiceListPage() {
   const navigate = useNavigate();
-  const { isAdmin, isManager, canManageInvoices } = usePermissions();
+  const { isAdmin, isManager, canManageInvoices, role } = usePermissions();
+  const { salesmanId, loading: scopeLoading } = useSalesmanScope();
 
   const [tab, setTab]           = useState<SalesInvoiceStatus | "all">("all");
   const [invoices, setInvoices] = useState<Invoice[]>([]);
@@ -65,16 +67,26 @@ export default function InvoiceListPage() {
   const [cancelTarget, setCancelTarget] = useState<Invoice | null>(null);
   const [cancelReason, setCancelReason] = useState("");
 
+  const isSalesmanRole = role === "salesman" || role === "sales";
+
   const load = useCallback(async () => {
+    // Wait for salesman scope to resolve before fetching — avoids briefly exposing
+    // the full invoice list to scoped users while the hook is still querying.
+    if (isSalesmanRole && scopeLoading) return;
+
     setLoading(true);
     try {
-      const rows = await fetchInvoiceList({ status: tab, limit: 200 });
+      const rows = await fetchInvoiceList({
+        status: tab,
+        limit: 200,
+        salesmanId: isSalesmanRole ? salesmanId : null,
+      });
       setInvoices(rows);
     } catch (e: any) {
       toast.error(e.message);
     }
     setLoading(false);
-  }, [tab]);
+  }, [tab, isSalesmanRole, salesmanId, scopeLoading]);
 
   useEffect(() => { void load(); }, [load]);
 
