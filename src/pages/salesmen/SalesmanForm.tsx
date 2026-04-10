@@ -9,12 +9,20 @@ import { useRole } from "@/features/reports/hooks/useRole";
 interface SalesmanFormData {
     code: string;
     name: string;
+    name_ar: string;
+    phone: string;
+    email: string;
+    notes: string;
     is_active: boolean;
 }
 
 const EMPTY_FORM: SalesmanFormData = {
     code: "",
     name: "",
+    name_ar: "",
+    phone: "",
+    email: "",
+    notes: "",
     is_active: true,
 };
 
@@ -40,7 +48,7 @@ export default function SalesmanForm() {
         async function load() {
             const { data, error: err } = await supabase
                 .from("salesmen")
-                .select("code, name, is_active")
+                .select("code, name, name_ar, phone, email, notes, is_active")
                 .eq("id", id)
                 .single();
 
@@ -50,6 +58,10 @@ export default function SalesmanForm() {
                 setForm({
                     code: data.code,
                     name: data.name,
+                    name_ar: (data as any).name_ar ?? "",
+                    phone: (data as any).phone ?? "",
+                    email: (data as any).email ?? "",
+                    notes: (data as any).notes ?? "",
                     is_active: data.is_active,
                 });
             }
@@ -80,6 +92,10 @@ export default function SalesmanForm() {
         const payload = {
             code: form.code.trim().toUpperCase(),
             name: form.name.trim(),
+            name_ar: form.name_ar.trim() || null,
+            phone: form.phone.trim() || null,
+            email: form.email.trim() || null,
+            notes: form.notes.trim() || null,
             is_active: form.is_active,
         };
 
@@ -204,6 +220,58 @@ export default function SalesmanForm() {
                             onChange={(e) => set("name", e.target.value)}
                             placeholder="e.g. Manu Varghese"
                             className="w-full bg-secondary border border-border rounded-md px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                        />
+                    </div>
+
+                    <div>
+                        <label className="block text-xs text-muted-foreground mb-1">
+                            Arabic Name
+                        </label>
+                        <input
+                            value={form.name_ar}
+                            onChange={(e) => set("name_ar", e.target.value)}
+                            placeholder="الاسم بالعربي"
+                            dir="rtl"
+                            className="w-full bg-secondary border border-border rounded-md px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                        />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                        <div>
+                            <label className="block text-xs text-muted-foreground mb-1">
+                                Phone
+                            </label>
+                            <input
+                                value={form.phone}
+                                onChange={(e) => set("phone", e.target.value)}
+                                placeholder="+965 XXXX XXXX"
+                                className="w-full bg-secondary border border-border rounded-md px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-xs text-muted-foreground mb-1">
+                                Email
+                            </label>
+                            <input
+                                value={form.email}
+                                onChange={(e) => set("email", e.target.value)}
+                                placeholder="salesman@company.com"
+                                type="email"
+                                className="w-full bg-secondary border border-border rounded-md px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                            />
+                        </div>
+                    </div>
+
+                    <div>
+                        <label className="block text-xs text-muted-foreground mb-1">
+                            Notes
+                        </label>
+                        <textarea
+                            value={form.notes}
+                            onChange={(e) => set("notes", e.target.value)}
+                            rows={3}
+                            placeholder="Notes about this salesman..."
+                            className="w-full bg-secondary border border-border rounded-md px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring resize-none"
                         />
                     </div>
 

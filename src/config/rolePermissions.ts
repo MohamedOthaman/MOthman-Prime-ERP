@@ -1,6 +1,11 @@
+/**
+ * @deprecated This permission map is no longer used.
+ * All permission logic now lives in `@/hooks/usePermissions.ts`.
+ * Kept for reference only — do not import.
+ */
 import type { UserRole } from "../types/roles";
 
-export const rolePermissions: Record<UserRole, string[]> = {
+export const rolePermissions: Partial<Record<UserRole, string[]>> = {
   admin: ["*"],
 
   ceo: [

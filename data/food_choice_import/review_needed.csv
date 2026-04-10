@@ -1,0 +1,86 @@
+item_code,name_en,name_ar,brand,category,issue_count,issue_types,review_reason
+BASES,,,Disaronno,Pastry & Bakery,1,missing_name_en,missing_name_en
+YOGURT,,,Disaronno,Pastry & Bakery,1,missing_name_en,missing_name_en
+AL90016,,,,,1,missing_name_en,missing_name_en
+AX021/1,,,,,1,missing_name_en,missing_name_en
+AX022/1,,,,,1,missing_name_en,missing_name_en
+BZ021,,,,,1,missing_name_en,missing_name_en
+CHT022,,,,,1,missing_name_en,missing_name_en
+DSR105524MDISARONNO,,,,,1,missing_name_en,missing_name_en
+DSR211003A,,,,,1,missing_name_en,missing_name_en
+DSR2G6510,,,,,1,missing_name_en,missing_name_en
+DSR2G7669,,,,,1,missing_name_en,missing_name_en
+FCC064,,,,,1,missing_name_en,missing_name_en
+FCC131,,,,,1,missing_name_en,missing_name_en
+ISM500,,,,,1,missing_name_en,missing_name_en
+MG020,,,,,1,missing_name_en,missing_name_en
+PZ0113,,,,,1,missing_name_en,missing_name_en
+SG521,,,,,1,missing_name_en,missing_name_en
+SPC6-11858,,,,,1,missing_name_en,missing_name_en
+SPC6-11874,,,,,1,missing_name_en,missing_name_en
+SPC6-11918,,,,,1,missing_name_en,missing_name_en
+SPC6-12333,,,,,1,missing_name_en,missing_name_en
+SPC6-12455,,,,,1,missing_name_en,missing_name_en
+SPC6-12514,,,,,1,missing_name_en,missing_name_en
+SPC8-,,,,,1,missing_name_en,missing_name_en
+VK00660-,,,,,1,missing_name_en,missing_name_en
+VK00690-,,,,,1,missing_name_en,missing_name_en
+VK00695-,,,,,1,missing_name_en,missing_name_en
+VK00698-,,,,,1,missing_name_en,missing_name_en
+VK00715-,,,,,1,missing_name_en,missing_name_en
+FT003,FEVER-TREE GINGER ALE 200ML x4,فيفر-تري زنجبيل 200 مل × 4,FEVER-TREE,Beverages,1,barcode_conflict,barcode_conflict
+FT004,FEVER-TREE PREMIUM SODA WATER 200ML,مياه فيفر تري بريميوم صودا 200 مل,FEVER-TREE,Beverages,1,barcode_conflict,barcode_conflict
+MN026,MONIN GRENADINE C SYRUP 700ML,مونين شراب التوت المشكل,MONIN,Beverages,1,barcode_conflict,barcode_conflict
+MN026/1,MONIN - GRENADINE SYRUP 700ML,مونين - جرينادين شراب 700 مل,MONIN,,1,barcode_conflict,barcode_conflict
+MN261,MONIN GREEN APPLE SYRUP 0.25LT,مونين شراب التفاح الاخضر,MONIN,Beverages,1,barcode_conflict,barcode_conflict
+MN261/1,MONIN - GREEN APPLE SYRUP 250ML,مونين - شراب تفاح اخضر 250 مل,MONIN,,1,barcode_conflict,barcode_conflict
+OLP017,OLYMPUS - GREEK YOGURT 10% NATURAL 400G,أوليمبوس - زبادي يوناني 10٪ طبيعي 400 جم,OLYMPUS,Dairy,1,barcode_conflict,barcode_conflict
+OLP018,YOGURT STRAIN 10% OLYMPUS 6X 500G,,OLYMPUS,,1,barcode_conflict,barcode_conflict
+LT006,PAYSAN BRETON PETIT MOULE PLAIN CHEESE 150G,جبن بايزن بريتون الصغيرة السادة,PAYSAN BRETON,Dairy,1,barcode_conflict,barcode_conflict
+LT027,PAYSON BRETON - PATIT MOULE NATURAL CHEESE 150G,بايسون بريتون - باتت مول جبن طبيعي 150 جم,PAYSON BRETON,,1,barcode_conflict,barcode_conflict
+LT015,PAYSON BRETON - EMMENTHALE CHEESE PORTION 350G,بايسون بريتون - جبنة ايمينثيل قطعة 350 جم,PAYSON BRETON,,1,barcode_conflict,barcode_conflict
+LT0150,EMNTHLE PORTION CHEESE 350GM,جبن إمنتال بلوك,PAYSAN BRETON,Dairy,1,barcode_conflict,barcode_conflict
+LT122,GOAT LOG PB PLAIN 100GM,,PAYSAN BRETON,,1,barcode_conflict,barcode_conflict
+LT122/1,PAYSON BRETON - GOAT CHEESE PLAIN 100G,بايسون بريتون - جبن الماعز 100 جم,PAYSON BRETON,Dairy,1,barcode_conflict,barcode_conflict
+LT123,GOAT LOG PB GARLIC AND HERBS 100GM,,PAYSAN BRETON,,1,barcode_conflict,barcode_conflict
+LT123/1,PAYSON BRETON - GOAT CHEESE GARLIC & HERBS 100G,بايسون بريتون - جبن الماعز والثوم والأعشاب 100 جم,PAYSON BRETON,Dairy,1,barcode_conflict,barcode_conflict
+LT124,PAYSAN BRETON GOAT CHEESE PEPPER 100GM,,LAITA,,1,barcode_conflict,barcode_conflict
+LT124/1,PAYSON BRETON - GOAT CHEESE PEPPER 100G,بايسون بريتون - جبن الماعز والفلفل 100 جم,PAYSON BRETON,Dairy,1,barcode_conflict,barcode_conflict
+LT125,PAYSAN BRETON GOAT CHEESE ASH 100GM,,LAITA,,1,barcode_conflict,barcode_conflict
+LT125/1,PAYSON BRETON - GOAT CHEESE CENDRE (ASH) 100G,بايسون بريتون - جبن الماعز سندري (رماد) 100 جم,PAYSON BRETON,Dairy,1,barcode_conflict,barcode_conflict
+VK00141,VELDHUYZEN - GOUDA CHEESE 200G,فيلدويزين - جبن قودا 200 جم,VALDHUZYEN,,1,barcode_conflict,barcode_conflict
+VK00141-XXX,VELDHUYZEN GOUDA CHEESE PREPAC,فالدوزين - جبن جودا,VELDHUYZEN,Dairy,1,barcode_conflict,barcode_conflict
+AL1148/,ALIS PATE GREEN OLVE CREAM 180GM,,ALIS-CASA RNLDI,,1,barcode_conflict,barcode_conflict
+AL1148/1,GREEN OLIVES SAUCE 180GM,صلصة زيتون أخضر 180 جم,CASA RINALDI,Groceries,1,barcode_conflict,barcode_conflict
+STM036,ST MICHEL - 10 MADELEINES INDIV. WRAP 250G,سان ميشيل - 10 راب وورب 250 جرام,ST. MICHEL,,1,barcode_conflict,barcode_conflict
+STM036/1,ST MICHEL MADELEINES INDIV. WRAP 10X250G (040792),مادلين ملفوفة 10 X 250 G (040792),ST MICHEL - FRANCE,Groceries,1,barcode_conflict,barcode_conflict
+STM025,ST MICHEL MINI MADELEINES 12X175G,,NON BRANDED,,1,barcode_conflict,barcode_conflict
+STM025/1,ST. MICHEL - MINI MADELEINES 175G,مخبوزات المادلين 12×175جم*2353,ST. MICHEL,Groceries,1,barcode_conflict,barcode_conflict
+STM031,ST.MICHEL MINI MADELEINE CHOCO CHIPS 175G,,STMICHEL,,1,barcode_conflict,barcode_conflict
+STM031/1,ST. MICHEL - MINI MADELEINE CHOC CHIPS 175G,رقائق الشيكولاتة 175 ×12,ST. MICHEL,Groceries,1,barcode_conflict,barcode_conflict
+STM032,10 MADELEINES & WRAP CHOCO CHIPS 250G,,ST. MICHEL,,1,barcode_conflict,barcode_conflict
+STM032/1,ST. MICHEL - 10 MADELEINES IND WRAP CHOCO CHIPS 250G,مادلين بالفانيلا 250 جم 9X كيس,ST. MICHEL,Groceries,1,barcode_conflict,barcode_conflict
+STM033,MADELEINES IND SAVEUR VANILLA 250G,,ST. MICHEL,,1,barcode_conflict,barcode_conflict
+STM033/1,ST. MICHEL - MADELEINES IND SAVEUR VANILLA 250G,مادلين مع الشوكولا 250 جم 9X كيس,ST. MICHEL,Groceries,1,barcode_conflict,barcode_conflict
+IB012,IBROMAR PARTY SHRIMPS 21/25 1KG,,IBROMAR,,1,barcode_conflict,barcode_conflict
+IB012/C,PARTY SHRIMPS 21/25 1 KG BAG (CULIMER),إبرومار - بارتى روبيان 21/25 كيس 1 كجم (كوليمر),IBROMAR,Seafood,1,barcode_conflict,barcode_conflict
+IB013,IBROMAR PARTY SHRIMPS 26/30 1KG,,IBROMAR,,1,barcode_conflict,barcode_conflict
+IB013/C,PARTY SHRIMPS 26/30 1 KG (CULIMER BRAND),إبرومار - روبيان بارتى 26/30 1 كجم (كولمر ماركة),IBROMAR,Seafood,1,barcode_conflict,barcode_conflict
+IB014,IBROMAR PARTY SHRIMPS 31/40 1KG,,IBROMAR,,1,barcode_conflict,barcode_conflict
+IB014/C,PARTY SHRIMPS 31/40 1 KG BAG (CULIMAR),إبرومار - بارتى روبيان 31/40 1 كجم كيس (كوليمار),IBROMAR,Seafood,1,barcode_conflict,barcode_conflict
+IB051/,IBROMAR PARTY SHRIMPS 16/20 1KG,,IBROMAR,,1,barcode_conflict,barcode_conflict
+IB051/C,PARTY SHRIMPS 16/20 1 KG BAG (CULIMER),إبرومار - بارتى روبيان 16/20 كيس 1 كجم (كوليمر),IBROMAR,Seafood,1,barcode_conflict,barcode_conflict
+AL8376/,CASA RINALDI OLIVES OIL EXTRA SL PLP 500M,,CASA RINALDI,,1,barcode_conflict,barcode_conflict
+AL8376/1,EXTRA VIRGIN OLIVE OIL (SOLO POLPA) 500ML,زيت زيتون بكر ممتاز (SOLO POLPA) 500 مل,CASA RINALDI,,1,barcode_conflict,barcode_conflict
+LQ59346,OREO CHEESECAKE 100G,,OREO,,1,barcode_conflict,barcode_conflict
+LQ59346/2,OREO CHEESE CAKE 100G,اوريو كيك جبن 100 جرام,CENTRAL,,1,barcode_conflict,barcode_conflict
+LQ59349,PHILADELPHIA ORG. CHEESECAKE 100GM,,PHILADELPHIA,,1,barcode_conflict,barcode_conflict
+LQ59349/2,PHILADELPHIA ORG. CHEESECAKE 100G,منظمة فيلادلفيا تشيزكيك 100 جم,CENTRAL,,1,barcode_conflict,barcode_conflict
+ISM026,ISIGNY WHIPPED CREAM W/VANILLA 250ML,,ISIGNY,,1,barcode_conflict,barcode_conflict
+ISM0260,ISIGNY WHIPPED CRM W/VANILLA SPRAY 12X250ML,,ISIGNY,,1,barcode_conflict,barcode_conflict
+OLP051,OLYMPUS - FETA CHEESE SHEEP & GOAT MILK 400G,أوليمبوس - جبنة فيتا - حليب الغنم والماعز 400 جم,OLYMPUS,,1,barcode_conflict,barcode_conflict
+OLP052,OLYMPUS FETA CHS SHEP&GOAT FRLCT MLK400G,,OLYMPUS,,1,barcode_conflict,barcode_conflict
+LT095/,LAITA CREPE SUGAR CASANADE 214G (6PCS),,PAYSAN BRETON,,1,barcode_conflict,barcode_conflict
+LT095/1,PAYSON BRETON - CREPE SUGAR CASANADE 214G,بايسون بريتون - كريب قصب السكر 214 جم,PAYSON BRETON,,1,barcode_conflict,barcode_conflict
+CI100,YUCATAN AVOCADO PULP POUCH 2LB,,YUCATAN,,1,barcode_conflict,barcode_conflict
+CI102,YUCATAN FROZEN AVOCADO HALVES 3LB,,YUCATAN,,1,barcode_conflict,barcode_conflict

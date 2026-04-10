@@ -11,6 +11,13 @@ node_modules
 dist
 dist-ssr
 *.local
+.env
+.env.*
+!.env.example
+src-tauri/target
+android/.gradle
+android/app/build
+ios/App/build
 
 # Editor directories and files
 .vscode/*

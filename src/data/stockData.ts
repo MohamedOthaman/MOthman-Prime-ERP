@@ -1,5 +1,6 @@
 export type StorageType = "Frozen" | "Chilled" | "Dry";
 export type UnitType = "CTN" | "PCS" | "BAG" | "KG" | "TIN" | "PAIL" | "BTL" | "BLK" | "BOX";
+export type StockStatus = "healthy" | "near_expiry" | "expired" | "out_of_stock";
 
 export interface Batch {
   batchNo: string;
@@ -9,20 +10,34 @@ export interface Batch {
   expiryDate: string;
   daysLeft: number;
   receivedDate: string;
+  receivedQty?: number;
+  issuedQty?: number;
+  remainingQty?: number;
+  referenceNo?: string;
+  status?: StockStatus;
 }
 
 export interface Product {
   code: string;
+  itemCode?: string;
   name: string;
   nameAr?: string;
   brand?: string;
+  section?: string;
+  category?: string;
   totalQty: { amount: number; unit: string }[];
   packaging: string;
   nearestExpiryDays: number;
+  nearestExpiryDate?: string;
   storageType: StorageType;
   batches: Batch[];
   barcodes?: string[];
+  primaryBarcode?: string;
   cartonHolds?: number;
+  availableQuantity?: number;
+  stockUnit?: string;
+  batchCount?: number;
+  stockStatus?: StockStatus;
 }
 
 export interface Brand {
@@ -71,12 +86,38 @@ export interface MarketReturn {
 }
 
 function calcDaysLeft(expiryDate: string): number {
+  if (!expiryDate) return 999;
   const now = new Date();
   now.setHours(0, 0, 0, 0);
   const exp = new Date(expiryDate);
+  if (Number.isNaN(exp.getTime())) return 999;
   exp.setHours(0, 0, 0, 0);
   const diff = Math.floor((exp.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
   return diff;
+}
+
+export function getBatchStockStatus(batch: Pick<Batch, "daysLeft" | "remainingQty" | "qty">): StockStatus {
+  const remainingQty = batch.remainingQty ?? batch.qty;
+  if (remainingQty <= 0) return "out_of_stock";
+  if (batch.daysLeft < 0) return "expired";
+  if (batch.daysLeft <= 30) return "near_expiry";
+  return "healthy";
+}
+
+export function getProductStockStatus(batches: Batch[]): StockStatus {
+  const activeBatches = batches.filter((batch) => (batch.remainingQty ?? batch.qty) > 0);
+  if (activeBatches.length === 0) return "out_of_stock";
+
+  const fefoBatch = [...activeBatches].sort((left, right) => {
+    const leftDays = left.daysLeft;
+    const rightDays = right.daysLeft;
+    if (leftDays === rightDays) {
+      return left.batchNo.localeCompare(right.batchNo);
+    }
+    return leftDays - rightDays;
+  })[0];
+
+  return getBatchStockStatus(fefoBatch);
 }
 
 export function recalcDaysLeft(brands: Brand[]): Brand[] {
@@ -87,10 +128,28 @@ export function recalcDaysLeft(brands: Brand[]): Brand[] {
         ...b,
         daysLeft: calcDaysLeft(b.expiryDate),
       }));
-      const nearestExpiryDays = batches.length > 0
-        ? Math.min(...batches.map(b => b.daysLeft))
+      const activeBatches = batches.filter((batch) => (batch.remainingQty ?? batch.qty) > 0);
+      const nearestExpiryDays = activeBatches.length > 0
+        ? Math.min(...activeBatches.map(b => b.daysLeft))
         : 999;
-      return { ...product, batches, nearestExpiryDays };
+      const nearestExpiryDate = activeBatches
+        .filter((batch) => batch.expiryDate)
+        .sort((left, right) => left.expiryDate.localeCompare(right.expiryDate))[0]?.expiryDate;
+
+      return {
+        ...product,
+        batches: batches.map((batch) => ({
+          ...batch,
+          status: getBatchStockStatus(batch),
+        })),
+        nearestExpiryDays,
+        nearestExpiryDate,
+        batchCount: activeBatches.length,
+        availableQuantity:
+          product.availableQuantity ??
+          activeBatches.reduce((sum, batch) => sum + (batch.remainingQty ?? batch.qty), 0),
+        stockStatus: getProductStockStatus(batches),
+      };
     }),
   }));
 }

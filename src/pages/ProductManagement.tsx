@@ -1,7 +1,7 @@
-import { useState, useRef } from "react";
+import { useState } from "react";
 import { Settings, Plus, Edit3, X, Check, Search, Barcode, Camera, Trash2, ChevronDown, ChevronUp, CalendarIcon } from "lucide-react";
 import { useStockContext } from "@/contexts/StockContext";
-import { Product, Batch, StorageType } from "@/data/stockData";
+import { Product, StorageType } from "@/data/stockData";
 import { StorageBadge } from "@/components/StorageBadge";
 import { useBarcodeScanner } from "@/features/reports/hooks/useBarcodeScanner";
 import { toast } from "sonner";
@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Drawer, DrawerContent, DrawerTrigger } from "@/components/ui/drawer";
 import { DateWheel } from "@/components/WheelPicker";
 import { useLang } from "@/contexts/LanguageContext";
+import { useNavigate } from "react-router-dom";
 
 type View = "list" | "add" | "edit";
 
@@ -43,6 +44,7 @@ const emptyBatch = (): BatchForm => ({
 export default function ProductManagement() {
   const { stock, addProduct, updateProduct } = useStockContext();
   const { t, lang } = useLang();
+  const navigate = useNavigate();
   const { videoRef, startScanning, stopCamera } = useBarcodeScanner();
   const [view, setView] = useState<View>("list");
   const [search, setSearch] = useState("");
@@ -194,6 +196,12 @@ export default function ProductManagement() {
           <h1 className="text-lg font-bold text-foreground tracking-tight">{t("productManagement")}</h1>
           {view === "list" && (
             <span className="ml-auto flex items-center gap-2">
+              <button
+                onClick={() => navigate("/products/import-validation")}
+                className="border border-border bg-secondary px-3 py-1.5 rounded-md text-xs font-semibold"
+              >
+                Validate Import
+              </button>
               <button onClick={startAdd} className="bg-primary text-primary-foreground px-3 py-1.5 rounded-md text-xs font-semibold flex items-center gap-1">
                 <Plus className="w-3 h-3" /> {t("add")}
               </button>

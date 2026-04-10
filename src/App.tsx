@@ -7,16 +7,23 @@ import { AuthProvider, useAuth } from "@/features/reports/hooks/useAuth";
 import { StockProvider } from "@/contexts/StockContext";
 import { LanguageProvider, useLang } from "@/contexts/LanguageContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
+import { PreviewModeProvider } from "@/contexts/PreviewModeContext";
 import { BottomNav } from "@/components/BottomNav";
 import { TopBar } from "@/components/TopBar";
+import { PreviewModeBanner } from "@/components/PreviewModeBanner";
 import RoleGuard from "@/components/RoleGuard";
 
 import Index from "./pages/Index";
+import DashboardRouter from "./pages/DashboardRouter";
+import OwnerDashboard from "./pages/dashboards/OwnerDashboard";
 import InvoiceScan from "./pages/InvoiceScan";
+import InvoiceListPage from "./pages/invoices/InvoiceListPage";
 import ImportExport from "./pages/ImportExport";
 import Reports from "./pages/Reports";
-import ProductManagement from "./pages/ProductManagement";
+import ProductsPage from "./pages/products/ProductsPage";
 import UsersPage from "./pages/admin/UsersPage";
+import PreviewAsPage from "./pages/admin/PreviewAsPage";
+import ProfilePage from "./pages/profile/ProfilePage";
 
 import CustomersPage from "./pages/customers/CustomersPage";
 import CustomerForm from "./pages/customers/CustomerForm";
@@ -26,6 +33,21 @@ import SalesmanForm from "./pages/salesmen/SalesmanForm";
 import GRNListPage from "./pages/grn/GRNListPage";
 import GRNFormPage from "./pages/grn/GRNFormPage";
 import GRNDetailsPage from "./pages/grn/GRNDetailsPage";
+import GRNPrintPage from "./pages/grn/GRNPrintPage";
+import GRNQcPage from "./pages/grn/GRNQcPage";
+import InvoiceEntryPage from "./pages/invoices/InvoiceEntryPage";
+import InvoiceDetailsPage from "./pages/invoices/InvoiceDetailsPage";
+import PickingQueuePage from "./pages/warehouse/PickingQueuePage";
+import PickingScreenPage from "./pages/warehouse/PickingScreenPage";
+import InventoryMovementsPage from "./pages/warehouse/InventoryMovementsPage";
+import ProductImportValidationPage from "./pages/products/ProductImportValidationPage";
+import ReturnQueuePage from "./pages/returns/ReturnQueuePage";
+import ReturnIntakePage from "./pages/returns/ReturnIntakePage";
+import ReturnDetailsPage from "./pages/returns/ReturnDetailsPage";
+import BatchTracePage from "./pages/warehouse/BatchTracePage";
+import FridgeStoragePage from "./pages/warehouse/FridgeStoragePage";
+import ProductTracePage from "./pages/products/ProductTracePage";
+import AdminSettingsPage from "./pages/admin/AdminSettingsPage";
 
 import CustomersBySalesman from "./pages/reports/CustomersBySalesman";
 import CustomersWithoutSalesman from "./pages/reports/CustomersWithoutSalesman";
@@ -57,9 +79,88 @@ function ProtectedRoutes() {
   return (
     <StockProvider>
       <TopBar />
+      {/* Preview mode banner — shown below TopBar when an admin is viewing as another role */}
+      <PreviewModeBanner />
+
       <div dir={dir} className="flex-1 pb-16">
         <Routes>
-          <Route path="/" element={<Index />} />
+          {/* ── Dashboard (role-adaptive) ─────────────────────── */}
+          <Route path="/" element={<DashboardRouter />} />
+          <Route path="/stock" element={<Index />} />
+
+          {/* ── Profile & admin tools ─────────────────────────── */}
+          <Route path="/profile" element={<ProfilePage />} />
+
+          {/* Invoice list / lifecycle hub — read access for sales + all invoice-capable roles */}
+          <Route
+            path="/invoices"
+            element={
+              <RoleGuard
+                allowedRoles={[
+                  "admin", "ops_manager", "ceo", "gm",
+                  "invoice_team", "accountant", "accounting", "cashier",
+                  "sales_manager", "salesman", "sales",
+                  "warehouse_manager", "warehouse", "inventory_controller",
+                ]}
+              >
+                <InvoiceListPage />
+              </RoleGuard>
+            }
+          />
+
+          {/* Owner Control Panel — direct access route */}
+          <Route
+            path="/owner"
+            element={
+              <RoleGuard requiredPermission="isOwner">
+                <OwnerDashboard />
+              </RoleGuard>
+            }
+          />
+
+          <Route
+            path="/admin/preview-as"
+            element={
+              <RoleGuard requiredPermission="canPreviewAsUser">
+                <PreviewAsPage />
+              </RoleGuard>
+            }
+          />
+
+          {/* ── Invoices ──────────────────────────────────────── */}
+          <Route
+            path="/invoice-entry"
+            element={
+              <RoleGuard
+                allowedRoles={[
+                  "admin",
+                  "invoice_team",
+                  "accountant",
+                  "ops_manager",
+                  "sales_manager",
+                ]}
+              >
+                <InvoiceEntryPage />
+              </RoleGuard>
+            }
+          />
+
+          <Route
+            path="/invoice-entry/:id"
+            element={
+              <RoleGuard
+                allowedRoles={[
+                  "admin",
+                  "invoice_team",
+                  "accountant",
+                  "ops_manager",
+                  "sales_manager",
+                ]}
+              >
+                <InvoiceEntryPage />
+              </RoleGuard>
+            }
+          />
 
           <Route
             path="/invoice-scan"
@@ -70,6 +171,7 @@ function ProtectedRoutes() {
             }
           />
 
+          {/* ── Import / Export ───────────────────────────────── */}
           <Route
             path="/import-export"
             element={
@@ -81,12 +183,11 @@ function ProtectedRoutes() {
             }
           />
 
+          {/* ── Reports ───────────────────────────────────────── */}
           <Route
             path="/reports"
             element={
-              <RoleGuard
-                allowedRoles={["admin", "ceo", "gm", "sales_manager", "secretary"]}
-              >
+              <RoleGuard requiredPermission="canViewReports">
                 <Reports />
               </RoleGuard>
             }
@@ -110,17 +211,134 @@ function ProtectedRoutes() {
             }
           />
 
+          {/* ── Invoice details ───────────────────────────────── */}
+          <Route
+            path="/invoices/:id"
+            element={
+              <RoleGuard
+                allowedRoles={[
+                  "admin", "invoice_team", "accountant", "ops_manager",
+                  "sales_manager", "warehouse_manager", "warehouse",
+                  "inventory_controller", "purchase_manager", "ceo", "gm",
+                ]}
+              >
+                <InvoiceDetailsPage />
+              </RoleGuard>
+            }
+          />
+
+          {/* ── Warehouse picking ─────────────────────────────── */}
+          <Route
+            path="/warehouse/picking"
+            element={
+              <RoleGuard
+                allowedRoles={[
+                  "admin", "ops_manager", "warehouse_manager", "warehouse",
+                  "inventory_controller", "purchase_manager",
+                ]}
+              >
+                <PickingQueuePage />
+              </RoleGuard>
+            }
+          />
+          <Route
+            path="/warehouse/picking/:invoiceId"
+            element={
+              <RoleGuard
+                allowedRoles={[
+                  "admin", "ops_manager", "warehouse_manager", "warehouse",
+                  "inventory_controller", "purchase_manager",
+                ]}
+              >
+                <PickingScreenPage />
+              </RoleGuard>
+            }
+          />
+          <Route
+            path="/warehouse/movements"
+            element={
+              <RoleGuard
+                allowedRoles={[
+                  "admin", "ops_manager", "warehouse_manager",
+                  "inventory_controller", "warehouse", "purchase_manager",
+                ]}
+              >
+                <InventoryMovementsPage />
+              </RoleGuard>
+            }
+          />
+
+          {/* ── Returns ───────────────────────────────────────── */}
+          <Route
+            path="/returns"
+            element={
+              <RoleGuard
+                allowedRoles={[
+                  "admin", "ops_manager", "ceo", "gm",
+                  "warehouse_manager", "warehouse", "inventory_controller",
+                  "invoice_team", "accountant", "accounting", "cashier",
+                  "sales_manager", "purchase_manager",
+                ]}
+              >
+                <ReturnQueuePage />
+              </RoleGuard>
+            }
+          />
+          <Route
+            path="/returns/new"
+            element={
+              <RoleGuard
+                allowedRoles={[
+                  "admin", "ops_manager",
+                  "warehouse_manager", "warehouse", "inventory_controller",
+                  "invoice_team", "accountant", "accounting",
+                  "sales_manager", "purchase_manager",
+                ]}
+              >
+                <ReturnIntakePage />
+              </RoleGuard>
+            }
+          />
+          <Route
+            path="/returns/:id"
+            element={
+              <RoleGuard
+                allowedRoles={[
+                  "admin", "ops_manager", "ceo", "gm",
+                  "warehouse_manager", "warehouse", "inventory_controller",
+                  "invoice_team", "accountant", "accounting", "cashier",
+                  "sales_manager", "purchase_manager",
+                ]}
+              >
+                <ReturnDetailsPage />
+              </RoleGuard>
+            }
+          />
+
+          {/* ── Products ──────────────────────────────────────── */}
           <Route
             path="/products"
             element={
               <RoleGuard
                 allowedRoles={["admin", "inventory_controller", "purchase_manager"]}
               >
-                <ProductManagement />
+                <ProductsPage />
               </RoleGuard>
             }
           />
 
+          <Route
+            path="/products/import-validation"
+            element={
+              <RoleGuard
+                allowedRoles={["admin", "inventory_controller", "purchase_manager"]}
+              >
+                <ProductImportValidationPage />
+              </RoleGuard>
+            }
+          />
+
+          {/* ── Customers ─────────────────────────────────────── */}
           <Route
             path="/customers"
             element={
@@ -154,6 +372,7 @@ function ProtectedRoutes() {
             }
           />
 
+          {/* ── Salesmen ──────────────────────────────────────── */}
           <Route
             path="/salesmen"
             element={
@@ -181,11 +400,20 @@ function ProtectedRoutes() {
             }
           />
 
+          {/* ── GRN ───────────────────────────────────────────── */}
           <Route
             path="/grn"
             element={
               <RoleGuard
-                allowedRoles={["admin", "ops_manager", "purchase_manager", "warehouse_manager"]}
+                allowedRoles={[
+                  "admin",
+                  "ops_manager",
+                  "purchase_manager",
+                  "inventory_controller",
+                  "warehouse_manager",
+                  "warehouse",
+                  "qc",
+                ]}
               >
                 <GRNListPage />
               </RoleGuard>
@@ -196,9 +424,16 @@ function ProtectedRoutes() {
             path="/grn/new"
             element={
               <RoleGuard
-                allowedRoles={["admin", "ops_manager", "purchase_manager", "warehouse_manager"]}
+                allowedRoles={[
+                  "admin",
+                  "ops_manager",
+                  "purchase_manager",
+                  "inventory_controller",
+                  "warehouse_manager",
+                  "warehouse",
+                ]}
               >
-                <GRNFormPage />
+                <GRNDetailsPage />
               </RoleGuard>
             }
           />
@@ -207,13 +442,106 @@ function ProtectedRoutes() {
             path="/grn/:id"
             element={
               <RoleGuard
-                allowedRoles={["admin", "ops_manager", "purchase_manager", "warehouse_manager"]}
+                allowedRoles={[
+                  "admin",
+                  "ops_manager",
+                  "purchase_manager",
+                  "inventory_controller",
+                  "warehouse_manager",
+                  "warehouse",
+                  "qc",
+                ]}
               >
                 <GRNDetailsPage />
               </RoleGuard>
             }
           />
 
+          <Route
+            path="/grn/:id/qc"
+            element={
+              <RoleGuard
+                allowedRoles={[
+                  "admin",
+                  "ops_manager",
+                  "warehouse_manager",
+                  "inventory_controller",
+                  "qc",
+                ]}
+              >
+                <GRNQcPage />
+              </RoleGuard>
+            }
+          />
+
+          <Route
+            path="/grn/:id/print"
+            element={
+              <RoleGuard
+                allowedRoles={[
+                  "admin",
+                  "ops_manager",
+                  "purchase_manager",
+                  "inventory_controller",
+                  "warehouse_manager",
+                  "warehouse",
+                  "qc",
+                ]}
+              >
+                <GRNPrintPage />
+              </RoleGuard>
+            }
+          />
+
+          {/* ── Cold storage ──────────────────────────────────── */}
+          <Route
+            path="/warehouse/fridge"
+            element={
+              <RoleGuard
+                allowedRoles={[
+                  "admin", "ops_manager", "ceo", "gm",
+                  "warehouse_manager", "inventory_controller", "warehouse",
+                  "purchase_manager", "qc",
+                ]}
+              >
+                <FridgeStoragePage />
+              </RoleGuard>
+            }
+          />
+
+          {/* ── Product traceability ──────────────────────────── */}
+          <Route
+            path="/products/:productId/trace"
+            element={
+              <RoleGuard
+                allowedRoles={[
+                  "admin", "ops_manager", "ceo", "gm",
+                  "warehouse_manager", "inventory_controller", "warehouse",
+                  "purchase_manager", "qc",
+                ]}
+              >
+                <ProductTracePage />
+              </RoleGuard>
+            }
+          />
+
+          {/* ── Batch traceability ────────────────────────────── */}
+          <Route
+            path="/stock/batch/:batchId"
+            element={
+              <RoleGuard
+                allowedRoles={[
+                  "admin", "ops_manager", "ceo", "gm",
+                  "warehouse_manager", "inventory_controller", "warehouse",
+                  "purchase_manager", "qc",
+                ]}
+              >
+                <BatchTracePage />
+              </RoleGuard>
+            }
+          />
+
+          {/* ── Admin ─────────────────────────────────────────── */}
           <Route
             path="/admin/users"
             element={
@@ -222,7 +550,16 @@ function ProtectedRoutes() {
               </RoleGuard>
             }
           />
+          <Route
+            path="/admin/settings"
+            element={
+              <RoleGuard allowedRoles={["admin", "ops_manager"]}>
+                <AdminSettingsPage />
+              </RoleGuard>
+            }
+          />
 
+          {/* ── Fallbacks ─────────────────────────────────────── */}
           <Route path="/unauthorized" element={<Unauthorized />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
@@ -250,13 +587,20 @@ const App = () => (
           <Toaster />
           <Sonner />
           <AuthProvider>
-            <BrowserRouter>
-              <Routes>
-                <Route path="/auth" element={<AuthRoute />} />
-                <Route path="/reset-password" element={<ResetPasswordPage />} />
-                <Route path="/*" element={<ProtectedRoutes />} />
-              </Routes>
-            </BrowserRouter>
+            {/*
+              PreviewModeProvider wraps the entire auth tree so that:
+              1. usePreviewMode() is available in TopBar, DashboardRouter, and usePermissions
+              2. The preview state persists across route navigations (session-only, no DB)
+            */}
+            <PreviewModeProvider>
+              <BrowserRouter>
+                <Routes>
+                  <Route path="/auth" element={<AuthRoute />} />
+                  <Route path="/reset-password" element={<ResetPasswordPage />} />
+                  <Route path="/*" element={<ProtectedRoutes />} />
+                </Routes>
+              </BrowserRouter>
+            </PreviewModeProvider>
           </AuthProvider>
         </LanguageProvider>
       </ThemeProvider>

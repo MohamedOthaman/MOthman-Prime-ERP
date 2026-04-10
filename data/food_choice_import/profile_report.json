@@ -1,0 +1,24 @@
+{
+  "workbook_path": "F:\\System QC\\food_choice_reference_extraction_enriched.xlsx",
+  "generated_at": "2026-03-28T14:36:47.557Z",
+  "sheet_counts": {
+    "salesmen": 34,
+    "customers": 3504,
+    "products_import_ready": 3078,
+    "product_prices": 3078,
+    "stock_batches": 3169,
+    "products_enriched_full": 3078
+  },
+  "profile": {
+    "canonical_salesmen_count": 77,
+    "canonical_customers_count": 3504,
+    "blank_item_code_count": 0,
+    "duplicate_item_code_count": 4,
+    "canonical_product_count": 3074,
+    "barcode_row_count": 1163,
+    "barcode_conflict_count": 28,
+    "price_row_count": 3074,
+    "opening_stock_batch_count": 3169,
+    "review_product_count": 85
+  }
+}

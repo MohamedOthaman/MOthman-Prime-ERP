@@ -1,6 +1,7 @@
 import { useRef, useCallback, useEffect } from "react";
 import { BrowserMultiFormatReader, DecodeHintType, BarcodeFormat } from "@zxing/library";
 import { toast } from "sonner";
+import { getNativeBridge, getRuntimePlatform } from "@/platform/runtime";
 
 export function useBarcodeScanner() {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -18,6 +19,23 @@ export function useBarcodeScanner() {
 
   const startScanning = useCallback(async (onScan: (barcode: string) => void) => {
     stopCamera();
+
+    const nativeBridge = getNativeBridge();
+    if (nativeBridge?.scanBarcode) {
+      try {
+        const result = await nativeBridge.scanBarcode();
+        if (result?.value) {
+          onScan(result.value);
+          return;
+        }
+      } catch (error) {
+        console.error("Native barcode scan failed", error);
+        if (getRuntimePlatform() !== "web") {
+          toast.error("Native scanner unavailable, falling back to camera");
+        }
+      }
+    }
+
     await new Promise(r => setTimeout(r, 200));
     const videoEl = videoRef.current;
     if (!videoEl) { toast.error("Camera element not ready"); return; }

@@ -24,7 +24,7 @@ export async function getCustomersBySalesman(): Promise<CustomersBySalesmanGroup
             "id, code, name, name_ar, type, group_name, area, credit_days, credit_limit, is_active, salesman_id, salesmen!customers_salesman_id_fkey ( id, code, name, is_active )"
         )
         .not("salesman_id", "is", null)
-        .eq("is_active", true)
+        .or("is_active.eq.true,is_active.is.null")
         .order("name");
 
     if (error) {
@@ -62,7 +62,7 @@ export async function getCustomersWithoutSalesman(): Promise<
             "id, code, name, name_ar, type, group_name, area, credit_days, credit_limit, is_active, salesman_id"
         )
         .is("salesman_id", null)
-        .eq("is_active", true)
+        .or("is_active.eq.true,is_active.is.null")
         .order("name");
 
     if (error) {

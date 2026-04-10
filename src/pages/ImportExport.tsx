@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { WheelPicker } from "@/components/WheelPicker";
 import { PdfImportSection } from "@/components/PdfImportSection";
 import { MovementEntry } from "@/features/reports/hooks/useStock";
+import { inferStorageType } from "@/lib/productStorage";
 import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
@@ -16,6 +17,162 @@ interface ValidationError {
   row: number;
   field: string;
   message: string;
+}
+
+function normalizeExcelDate(value: unknown) {
+  if (value == null || value === "") return "";
+
+  if (typeof value === "number") {
+    const parsed = XLSX.SSF.parse_date_code(value);
+    if (!parsed) return "";
+    return `${parsed.y}-${String(parsed.m).padStart(2, "0")}-${String(parsed.d).padStart(2, "0")}`;
+  }
+
+  if (value instanceof Date && !Number.isNaN(value.getTime())) {
+    return value.toISOString().split("T")[0];
+  }
+
+  const stringValue = String(value).trim();
+  if (!stringValue) return "";
+
+  const parsed = new Date(stringValue);
+  if (Number.isNaN(parsed.getTime())) return stringValue;
+  return parsed.toISOString().split("T")[0];
+}
+
+function normalizeText(value: unknown) {
+  return String(value ?? "").trim();
+}
+
+function parseWorkbookToBrands(workbook: XLSX.WorkBook) {
+  const hasStructuredSheets =
+    workbook.SheetNames.includes("products_import_ready") ||
+    workbook.SheetNames.includes("stock_batches");
+
+  if (!hasStructuredSheets) {
+    return null;
+  }
+
+  const productsSheet = workbook.Sheets["products_import_ready"];
+  const batchesSheet = workbook.Sheets["stock_batches"];
+
+  const productRows: any[] = productsSheet ? XLSX.utils.sheet_to_json(productsSheet, { defval: "" }) : [];
+  const batchRows: any[] = batchesSheet ? XLSX.utils.sheet_to_json(batchesSheet, { defval: "" }) : [];
+
+  const brandsMap = new Map<string, Brand>();
+  const productIndex = new Map<string, Brand["products"][number]>();
+
+  const ensureBrand = (brandName: string) => {
+    const normalizedBrandName = normalizeText(brandName) || "Unknown";
+    if (!brandsMap.has(normalizedBrandName)) {
+      brandsMap.set(normalizedBrandName, { name: normalizedBrandName, products: [] });
+    }
+    return brandsMap.get(normalizedBrandName)!;
+  };
+
+  for (const row of productRows) {
+    const itemCode = normalizeText(row.item_code || row["item_code"] || row["Item Code"]);
+    if (!itemCode) continue;
+
+    const brandName = normalizeText(row.brand_name || row.brand || row["Brand"]) || "Unknown";
+    const brand = ensureBrand(brandName);
+    const barcode = normalizeText(row.barcode || row["barcode"]);
+    const uom = normalizeText(row.uom || row["uom"]) || "PCS";
+    const packSize = Number(row.pack_size || row["pack_size"] || 0) || undefined;
+
+    const product = {
+      code: itemCode,
+      itemCode,
+      name: normalizeText(row.item_name_en || row.item_name || row["Product Name"] || itemCode),
+      nameAr: normalizeText(row.item_name_ar || row["Arabic Name"]) || undefined,
+      brand: brandName,
+      category: normalizeText(row.category || row["category"]) || undefined,
+      section: brandName,
+      totalQty: [],
+      packaging: uom,
+      nearestExpiryDays: 999,
+      storageType: inferStorageType({
+        category: normalizeText(row.category),
+        brand: brandName,
+        name_en: normalizeText(row.item_name_en || row.item_name),
+        name_ar: normalizeText(row.item_name_ar),
+      }),
+      batches: [],
+      barcodes: barcode ? [barcode] : [],
+      primaryBarcode: barcode || undefined,
+      cartonHolds: packSize,
+      stockUnit: uom,
+    } satisfies Brand["products"][number];
+
+    brand.products.push(product);
+    productIndex.set(itemCode, product);
+  }
+
+  for (const row of batchRows) {
+    const itemCode = normalizeText(row.item_code || row["item_code"] || row["Item Code"]);
+    if (!itemCode) continue;
+
+    const brandName = normalizeText(row.brand_name || row.brand_code || row["Brand"] || row["brand_code"]) || "Unknown";
+    const batchUnit = normalizeText(row.uom || row["uom"] || row.Unit) || "PCS";
+    const product =
+      productIndex.get(itemCode) ||
+      (() => {
+        const brand = ensureBrand(brandName);
+        const fallbackProduct = {
+          code: itemCode,
+          itemCode,
+          name: normalizeText(row.item_name || row.item_name_en || itemCode),
+          nameAr: undefined,
+          brand: brand.name,
+          category: undefined,
+          section: brand.name,
+          totalQty: [],
+          packaging: batchUnit,
+          nearestExpiryDays: 999,
+          storageType: inferStorageType({
+            brand: brand.name,
+            name_en: normalizeText(row.item_name || row.item_name_en || itemCode),
+          }),
+          batches: [],
+          barcodes: [],
+          stockUnit: batchUnit,
+        } satisfies Brand["products"][number];
+
+        brand.products.push(fallbackProduct);
+        productIndex.set(itemCode, fallbackProduct);
+        return fallbackProduct;
+      })();
+
+    product.batches.push({
+      batchNo: normalizeText(row.batch_no || row["batch_no"] || row["Batch No"] || `B-${itemCode}`),
+      qty: Number(row.stock_qty || row.qty || row.Quantity || 0),
+      unit: batchUnit,
+      productionDate: normalizeExcelDate(row.production_date || row["production_date"] || row["Production Date"]),
+      expiryDate: normalizeExcelDate(row.expiry_date || row["expiry_date"] || row["Expiry Date"]),
+      daysLeft: 0,
+      receivedDate: normalizeExcelDate(row.received_date || row["received_date"]) || new Date().toISOString().split("T")[0],
+      referenceNo: normalizeText(row.warehouse || row.receiving_reference || row["warehouse"]) || undefined,
+    });
+  }
+
+  const parsedBrands = Array.from(brandsMap.values()).map((brand) => ({
+    ...brand,
+    products: brand.products.map((product) => {
+      const totals = product.batches.reduce<Record<string, number>>((acc, batch) => {
+        const unit = normalizeText(batch.unit) || product.stockUnit || "PCS";
+        acc[unit] = (acc[unit] || 0) + Number(batch.qty || 0);
+        return acc;
+      }, {});
+
+      return {
+        ...product,
+        packaging: product.packaging || product.stockUnit || Object.keys(totals)[0] || "PCS",
+        totalQty: Object.entries(totals).map(([unit, amount]) => ({ unit, amount: Number(amount.toFixed(3)) })),
+      };
+    }),
+  }));
+
+  return recalcDaysLeft(parsedBrands);
 }
 
 export default function ImportExport() {
@@ -200,6 +357,14 @@ export default function ImportExport() {
       try {
         const data = new Uint8Array(ev.target?.result as ArrayBuffer);
         const wb = XLSX.read(data, { type: "array" });
+        const parsedWorkbook = parseWorkbookToBrands(wb);
+        if (parsedWorkbook) {
+          setValidationErrors([]);
+          setImportPreview(parsedWorkbook);
+          toast.success("Excel workbook parsed successfully");
+          return;
+        }
+
         const ws = wb.Sheets[wb.SheetNames[0]];
         const rows: any[] = XLSX.utils.sheet_to_json(ws);
         if (rows.length === 0) { toast.error("File is empty"); return; }

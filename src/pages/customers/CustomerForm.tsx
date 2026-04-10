@@ -24,6 +24,7 @@ interface CustomerFormData {
     group_name: string;
     category: string;
     area: string;
+    address: string;
     phone: string;
     credit_days: number;
     credit_limit: number;
@@ -34,7 +35,7 @@ interface CustomerFormData {
 
 const EMPTY_FORM: CustomerFormData = {
     code: "", name: "", name_ar: "", type: "",
-    group_name: "", category: "", area: "", phone: "",
+    group_name: "", category: "", area: "", address: "", phone: "",
     credit_days: 30, credit_limit: 0,
     salesman_id: "", notes: "", is_active: true,
 };
@@ -59,7 +60,7 @@ export default function CustomerForm() {
             const { data, error: err } = await supabase
                 .from("salesmen")
                 .select("id, code, name")
-                .eq("is_active", true)
+                .or("is_active.eq.true,is_active.is.null")
                 .order("name");
 
             if (!err && data) {
@@ -94,6 +95,7 @@ export default function CustomerForm() {
                     group_name: data.group_name ?? "",
                     category: data.category ?? "",
                     area: data.area ?? "",
+                    address: (data as any).address ?? "",
                     phone: data.phone ?? "",
                     credit_days: data.credit_days ?? 30,
                     credit_limit: data.credit_limit ?? 0,
@@ -127,6 +129,7 @@ export default function CustomerForm() {
             group_name: form.group_name.trim() || null,
             category: form.category.trim() || null,
             area: form.area.trim() || null,
+            address: form.address.trim() || null,
             phone: form.phone.trim() || null,
             credit_days: Number(form.credit_days),
             credit_limit: Number(form.credit_limit),
@@ -287,6 +290,19 @@ export default function CustomerForm() {
                                 className="w-full bg-secondary border border-border rounded-md px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
                             />
                         </div>
+                    </div>
+
+                    <div>
+                        <label className="block text-xs text-muted-foreground mb-1">
+                            Address
+                        </label>
+                        <textarea
+                            value={form.address}
+                            onChange={(e) => set("address", e.target.value)}
+                            rows={2}
+                            placeholder="Full address..."
+                            className="w-full bg-secondary border border-border rounded-md px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring resize-none"
+                        />
                     </div>
 
                     <div>

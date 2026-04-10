@@ -19,15 +19,8 @@ export function WheelPicker({
 }: WheelPickerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const isUserScrolling = useRef(false);
-  const momentumRef = useRef<number>(0);
-  const lastTouchY = useRef<number>(0);
-  const lastTouchTime = useRef<number>(0);
-  const velocityRef = useRef<number>(0);
-  const animFrameRef = useRef<number>(0);
   const settleTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
 
-  const visibleCount = Math.floor(height / itemHeight);
-  const paddingCount = Math.floor(visibleCount / 2);
   const centerOffset = (height - itemHeight) / 2;
 
   const getSelectedIndex = useCallback(() => {
@@ -47,17 +40,18 @@ export function WheelPicker({
   // Initial scroll
   useEffect(() => {
     const idx = getSelectedIndex();
-    if (idx >= 0) {
-      requestAnimationFrame(() => scrollToIndex(idx, false));
-    }
-  }, []);
+    if (idx < 0) return;
+
+    const rafId = requestAnimationFrame(() => scrollToIndex(idx, false));
+    return () => cancelAnimationFrame(rafId);
+  }, [getSelectedIndex, scrollToIndex]);
 
   // Sync when value changes externally
   useEffect(() => {
     if (isUserScrolling.current) return;
     const idx = getSelectedIndex();
     if (idx >= 0) scrollToIndex(idx, true);
-  }, [selectedValue]);
+  }, [getSelectedIndex, scrollToIndex, selectedValue]);
 
   const settleToNearest = useCallback(() => {
     if (!containerRef.current) return;
@@ -84,13 +78,6 @@ export function WheelPicker({
     isUserScrolling.current = true;
     handleScrollEnd();
   }, [handleScrollEnd]);
-
-  // Build padded list
-  const paddedItems = [
-    ...Array(paddingCount).fill(null),
-    ...items,
-    ...Array(paddingCount).fill(null),
-  ];
 
   return (
     <div className="flex flex-col items-center">
@@ -140,13 +127,16 @@ export function WheelPicker({
             scrollbarWidth: "none", 
             WebkitOverflowScrolling: "touch",
             scrollSnapType: "y mandatory",
+            scrollPaddingTop: centerOffset,
+            scrollPaddingBottom: centerOffset,
           }}
         >
-          {paddedItems.map((item, i) => {
-            const isSelected = item && item.value === selectedValue;
+          <div style={{ height: centerOffset, minHeight: centerOffset }} />
+          {items.map((item, i) => {
+            const isSelected = item.value === selectedValue;
             return (
               <div
-                key={i}
+                key={item.value}
                 className="wheel-picker-item flex items-center justify-center select-none"
                 style={{ 
                   height: itemHeight, 
@@ -164,17 +154,15 @@ export function WheelPicker({
                   letterSpacing: "0.02em",
                 }}
                 onClick={() => {
-                  if (item) {
-                    const realIdx = i - paddingCount;
-                    scrollToIndex(realIdx, true);
-                    onChange(item.value);
-                  }
+                  scrollToIndex(i, true);
+                  onChange(item.value);
                 }}
               >
-                {item ? item.label : ""}
+                {item.label}
               </div>
             );
           })}
+          <div style={{ height: centerOffset, minHeight: centerOffset }} />
         </div>
       </div>
     </div>
@@ -217,6 +205,14 @@ export function DateWheel({ value, onChange, label }: DateWheelProps) {
   const [year, setYear] = useState(parsed.getFullYear());
   const [month, setMonth] = useState(parsed.getMonth() + 1);
   const [day, setDay] = useState(parsed.getDate());
+
+  useEffect(() => {
+    const next = value ? new Date(value) : new Date();
+    if (Number.isNaN(next.getTime())) return;
+    setYear(next.getFullYear());
+    setMonth(next.getMonth() + 1);
+    setDay(next.getDate());
+  }, [value]);
 
   const years = [];
   for (let y = 2020; y <= 2030; y++) {

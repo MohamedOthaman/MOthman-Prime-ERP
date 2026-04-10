@@ -2,6 +2,8 @@ import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Brand, Product, Invoice, InvoiceItem, MarketReturn, Batch, recalcDaysLeft } from "@/data/stockData";
 import { useAuth } from "@/features/reports/hooks/useAuth";
+import { inferStorageType } from "@/lib/productStorage";
+import { getInventoryStockPageSnapshot } from "@/features/services/inventoryService";
 
 export interface MovementEntry {
   id: string;
@@ -15,6 +17,116 @@ export interface MovementEntry {
   unit: string;
   invoiceNo?: string;
   returnId?: string;
+}
+
+function normalizeOpeningBatchQuantity(
+  qty: number,
+  unit: string,
+  packSize?: number | null
+) {
+  if (!Number.isFinite(qty) || qty <= 0) {
+    return { qty: 0, unit };
+  }
+
+  const normalizedUnit = (unit || "CTN").toUpperCase();
+  const roundedQty = Number(qty.toFixed(3));
+  const isFractional = Math.abs(roundedQty - Math.trunc(roundedQty)) > 0.0001;
+
+  if (normalizedUnit === "CTN" && isFractional && packSize && packSize > 0) {
+    return {
+      qty: Number((roundedQty * packSize).toFixed(3)),
+      unit: "PCS",
+    };
+  }
+
+  return { qty: roundedQty, unit: normalizedUnit };
+}
+
+function resolveStockUnit(uom?: string | null, packaging?: string | null) {
+  const normalizedUom = uom?.trim();
+  if (normalizedUom) return normalizedUom;
+
+  const packagingUnits = packaging
+    ?.split("/")
+    .map((part) => part.trim())
+    .filter(Boolean);
+
+  return packagingUnits?.[0] || "UNIT";
+}
+
+function isMissingRelation(error: { code?: string; message?: string } | null, relation: string) {
+  if (!error) return false;
+  return error.code === "PGRST205" || error.message?.includes(relation) || false;
+}
+
+function sanitizeBarcodes(values: string[] | undefined) {
+  return Array.from(new Set((values || []).map((value) => value.trim()).filter(Boolean)));
+}
+
+async function syncImportedBarcodes(productId: string, barcodes: string[]) {
+  const normalizedBarcodes = sanitizeBarcodes(barcodes);
+
+  const { error: deleteError } = await supabase.from("product_barcodes" as any).delete().eq("product_id", productId);
+  if (deleteError && deleteError.code !== "PGRST205") throw deleteError;
+
+  if (normalizedBarcodes.length === 0) return;
+
+  const { error: insertError } = await supabase.from("product_barcodes" as any).insert(
+    normalizedBarcodes.map((barcode, index) => ({
+      product_id: productId,
+      barcode,
+      is_primary: index === 0,
+      source: "excel_import",
+    }))
+  );
+
+  if (insertError) throw insertError;
+}
+
+async function replaceImportedBatches(productId: string, batches: Batch[]) {
+  const validRows = batches.filter((batch) => batch.batchNo.trim() && Number(batch.qty || 0) > 0);
+
+  const primaryDelete = await supabase.from("batches" as any).delete().eq("product_id", productId);
+  if (primaryDelete.error && !isMissingRelation(primaryDelete.error, "batches")) {
+    throw primaryDelete.error;
+  }
+
+  if (!primaryDelete.error) {
+    if (validRows.length === 0) return;
+
+    const { error: insertError } = await supabase.from("batches" as any).insert(
+      validRows.map((batch) => ({
+        product_id: productId,
+        batch_no: batch.batchNo.trim(),
+        unit: batch.unit,
+        production_date: batch.productionDate || null,
+        expiry_date: batch.expiryDate || null,
+        qty: Number(batch.qty || 0),
+        received_date: batch.receivedDate || new Date().toISOString().split("T")[0],
+      }))
+    );
+
+    if (insertError) throw insertError;
+    return;
+  }
+
+  const fallbackDelete = await supabase.from("inventory_batches" as any).delete().eq("product_id", productId);
+  if (fallbackDelete.error) throw fallbackDelete.error;
+
+  if (validRows.length === 0) return;
+
+  const { error: fallbackInsertError } = await supabase.from("inventory_batches" as any).insert(
+    validRows.map((batch) => ({
+      product_id: productId,
+      batch_no: batch.batchNo.trim(),
+      expiry_date: batch.expiryDate || null,
+      qty_received: Number(batch.qty || 0),
+      qty_available: Number(batch.qty || 0),
+      received_date: batch.receivedDate || new Date().toISOString().split("T")[0],
+    }))
+  );
+
+  if (fallbackInsertError) throw fallbackInsertError;
 }
 
 export function useStock() {
@@ -31,47 +143,112 @@ export function useStock() {
     setLoading(true);
 
     try {
-      // Load brands + products + batches
-      const { data: brandsData } = await supabase.from("brands").select("*").order("name");
-      const { data: productsData } = await supabase.from("products").select("*").order("name");
-      const { data: batchesData } = await supabase.from("batches").select("*").order("expiry_date");
-
-      const brands: Brand[] = (brandsData || []).map(b => {
-        const prods = (productsData || []).filter(p => p.brand_id === b.id).map(p => {
-          const batches: Batch[] = (batchesData || []).filter(bt => bt.product_id === p.id).map(bt => ({
-            batchNo: bt.batch_no,
-            qty: bt.qty,
-            unit: bt.unit,
-            productionDate: bt.production_date || "",
-            expiryDate: bt.expiry_date,
-            daysLeft: 0,
-            receivedDate: bt.received_date || "",
-          }));
-          const totalQtyMap: Record<string, number> = {};
-          batches.forEach(bt => { totalQtyMap[bt.unit] = (totalQtyMap[bt.unit] || 0) + bt.qty; });
-          const product: Product = {
-            code: p.code,
-            name: p.name,
-            nameAr: (p as any).name_ar || "",
-            brand: b.name,
-            totalQty: Object.entries(totalQtyMap).map(([unit, amount]) => ({ amount, unit })),
-            packaging: p.packaging || "",
-            nearestExpiryDays: 999,
-            storageType: (p.storage_type as any) || "Dry",
-            batches,
-            barcodes: p.barcodes || [],
-            cartonHolds: p.carton_holds || undefined,
-          };
-          return product;
-        });
-        return { name: b.name, products: prods };
+      const stockSnapshot = await getInventoryStockPageSnapshot();
+      const batchesByProduct = new Map<string, typeof stockSnapshot.batches>();
+      stockSnapshot.batches.forEach((batch) => {
+        const current = batchesByProduct.get(batch.product_id) ?? [];
+        current.push(batch);
+        batchesByProduct.set(batch.product_id, current);
       });
+
+      const grouped = new Map<string, Product[]>();
+
+      stockSnapshot.products.forEach((p) => {
+        const brandName = p.brand || p.category || "General";
+        const sectionName = p.section || p.brand || p.category || "General";
+        const storageType = inferStorageType({
+          storage_type: p.storage_type,
+          category: p.category,
+          brand: p.brand,
+          section: p.section,
+          name_en: p.name_en || p.name || "",
+          name_ar: p.name_ar,
+        });
+        const packSize = Number(p.carton_holds ?? 0) || null;
+        const stockUnit = resolveStockUnit(p.uom, p.packaging);
+        if (!grouped.has(brandName)) {
+           grouped.set(brandName, []);
+        }
+
+        const batches: Batch[] = (batchesByProduct.get(p.product_id) ?? [])
+          .filter((batch) => batch.remaining_quantity > 0)
+          .sort((left, right) => {
+            if (left.expiry_date === right.expiry_date) {
+              return (left.batch_no || "").localeCompare(right.batch_no || "");
+            }
+            if (!left.expiry_date) return 1;
+            if (!right.expiry_date) return -1;
+            return left.expiry_date.localeCompare(right.expiry_date);
+          })
+          .map((bt) => {
+          const normalized = normalizeOpeningBatchQuantity(
+            Number(bt.remaining_quantity ?? 0),
+            stockUnit,
+            packSize
+          );
+
+          return {
+            batchNo: bt.batch_no || bt.receiving_reference || "UNBATCHED",
+            qty: normalized.qty,
+            unit: normalized.unit,
+            productionDate: bt.production_date || "",
+            expiryDate: bt.expiry_date || "",
+            daysLeft: 0,
+            receivedDate: bt.first_received_date || bt.last_received_date || "",
+            receivedQty: Number(bt.received_quantity ?? 0),
+            issuedQty: Number(bt.issued_quantity ?? 0),
+            remainingQty: Number(bt.remaining_quantity ?? 0),
+            referenceNo: bt.receiving_reference || bt.grn_no || bt.receiving_invoice_no || "",
+          };
+        });
+
+        const product: Product = {
+          code: p.code || p.item_code || "",
+          itemCode: p.item_code || p.code || "",
+          name: p.name_en || p.name || "",
+          nameAr: p.name_ar || "",
+          brand: p.brand || p.category || "General",
+          section: sectionName,
+          category: p.category || "",
+          totalQty: [{ amount: Number(p.available_quantity ?? 0), unit: stockUnit }],
+          packaging: p.packaging || stockUnit,
+          nearestExpiryDays: 999,
+          storageType,
+          batches,
+          barcodes: p.all_barcodes || [],
+          primaryBarcode: p.primary_barcode || p.all_barcodes?.[0] || undefined,
+          cartonHolds: packSize || undefined,
+          availableQuantity: Number(p.available_quantity ?? 0),
+          stockUnit,
+          batchCount: Number(p.batch_count ?? batches.length),
+          nearestExpiryDate: p.nearest_expiry || undefined,
+        };
+
+        grouped.get(brandName)!.push(product);
+      });
+
+      const brands: Brand[] = Array.from(grouped.entries()).map(([name, products]) => ({
+         name,
+         products: products.sort((left, right) =>
+           `${left.name} ${left.code}`.localeCompare(`${right.name} ${right.code}`)
+         ),
+      })).sort((a, b) => a.name.localeCompare(b.name));
 
       setStock(recalcDaysLeft(brands));
 
-      // Load invoices
-      const { data: invoicesData } = await supabase.from("invoices").select("*").order("created_at", { ascending: false });
-      const { data: invoiceItemsData } = await supabase.from("invoice_items").select("*");
+      const [
+        { data: invoicesData },
+        { data: invoiceItemsData },
+        { data: movementsData },
+        { data: returnsData },
+        { data: returnItemsData },
+      ] = await Promise.all([
+        supabase.from("invoices").select("*").order("created_at", { ascending: false }),
+        supabase.from("invoice_items").select("*"),
+        supabase.from("movements").select("*").order("created_at", { ascending: false }).limit(200),
+        supabase.from("market_returns").select("*").order("created_at", { ascending: false }),
+        supabase.from("return_items").select("*"),
+      ]);
 
       const invs: Invoice[] = (invoicesData || []).map(inv => {
         const items: InvoiceItem[] = (invoiceItemsData || [])
@@ -97,8 +274,6 @@ export function useStock() {
       });
       setInvoices(invs);
 
-      // Load movements
-      const { data: movementsData } = await supabase.from("movements").select("*").order("created_at", { ascending: false }).limit(200);
       setMovements((movementsData || []).map(m => ({
         id: m.id,
         date: m.created_at?.split("T")[0] || "",
@@ -112,10 +287,6 @@ export function useStock() {
         invoiceNo: m.invoice_no || undefined,
         returnId: m.return_id || undefined,
       })));
-
-      // Load returns
-      const { data: returnsData } = await supabase.from("market_returns").select("*").order("created_at", { ascending: false });
-      const { data: returnItemsData } = await supabase.from("return_items").select("*");
 
       setReturns((returnsData || []).map(r => ({
         id: r.id,
@@ -439,30 +610,57 @@ export function useStock() {
       if (!brand) continue;
 
       for (const newProd of newBrand.products) {
-        let { data: prod } = await supabase.from("products").select("id").eq("code", newProd.code).single();
+        let { data: prod } = await supabase
+          .from("products" as any)
+          .select("id")
+          .or(`code.eq.${newProd.code},item_code.eq.${newProd.code}`)
+          .maybeSingle();
+
         if (!prod) {
-          const { data: created } = await supabase.from("products").insert({
-            code: newProd.code, name: newProd.name, brand_id: brand.id,
-            packaging: newProd.packaging, storage_type: newProd.storageType,
-            barcodes: newProd.barcodes || [],
-          }).select("id").single();
+          const { data: created, error: createError } = await supabase
+            .from("products" as any)
+            .insert({
+              code: newProd.code,
+              item_code: newProd.itemCode || newProd.code,
+              name: newProd.name,
+              name_en: newProd.name,
+              name_ar: newProd.nameAr || null,
+              brand_id: brand.id,
+              category: newProd.category || null,
+              packaging: newProd.packaging,
+              uom: newProd.stockUnit || newProd.totalQty[0]?.unit || null,
+              storage_type: newProd.storageType,
+              carton_holds: newProd.cartonHolds ?? null,
+              is_active: true,
+            })
+            .select("id")
+            .single();
+
+          if (createError) throw createError;
           prod = created;
+        } else {
+          const updatePayload = {
+            code: newProd.code,
+            item_code: newProd.itemCode || newProd.code,
+            name: newProd.name,
+            name_en: newProd.name,
+            name_ar: newProd.nameAr || null,
+            brand_id: brand.id,
+            category: newProd.category || null,
+            packaging: newProd.packaging,
+            uom: newProd.stockUnit || newProd.totalQty[0]?.unit || null,
+            storage_type: newProd.storageType,
+            carton_holds: newProd.cartonHolds ?? null,
+            is_active: true,
+          };
+
+          const primaryUpdate = await supabase.from("products" as any).update(updatePayload).eq("id", prod.id);
+          if (primaryUpdate.error) throw primaryUpdate.error;
         }
         if (!prod) continue;
 
-        for (const newBatch of newProd.batches) {
-          const { data: existBatch } = await supabase.from("batches")
-            .select("id").eq("product_id", prod.id).eq("batch_no", newBatch.batchNo).single();
-          if (existBatch) {
-            await supabase.from("batches").update({ qty: newBatch.qty }).eq("id", existBatch.id);
-          } else {
-            await supabase.from("batches").insert({
-              product_id: prod.id, batch_no: newBatch.batchNo, qty: newBatch.qty, unit: newBatch.unit,
-              production_date: newBatch.productionDate || null, expiry_date: newBatch.expiryDate,
-              received_date: newBatch.receivedDate || new Date().toISOString().split("T")[0],
-            });
-          }
-        }
+        await syncImportedBarcodes(prod.id, newProd.barcodes || []);
+        await replaceImportedBatches(prod.id, newProd.batches);
       }
     }
     await loadData();

@@ -19,6 +19,15 @@ interface ExportConfig {
   subtitle?: string;
 }
 
+function escapeHtml(value: unknown) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 // ─── Excel Export (styled like PDF) ───
 export async function exportExcel(config: ExportConfig) {
   const { columns, rows, filename, sheetName, title, subtitle } = config;
@@ -194,6 +203,69 @@ export function exportPDF(config: ExportConfig) {
 }
 
 // ─── Pre-built configs ───
+
+export function previewPrintableTable(config: ExportConfig) {
+  const { columns, rows, title, subtitle } = config;
+  if (rows.length === 0) {
+    toast.info("No data to preview");
+    return;
+  }
+
+  const previewWindow = window.open("", "_blank", "noopener,noreferrer,width=1280,height=900");
+  if (!previewWindow) {
+    toast.error("Unable to open print preview");
+    return;
+  }
+
+  const headers = columns.map((column) => `<th>${escapeHtml(column.header)}</th>`).join("");
+  const body = rows
+    .map(
+      (row) =>
+        `<tr>${columns
+          .map((column) => `<td>${escapeHtml(row[column.key] ?? "")}</td>`)
+          .join("")}</tr>`
+    )
+    .join("");
+
+  previewWindow.document.write(`
+    <!doctype html>
+    <html>
+      <head>
+        <title>${escapeHtml(title)}</title>
+        <style>
+          body { font-family: Arial, sans-serif; margin: 24px; color: #111827; }
+          h1 { margin: 0 0 8px; font-size: 22px; }
+          .subtitle { margin: 0 0 4px; color: #4b5563; font-size: 13px; }
+          .meta { margin: 0 0 16px; color: #6b7280; font-size: 12px; }
+          .actions { margin-bottom: 16px; display: flex; gap: 8px; }
+          .actions button { border: 1px solid #d1d5db; background: white; padding: 8px 12px; border-radius: 6px; cursor: pointer; }
+          table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+          th, td { border: 1px solid #d1d5db; padding: 8px; text-align: left; font-size: 12px; word-break: break-word; }
+          th { background: #111827; color: white; }
+          tr:nth-child(even) td { background: #f9fafb; }
+          @media print {
+            body { margin: 0; }
+            .actions { display: none; }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="actions">
+          <button onclick="window.print()">Print</button>
+          <button onclick="window.close()">Close</button>
+        </div>
+        <h1>${escapeHtml(title)}</h1>
+        ${subtitle ? `<p class="subtitle">${escapeHtml(subtitle)}</p>` : ""}
+        <p class="meta">Generated: ${escapeHtml(new Date().toLocaleString())}</p>
+        <table>
+          <thead><tr>${headers}</tr></thead>
+          <tbody>${body}</tbody>
+        </table>
+      </body>
+    </html>
+  `);
+  previewWindow.document.close();
+}
 
 export function getExpiryExportConfig(data: any[], filterDays: number): ExportConfig {
   return {

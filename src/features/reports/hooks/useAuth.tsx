@@ -29,9 +29,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return;
       }
 
-      // Temporary: hardcoded admin email
+      // Owner override: system owner email → highest authority
+      // Falls back to DB role if the profile already has role = 'owner'
       if (email?.toLowerCase() === "mohamed22othman@yahoo.com") {
-        setRole("admin");
+        setRole("owner");
         return;
       }
 

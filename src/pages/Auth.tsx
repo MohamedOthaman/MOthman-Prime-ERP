@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { useAuth } from "@/features/reports/hooks/useAuth";
-import { Package, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useLang } from "@/contexts/LanguageContext";
+import { AppBrand } from "@/components/AppBrand";
 
 export default function Auth() {
   const { signIn, signUp } = useAuth();
@@ -37,10 +38,7 @@ export default function Auth() {
     <div className="min-h-screen bg-background flex items-center justify-center px-4">
       <div className="w-full max-w-sm space-y-6">
         <div className="text-center space-y-2">
-          <div className="w-14 h-14 bg-primary/10 rounded-2xl flex items-center justify-center mx-auto">
-            <Package className="w-7 h-7 text-primary" />
-          </div>
-          <h1 className="text-xl font-bold text-foreground tracking-tight">{t("warehouseStock")}</h1>
+          <AppBrand className="justify-center text-left" showDeveloperCredit />
           <p className="text-sm text-muted-foreground">
             {isSignUp ? t("signUpTitle") : t("signInTitle")}
           </p>

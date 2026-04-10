@@ -1,27 +1,19 @@
-import { useAuth } from "@/features/reports/hooks/useAuth";
+/**
+ * @deprecated Use `usePermissions` from `@/hooks/usePermissions` instead.
+ * This re-exports a backward-compatible subset so existing consumers
+ * (BottomNav, SalesmenPage, SalesmanForm, CustomersPage) keep working
+ * without import changes.
+ */
+import { usePermissions } from "@/hooks/usePermissions";
 
 export function useRole() {
-  const { role } = useAuth();
+  const p = usePermissions();
 
   return {
-    role,
-    isAdmin: role === "admin",
-    isSalesManager: role === "sales_manager",
-    canManageStock: [
-      "admin",
-      "ops_manager",
-      "inventory_controller",
-      "warehouse",
-      "purchase_manager",
-    ].includes(role),
-    canManageInvoices: [
-      "admin",
-      "ceo",
-      "gm",
-      "ops_manager",
-      "sales_manager",
-      "accountant",
-      "invoice_team",
-    ].includes(role),
+    role: p.role,
+    isAdmin: p.isAdmin,
+    isSalesManager: p.role === "sales_manager",
+    canManageStock: p.canManageStock,
+    canManageInvoices: p.canManageInvoices,
   };
 }

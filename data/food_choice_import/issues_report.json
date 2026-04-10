@@ -1,0 +1,1163 @@
+{
+  "barcode_conflicts": [
+    {
+      "barcode": "5060108450126",
+      "item_codes": "FT003|FT004"
+    },
+    {
+      "barcode": "3052910056254",
+      "item_codes": "MN026|MN026/1"
+    },
+    {
+      "barcode": "3052910710040",
+      "item_codes": "MN261|MN261/1"
+    },
+    {
+      "barcode": "5202178001994",
+      "item_codes": "OLP017|OLP018"
+    },
+    {
+      "barcode": "3236240070702",
+      "item_codes": "LT006|LT027"
+    },
+    {
+      "barcode": "3412290023442",
+      "item_codes": "LT015|LT0150"
+    },
+    {
+      "barcode": "3412290010961",
+      "item_codes": "LT122|LT122/1"
+    },
+    {
+      "barcode": "3412290010978",
+      "item_codes": "LT123|LT123/1"
+    },
+    {
+      "barcode": "3412290010992",
+      "item_codes": "LT124|LT124/1"
+    },
+    {
+      "barcode": "3412290010985",
+      "item_codes": "LT125|LT125/1"
+    },
+    {
+      "barcode": "8718053511986",
+      "item_codes": "VK00141|VK00141-XXX"
+    },
+    {
+      "barcode": "8006165390262",
+      "item_codes": "AL1148/|AL1148/1"
+    },
+    {
+      "barcode": "3178530407921",
+      "item_codes": "STM036|STM036/1"
+    },
+    {
+      "barcode": "3178530402353",
+      "item_codes": "STM025|STM025/1"
+    },
+    {
+      "barcode": "3178530407938",
+      "item_codes": "STM031|STM031/1"
+    },
+    {
+      "barcode": "3178530420005",
+      "item_codes": "STM032|STM032/1"
+    },
+    {
+      "barcode": "3178530420678",
+      "item_codes": "STM033|STM033/1"
+    },
+    {
+      "barcode": "8716468033529",
+      "item_codes": "IB012|IB012/C"
+    },
+    {
+      "barcode": "8716468033628",
+      "item_codes": "IB013|IB013/C"
+    },
+    {
+      "barcode": "8716468033727",
+      "item_codes": "IB014|IB014/C"
+    },
+    {
+      "barcode": "8716468033611",
+      "item_codes": "IB051/|IB051/C"
+    },
+    {
+      "barcode": "8006165378376",
+      "item_codes": "AL8376/|AL8376/1"
+    },
+    {
+      "barcode": "8420878593466",
+      "item_codes": "LQ59346|LQ59346/2"
+    },
+    {
+      "barcode": "8420878593497",
+      "item_codes": "LQ59349|LQ59349/2"
+    },
+    {
+      "barcode": "3254550006013",
+      "item_codes": "ISM026|ISM0260"
+    },
+    {
+      "barcode": "2500000597954",
+      "item_codes": "OLP051|OLP052"
+    },
+    {
+      "barcode": "3412290019049",
+      "item_codes": "LT095/|LT095/1"
+    },
+    {
+      "barcode": "736072091409",
+      "item_codes": "CI100|CI102"
+    }
+  ],
+  "item_issues": [
+    {
+      "item_code": "BASES",
+      "issue_count": 1,
+      "issues": [
+        {
+          "type": "missing_name_en"
+        }
+      ]
+    },
+    {
+      "item_code": "YOGURT",
+      "issue_count": 1,
+      "issues": [
+        {
+          "type": "missing_name_en"
+        }
+      ]
+    },
+    {
+      "item_code": "AL90016",
+      "issue_count": 1,
+      "issues": [
+        {
+          "type": "missing_name_en"
+        }
+      ]
+    },
+    {
+      "item_code": "AX021/1",
+      "issue_count": 1,
+      "issues": [
+        {
+          "type": "missing_name_en"
+        }
+      ]
+    },
+    {
+      "item_code": "AX022/1",
+      "issue_count": 1,
+      "issues": [
+        {
+          "type": "missing_name_en"
+        }
+      ]
+    },
+    {
+      "item_code": "BZ021",
+      "issue_count": 1,
+      "issues": [
+        {
+          "type": "missing_name_en"
+        }
+      ]
+    },
+    {
+      "item_code": "CHT022",
+      "issue_count": 1,
+      "issues": [
+        {
+          "type": "missing_name_en"
+        }
+      ]
+    },
+    {
+      "item_code": "DSR105524MDISARONNO",
+      "issue_count": 1,
+      "issues": [
+        {
+          "type": "missing_name_en"
+        }
+      ]
+    },
+    {
+      "item_code": "DSR211003A",
+      "issue_count": 1,
+      "issues": [
+        {
+          "type": "missing_name_en"
+        }
+      ]
+    },
+    {
+      "item_code": "DSR2G6510",
+      "issue_count": 1,
+      "issues": [
+        {
+          "type": "missing_name_en"
+        }
+      ]
+    },
+    {
+      "item_code": "DSR2G7669",
+      "issue_count": 1,
+      "issues": [
+        {
+          "type": "missing_name_en"
+        }
+      ]
+    },
+    {
+      "item_code": "FCC064",
+      "issue_count": 1,
+      "issues": [
+        {
+          "type": "missing_name_en"
+        }
+      ]
+    },
+    {
+      "item_code": "FCC131",
+      "issue_count": 1,
+      "issues": [
+        {
+          "type": "missing_name_en"
+        }
+      ]
+    },
+    {
+      "item_code": "ISM500",
+      "issue_count": 1,
+      "issues": [
+        {
+          "type": "missing_name_en"
+        }
+      ]
+    },
+    {
+      "item_code": "MG020",
+      "issue_count": 1,
+      "issues": [
+        {
+          "type": "missing_name_en"
+        }
+      ]
+    },
+    {
+      "item_code": "PZ0113",
+      "issue_count": 1,
+      "issues": [
+        {
+          "type": "missing_name_en"
+        }
+      ]
+    },
+    {
+      "item_code": "SG521",
+      "issue_count": 1,
+      "issues": [
+        {
+          "type": "missing_name_en"
+        }
+      ]
+    },
+    {
+      "item_code": "SPC6-11858",
+      "issue_count": 1,
+      "issues": [
+        {
+          "type": "missing_name_en"
+        }
+      ]
+    },
+    {
+      "item_code": "SPC6-11874",
+      "issue_count": 1,
+      "issues": [
+        {
+          "type": "missing_name_en"
+        }
+      ]
+    },
+    {
+      "item_code": "SPC6-11918",
+      "issue_count": 1,
+      "issues": [
+        {
+          "type": "missing_name_en"
+        }
+      ]
+    },
+    {
+      "item_code": "SPC6-12333",
+      "issue_count": 1,
+      "issues": [
+        {
+          "type": "missing_name_en"
+        }
+      ]
+    },
+    {
+      "item_code": "SPC6-12455",
+      "issue_count": 1,
+      "issues": [
+        {
+          "type": "missing_name_en"
+        }
+      ]
+    },
+    {
+      "item_code": "SPC6-12514",
+      "issue_count": 1,
+      "issues": [
+        {
+          "type": "missing_name_en"
+        }
+      ]
+    },
+    {
+      "item_code": "SPC8-",
+      "issue_count": 1,
+      "issues": [
+        {
+          "type": "missing_name_en"
+        }
+      ]
+    },
+    {
+      "item_code": "VK00660-",
+      "issue_count": 1,
+      "issues": [
+        {
+          "type": "missing_name_en"
+        }
+      ]
+    },
+    {
+      "item_code": "VK00690-",
+      "issue_count": 1,
+      "issues": [
+        {
+          "type": "missing_name_en"
+        }
+      ]
+    },
+    {
+      "item_code": "VK00695-",
+      "issue_count": 1,
+      "issues": [
+        {
+          "type": "missing_name_en"
+        }
+      ]
+    },
+    {
+      "item_code": "VK00698-",
+      "issue_count": 1,
+      "issues": [
+        {
+          "type": "missing_name_en"
+        }
+      ]
+    },
+    {
+      "item_code": "VK00715-",
+      "issue_count": 1,
+      "issues": [
+        {
+          "type": "missing_name_en"
+        }
+      ]
+    },
+    {
+      "item_code": "FT003",
+      "issue_count": 1,
+      "issues": [
+        {
+          "type": "barcode_conflict",
+          "barcode": "5060108450126",
+          "item_codes": [
+            "FT003",
+            "FT004"
+          ]
+        }
+      ]
+    },
+    {
+      "item_code": "FT004",
+      "issue_count": 1,
+      "issues": [
+        {
+          "type": "barcode_conflict",
+          "barcode": "5060108450126",
+          "item_codes": [
+            "FT003",
+            "FT004"
+          ]
+        }
+      ]
+    },
+    {
+      "item_code": "MN026",
+      "issue_count": 1,
+      "issues": [
+        {
+          "type": "barcode_conflict",
+          "barcode": "3052910056254",
+          "item_codes": [
+            "MN026",
+            "MN026/1"
+          ]
+        }
+      ]
+    },
+    {
+      "item_code": "MN026/1",
+      "issue_count": 1,
+      "issues": [
+        {
+          "type": "barcode_conflict",
+          "barcode": "3052910056254",
+          "item_codes": [
+            "MN026",
+            "MN026/1"
+          ]
+        }
+      ]
+    },
+    {
+      "item_code": "MN261",
+      "issue_count": 1,
+      "issues": [
+        {
+          "type": "barcode_conflict",
+          "barcode": "3052910710040",
+          "item_codes": [
+            "MN261",
+            "MN261/1"
+          ]
+        }
+      ]
+    },
+    {
+      "item_code": "MN261/1",
+      "issue_count": 1,
+      "issues": [
+        {
+          "type": "barcode_conflict",
+          "barcode": "3052910710040",
+          "item_codes": [
+            "MN261",
+            "MN261/1"
+          ]
+        }
+      ]
+    },
+    {
+      "item_code": "OLP017",
+      "issue_count": 1,
+      "issues": [
+        {
+          "type": "barcode_conflict",
+          "barcode": "5202178001994",
+          "item_codes": [
+            "OLP017",
+            "OLP018"
+          ]
+        }
+      ]
+    },
+    {
+      "item_code": "OLP018",
+      "issue_count": 1,
+      "issues": [
+        {
+          "type": "barcode_conflict",
+          "barcode": "5202178001994",
+          "item_codes": [
+            "OLP017",
+            "OLP018"
+          ]
+        }
+      ]
+    },
+    {
+      "item_code": "LT006",
+      "issue_count": 1,
+      "issues": [
+        {
+          "type": "barcode_conflict",
+          "barcode": "3236240070702",
+          "item_codes": [
+            "LT006",
+            "LT027"
+          ]
+        }
+      ]
+    },
+    {
+      "item_code": "LT027",
+      "issue_count": 1,
+      "issues": [
+        {
+          "type": "barcode_conflict",
+          "barcode": "3236240070702",
+          "item_codes": [
+            "LT006",
+            "LT027"
+          ]
+        }
+      ]
+    },
+    {
+      "item_code": "LT015",
+      "issue_count": 1,
+      "issues": [
+        {
+          "type": "barcode_conflict",
+          "barcode": "3412290023442",
+          "item_codes": [
+            "LT015",
+            "LT0150"
+          ]
+        }
+      ]
+    },
+    {
+      "item_code": "LT0150",
+      "issue_count": 1,
+      "issues": [
+        {
+          "type": "barcode_conflict",
+          "barcode": "3412290023442",
+          "item_codes": [
+            "LT015",
+            "LT0150"
+          ]
+        }
+      ]
+    },
+    {
+      "item_code": "LT122",
+      "issue_count": 1,
+      "issues": [
+        {
+          "type": "barcode_conflict",
+          "barcode": "3412290010961",
+          "item_codes": [
+            "LT122",
+            "LT122/1"
+          ]
+        }
+      ]
+    },
+    {
+      "item_code": "LT122/1",
+      "issue_count": 1,
+      "issues": [
+        {
+          "type": "barcode_conflict",
+          "barcode": "3412290010961",
+          "item_codes": [
+            "LT122",
+            "LT122/1"
+          ]
+        }
+      ]
+    },
+    {
+      "item_code": "LT123",
+      "issue_count": 1,
+      "issues": [
+        {
+          "type": "barcode_conflict",
+          "barcode": "3412290010978",
+          "item_codes": [
+            "LT123",
+            "LT123/1"
+          ]
+        }
+      ]
+    },
+    {
+      "item_code": "LT123/1",
+      "issue_count": 1,
+      "issues": [
+        {
+          "type": "barcode_conflict",
+          "barcode": "3412290010978",
+          "item_codes": [
+            "LT123",
+            "LT123/1"
+          ]
+        }
+      ]
+    },
+    {
+      "item_code": "LT124",
+      "issue_count": 1,
+      "issues": [
+        {
+          "type": "barcode_conflict",
+          "barcode": "3412290010992",
+          "item_codes": [
+            "LT124",
+            "LT124/1"
+          ]
+        }
+      ]
+    },
+    {
+      "item_code": "LT124/1",
+      "issue_count": 1,
+      "issues": [
+        {
+          "type": "barcode_conflict",
+          "barcode": "3412290010992",
+          "item_codes": [
+            "LT124",
+            "LT124/1"
+          ]
+        }
+      ]
+    },
+    {
+      "item_code": "LT125",
+      "issue_count": 1,
+      "issues": [
+        {
+          "type": "barcode_conflict",
+          "barcode": "3412290010985",
+          "item_codes": [
+            "LT125",
+            "LT125/1"
+          ]
+        }
+      ]
+    },
+    {
+      "item_code": "LT125/1",
+      "issue_count": 1,
+      "issues": [
+        {
+          "type": "barcode_conflict",
+          "barcode": "3412290010985",
+          "item_codes": [
+            "LT125",
+            "LT125/1"
+          ]
+        }
+      ]
+    },
+    {
+      "item_code": "VK00141",
+      "issue_count": 1,
+      "issues": [
+        {
+          "type": "barcode_conflict",
+          "barcode": "8718053511986",
+          "item_codes": [
+            "VK00141",
+            "VK00141-XXX"
+          ]
+        }
+      ]
+    },
+    {
+      "item_code": "VK00141-XXX",
+      "issue_count": 1,
+      "issues": [
+        {
+          "type": "barcode_conflict",
+          "barcode": "8718053511986",
+          "item_codes": [
+            "VK00141",
+            "VK00141-XXX"
+          ]
+        }
+      ]
+    },
+    {
+      "item_code": "AL1148/",
+      "issue_count": 1,
+      "issues": [
+        {
+          "type": "barcode_conflict",
+          "barcode": "8006165390262",
+          "item_codes": [
+            "AL1148/",
+            "AL1148/1"
+          ]
+        }
+      ]
+    },
+    {
+      "item_code": "AL1148/1",
+      "issue_count": 1,
+      "issues": [
+        {
+          "type": "barcode_conflict",
+          "barcode": "8006165390262",
+          "item_codes": [
+            "AL1148/",
+            "AL1148/1"
+          ]
+        }
+      ]
+    },
+    {
+      "item_code": "STM036",
+      "issue_count": 1,
+      "issues": [
+        {
+          "type": "barcode_conflict",
+          "barcode": "3178530407921",
+          "item_codes": [
+            "STM036",
+            "STM036/1"
+          ]
+        }
+      ]
+    },
+    {
+      "item_code": "STM036/1",
+      "issue_count": 1,
+      "issues": [
+        {
+          "type": "barcode_conflict",
+          "barcode": "3178530407921",
+          "item_codes": [
+            "STM036",
+            "STM036/1"
+          ]
+        }
+      ]
+    },
+    {
+      "item_code": "STM025",
+      "issue_count": 1,
+      "issues": [
+        {
+          "type": "barcode_conflict",
+          "barcode": "3178530402353",
+          "item_codes": [
+            "STM025",
+            "STM025/1"
+          ]
+        }
+      ]
+    },
+    {
+      "item_code": "STM025/1",
+      "issue_count": 1,
+      "issues": [
+        {
+          "type": "barcode_conflict",
+          "barcode": "3178530402353",
+          "item_codes": [
+            "STM025",
+            "STM025/1"
+          ]
+        }
+      ]
+    },
+    {
+      "item_code": "STM031",
+      "issue_count": 1,
+      "issues": [
+        {
+          "type": "barcode_conflict",
+          "barcode": "3178530407938",
+          "item_codes": [
+            "STM031",
+            "STM031/1"
+          ]
+        }
+      ]
+    },
+    {
+      "item_code": "STM031/1",
+      "issue_count": 1,
+      "issues": [
+        {
+          "type": "barcode_conflict",
+          "barcode": "3178530407938",
+          "item_codes": [
+            "STM031",
+            "STM031/1"
+          ]
+        }
+      ]
+    },
+    {
+      "item_code": "STM032",
+      "issue_count": 1,
+      "issues": [
+        {
+          "type": "barcode_conflict",
+          "barcode": "3178530420005",
+          "item_codes": [
+            "STM032",
+            "STM032/1"
+          ]
+        }
+      ]
+    },
+    {
+      "item_code": "STM032/1",
+      "issue_count": 1,
+      "issues": [
+        {
+          "type": "barcode_conflict",
+          "barcode": "3178530420005",
+          "item_codes": [
+            "STM032",
+            "STM032/1"
+          ]
+        }
+      ]
+    },
+    {
+      "item_code": "STM033",
+      "issue_count": 1,
+      "issues": [
+        {
+          "type": "barcode_conflict",
+          "barcode": "3178530420678",
+          "item_codes": [
+            "STM033",
+            "STM033/1"
+          ]
+        }
+      ]
+    },
+    {
+      "item_code": "STM033/1",
+      "issue_count": 1,
+      "issues": [
+        {
+          "type": "barcode_conflict",
+          "barcode": "3178530420678",
+          "item_codes": [
+            "STM033",
+            "STM033/1"
+          ]
+        }
+      ]
+    },
+    {
+      "item_code": "IB012",
+      "issue_count": 1,
+      "issues": [
+        {
+          "type": "barcode_conflict",
+          "barcode": "8716468033529",
+          "item_codes": [
+            "IB012",
+            "IB012/C"
+          ]
+        }
+      ]
+    },
+    {
+      "item_code": "IB012/C",
+      "issue_count": 1,
+      "issues": [
+        {
+          "type": "barcode_conflict",
+          "barcode": "8716468033529",
+          "item_codes": [
+            "IB012",
+            "IB012/C"
+          ]
+        }
+      ]
+    },
+    {
+      "item_code": "IB013",
+      "issue_count": 1,
+      "issues": [
+        {
+          "type": "barcode_conflict",
+          "barcode": "8716468033628",
+          "item_codes": [
+            "IB013",
+            "IB013/C"
+          ]
+        }
+      ]
+    },
+    {
+      "item_code": "IB013/C",
+      "issue_count": 1,
+      "issues": [
+        {
+          "type": "barcode_conflict",
+          "barcode": "8716468033628",
+          "item_codes": [
+            "IB013",
+            "IB013/C"
+          ]
+        }
+      ]
+    },
+    {
+      "item_code": "IB014",
+      "issue_count": 1,
+      "issues": [
+        {
+          "type": "barcode_conflict",
+          "barcode": "8716468033727",
+          "item_codes": [
+            "IB014",
+            "IB014/C"
+          ]
+        }
+      ]
+    },
+    {
+      "item_code": "IB014/C",
+      "issue_count": 1,
+      "issues": [
+        {
+          "type": "barcode_conflict",
+          "barcode": "8716468033727",
+          "item_codes": [
+            "IB014",
+            "IB014/C"
+          ]
+        }
+      ]
+    },
+    {
+      "item_code": "IB051/",
+      "issue_count": 1,
+      "issues": [
+        {
+          "type": "barcode_conflict",
+          "barcode": "8716468033611",
+          "item_codes": [
+            "IB051/",
+            "IB051/C"
+          ]
+        }
+      ]
+    },
+    {
+      "item_code": "IB051/C",
+      "issue_count": 1,
+      "issues": [
+        {
+          "type": "barcode_conflict",
+          "barcode": "8716468033611",
+          "item_codes": [
+            "IB051/",
+            "IB051/C"
+          ]
+        }
+      ]
+    },
+    {
+      "item_code": "AL8376/",
+      "issue_count": 1,
+      "issues": [
+        {
+          "type": "barcode_conflict",
+          "barcode": "8006165378376",
+          "item_codes": [
+            "AL8376/",
+            "AL8376/1"
+          ]
+        }
+      ]
+    },
+    {
+      "item_code": "AL8376/1",
+      "issue_count": 1,
+      "issues": [
+        {
+          "type": "barcode_conflict",
+          "barcode": "8006165378376",
+          "item_codes": [
+            "AL8376/",
+            "AL8376/1"
+          ]
+        }
+      ]
+    },
+    {
+      "item_code": "LQ59346",
+      "issue_count": 1,
+      "issues": [
+        {
+          "type": "barcode_conflict",
+          "barcode": "8420878593466",
+          "item_codes": [
+            "LQ59346",
+            "LQ59346/2"
+          ]
+        }
+      ]
+    },
+    {
+      "item_code": "LQ59346/2",
+      "issue_count": 1,
+      "issues": [
+        {
+          "type": "barcode_conflict",
+          "barcode": "8420878593466",
+          "item_codes": [
+            "LQ59346",
+            "LQ59346/2"
+          ]
+        }
+      ]
+    },
+    {
+      "item_code": "LQ59349",
+      "issue_count": 1,
+      "issues": [
+        {
+          "type": "barcode_conflict",
+          "barcode": "8420878593497",
+          "item_codes": [
+            "LQ59349",
+            "LQ59349/2"
+          ]
+        }
+      ]
+    },
+    {
+      "item_code": "LQ59349/2",
+      "issue_count": 1,
+      "issues": [
+        {
+          "type": "barcode_conflict",
+          "barcode": "8420878593497",
+          "item_codes": [
+            "LQ59349",
+            "LQ59349/2"
+          ]
+        }
+      ]
+    },
+    {
+      "item_code": "ISM026",
+      "issue_count": 1,
+      "issues": [
+        {
+          "type": "barcode_conflict",
+          "barcode": "3254550006013",
+          "item_codes": [
+            "ISM026",
+            "ISM0260"
+          ]
+        }
+      ]
+    },
+    {
+      "item_code": "ISM0260",
+      "issue_count": 1,
+      "issues": [
+        {
+          "type": "barcode_conflict",
+          "barcode": "3254550006013",
+          "item_codes": [
+            "ISM026",
+            "ISM0260"
+          ]
+        }
+      ]
+    },
+    {
+      "item_code": "OLP051",
+      "issue_count": 1,
+      "issues": [
+        {
+          "type": "barcode_conflict",
+          "barcode": "2500000597954",
+          "item_codes": [
+            "OLP051",
+            "OLP052"
+          ]
+        }
+      ]
+    },
+    {
+      "item_code": "OLP052",
+      "issue_count": 1,
+      "issues": [
+        {
+          "type": "barcode_conflict",
+          "barcode": "2500000597954",
+          "item_codes": [
+            "OLP051",
+            "OLP052"
+          ]
+        }
+      ]
+    },
+    {
+      "item_code": "LT095/",
+      "issue_count": 1,
+      "issues": [
+        {
+          "type": "barcode_conflict",
+          "barcode": "3412290019049",
+          "item_codes": [
+            "LT095/",
+            "LT095/1"
+          ]
+        }
+      ]
+    },
+    {
+      "item_code": "LT095/1",
+      "issue_count": 1,
+      "issues": [
+        {
+          "type": "barcode_conflict",
+          "barcode": "3412290019049",
+          "item_codes": [
+            "LT095/",
+            "LT095/1"
+          ]
+        }
+      ]
+    },
+    {
+      "item_code": "CI100",
+      "issue_count": 1,
+      "issues": [
+        {
+          "type": "barcode_conflict",
+          "barcode": "736072091409",
+          "item_codes": [
+            "CI100",
+            "CI102"
+          ]
+        }
+      ]
+    },
+    {
+      "item_code": "CI102",
+      "issue_count": 1,
+      "issues": [
+        {
+          "type": "barcode_conflict",
+          "barcode": "736072091409",
+          "item_codes": [
+            "CI100",
+            "CI102"
+          ]
+        }
+      ]
+    }
+  ]
+}
