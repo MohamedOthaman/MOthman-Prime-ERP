@@ -443,6 +443,7 @@ export async function fetchInvoiceDetail(invoiceId: string) {
 export async function fetchInvoiceList(filters?: {
   status?: SalesInvoiceStatus | "all";
   limit?: number;
+  salesmanId?: string | null;
 }) {
   let q = supabase
     .from("sales_invoices" as any)
@@ -452,6 +453,9 @@ export async function fetchInvoiceList(filters?: {
 
   if (filters?.status && filters.status !== "all") {
     q = q.eq("status", filters.status);
+  }
+  if (filters?.salesmanId) {
+    q = q.eq("salesman_id", filters.salesmanId);
   }
 
   const { data, error } = await q;

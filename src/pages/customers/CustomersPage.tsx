@@ -3,6 +3,8 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useRole } from "@/features/reports/hooks/useRole";
+import { usePermissions } from "@/hooks/usePermissions";
+import { useSalesmanScope } from "@/hooks/useSalesmanScope";
 import { Loader2, Users, Plus, Search, ChevronRight } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
@@ -30,6 +32,10 @@ interface Customer {
 export default function CustomersPage() {
     const navigate = useNavigate();
     const { canManageInvoices } = useRole();
+    const { role } = usePermissions();
+    const { salesmanId } = useSalesmanScope();
+
+    const isSalesmanRole = role === "salesman" || role === "sales";
 
     const [customers, setCustomers] = useState<Customer[]>([]);
     const [loading, setLoading] = useState(true);
@@ -39,7 +45,7 @@ export default function CustomersPage() {
         async function load() {
             setLoading(true);
 
-            const { data, error } = await supabase
+            let q = supabase
                 .from("customers" as any)
                 .select(`
           id,
@@ -61,6 +67,12 @@ export default function CustomersPage() {
         `)
                 .order("name");
 
+            if (isSalesmanRole && salesmanId) {
+                q = q.eq("salesman_id", salesmanId);
+            }
+
+            const { data, error } = await q;
+
             if (!error && data) {
                 setCustomers(data as Customer[]);
             }
@@ -69,7 +81,7 @@ export default function CustomersPage() {
         }
 
         load();
-    }, []);
+    }, [isSalesmanRole, salesmanId]);
 
     const filtered = customers.filter((c) =>
         c.name.toLowerCase().includes(search.toLowerCase()) ||

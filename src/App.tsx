@@ -51,6 +51,12 @@ import AdminSettingsPage from "./pages/admin/AdminSettingsPage";
 
 import CustomersBySalesman from "./pages/reports/CustomersBySalesman";
 import CustomersWithoutSalesman from "./pages/reports/CustomersWithoutSalesman";
+import StockReport from "./pages/reports/StockReport";
+import SalesPerformanceReport from "./pages/reports/SalesPerformanceReport";
+import ProductPerformanceReport from "./pages/reports/ProductPerformanceReport";
+import CustomerAnalysisReport from "./pages/reports/CustomerAnalysisReport";
+import ExpiryAlertsReport from "./pages/reports/ExpiryAlertsReport";
+import AuditLogPage from "./pages/audit/AuditLogPage";
 
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
@@ -207,6 +213,60 @@ function ProtectedRoutes() {
             element={
               <RoleGuard allowedRoles={["admin", "ceo", "gm", "sales_manager"]}>
                 <CustomersWithoutSalesman />
+              </RoleGuard>
+            }
+          />
+
+          <Route
+            path="/reports/stock"
+            element={
+              <RoleGuard requiredPermission="canViewReports">
+                <StockReport />
+              </RoleGuard>
+            }
+          />
+
+          <Route
+            path="/reports/sales"
+            element={
+              <RoleGuard allowedRoles={["owner", "admin", "ops_manager", "ceo", "gm", "sales_manager", "accountant", "accounting"]}>
+                <SalesPerformanceReport />
+              </RoleGuard>
+            }
+          />
+
+          <Route
+            path="/reports/products"
+            element={
+              <RoleGuard requiredPermission="canViewReports">
+                <ProductPerformanceReport />
+              </RoleGuard>
+            }
+          />
+
+          <Route
+            path="/reports/customers"
+            element={
+              <RoleGuard allowedRoles={["owner", "admin", "ops_manager", "ceo", "gm", "sales_manager", "accountant", "accounting"]}>
+                <CustomerAnalysisReport />
+              </RoleGuard>
+            }
+          />
+
+          <Route
+            path="/reports/expiry"
+            element={
+              <RoleGuard requiredPermission="canManageStock">
+                <ExpiryAlertsReport />
+              </RoleGuard>
+            }
+          />
+
+          <Route
+            path="/audit"
+            element={
+              <RoleGuard allowedRoles={["owner", "admin", "ops_manager", "ceo", "gm"]}>
+                <AuditLogPage />
               </RoleGuard>
             }
           />
