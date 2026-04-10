@@ -69,7 +69,8 @@ export default function CustomerAnalysisReport() {
 
   const filtered = useMemo(() => {
     let res = rows;
-    if (filterSalesman) res = res.filter(r => r.salesmanId === filterSalesman);
+    if (filterSalesman === "__none__") res = res.filter(r => !r.salesmanId);
+    else if (filterSalesman)           res = res.filter(r => r.salesmanId === filterSalesman);
     if (search) {
       const q = search.toLowerCase();
       res = res.filter(r =>

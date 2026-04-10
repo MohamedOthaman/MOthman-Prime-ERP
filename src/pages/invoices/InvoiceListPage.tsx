@@ -57,7 +57,7 @@ type Invoice = Awaited<ReturnType<typeof fetchInvoiceList>>[number];
 export default function InvoiceListPage() {
   const navigate = useNavigate();
   const { isAdmin, isManager, canManageInvoices, role } = usePermissions();
-  const { salesmanId } = useSalesmanScope();
+  const { salesmanId, loading: scopeLoading } = useSalesmanScope();
 
   const [tab, setTab]           = useState<SalesInvoiceStatus | "all">("all");
   const [invoices, setInvoices] = useState<Invoice[]>([]);
@@ -70,6 +70,10 @@ export default function InvoiceListPage() {
   const isSalesmanRole = role === "salesman" || role === "sales";
 
   const load = useCallback(async () => {
+    // Wait for salesman scope to resolve before fetching — avoids briefly exposing
+    // the full invoice list to scoped users while the hook is still querying.
+    if (isSalesmanRole && scopeLoading) return;
+
     setLoading(true);
     try {
       const rows = await fetchInvoiceList({
@@ -82,7 +86,7 @@ export default function InvoiceListPage() {
       toast.error(e.message);
     }
     setLoading(false);
-  }, [tab, isSalesmanRole, salesmanId]);
+  }, [tab, isSalesmanRole, salesmanId, scopeLoading]);
 
   useEffect(() => { void load(); }, [load]);
 

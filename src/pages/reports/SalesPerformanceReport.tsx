@@ -42,11 +42,11 @@ export default function SalesPerformanceReport() {
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate]     = useState("");
 
-  async function load() {
+  async function load(from = fromDate, to = toDate) {
     setLoading(true);
     setError(null);
     try {
-      const data = await getSalesPerformance(fromDate || undefined, toDate || undefined);
+      const data = await getSalesPerformance(from || undefined, to || undefined);
       setRows(data);
     } catch (e: any) {
       setError(e.message ?? "Failed to load");
@@ -131,7 +131,7 @@ export default function SalesPerformanceReport() {
           </button>
           {(fromDate || toDate) && (
             <button
-              onClick={() => { setFromDate(""); setToDate(""); void load(); }}
+              onClick={() => { setFromDate(""); setToDate(""); void load("", ""); }}
               className="rounded-lg border border-border bg-muted/20 px-3 py-1.5 text-xs text-muted-foreground hover:bg-muted/40 transition"
             >
               Clear

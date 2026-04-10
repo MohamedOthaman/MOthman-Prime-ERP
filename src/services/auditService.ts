@@ -148,7 +148,9 @@ export async function getAuditLogsByFilter(
     if (filters.performedBy) {
       query = query.eq("performed_by", filters.performedBy);
     }
-    // Note: actionSearch is filtered client-side (no server ILIKE support via JS SDK without rpc)
+    if (filters.actionSearch) {
+      query = (query as any).ilike("action", `%${filters.actionSearch}%`);
+    }
 
     const { data, error, count } = await query;
 
@@ -157,14 +159,7 @@ export async function getAuditLogsByFilter(
       return { rows: [], total: 0, hasMore: false };
     }
 
-    let rows = (data ?? []) as AuditLogRow[];
-
-    // Client-side action search filter
-    if (filters.actionSearch) {
-      const needle = filters.actionSearch.toLowerCase();
-      rows = rows.filter(r => r.action.toLowerCase().includes(needle));
-    }
-
+    const rows = (data ?? []) as AuditLogRow[];
     const total   = count ?? 0;
     const hasMore = offset + rows.length < total;
 
