@@ -80,8 +80,7 @@ export default function SalesPerformanceReport() {
         Revenue_KWD:   r.totalRevenue.toFixed(3),
         Avg_Invoice:   r.avgInvoiceValue.toFixed(3),
       })),
-      "SalesPerformance"
-    );
+    } as any);
   }
 
   return (

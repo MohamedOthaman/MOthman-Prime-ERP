@@ -2,7 +2,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { getAvailableBatches } from "@/features/services/inventoryService";
 import { getProductDisplayName, type ProductDisplayLanguage } from "@/lib/productDisplay";
 
-export type SalesInvoiceStatus = "draft" | "ready" | "done" | "received" | "cancelled" | "returns";
+export type SalesInvoiceStatus = "draft" | "ready" | "done" | "received" | "cancelled" | "returns" | "posted";
 
 export interface CustomerLookup {
   id: string;

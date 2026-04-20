@@ -106,8 +106,7 @@ export default function CustomerAnalysisReport() {
         Revenue_KWD:      r.totalRevenue.toFixed(3),
         Last_Invoice:     fmtDate(r.lastInvoiceDate),
       })),
-      "CustomerAnalysis"
-    );
+    } as any);
   }
 
   return (

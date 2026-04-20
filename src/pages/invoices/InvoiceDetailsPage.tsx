@@ -590,7 +590,7 @@ export default function InvoiceDetailsPage() {
 
 // ─── Timeline ──────────────────────────────────────────────────────────────
 
-function InvoiceTimeline({ header }: { header: ReturnType<typeof fetchInvoiceDetail> extends Promise<infer T> ? T["header"] : never }) {
+function InvoiceTimeline({ header }: { header: any }) {
   const STEPS = [
     { key: "draft",    label: "Draft",    at: header.created_at,  color: "text-muted-foreground", ring: "border-border bg-muted/30" },
     { key: "ready",    label: "Ready",    at: header.ready_at,    color: "text-amber-400",        ring: "border-amber-500/60 bg-amber-500/15" },

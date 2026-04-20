@@ -162,8 +162,7 @@ export default function ExpiryAlertsReport() {
         Status:        r.status,
         GRN_No:        r.grn_no ?? "",
       })),
-      "ExpiryAlerts"
-    );
+    } as any);
   }
 
   // Items in ≤14d but NOT in ≤7d (exclusive 8–14d band)
@@ -180,7 +179,7 @@ export default function ExpiryAlertsReport() {
       icon={AlertTriangle}
       title="Expiry Alerts"
       subtitle="Batches expiring within 7, 14, and 30 days — plus expired stock"
-      accent="red"
+      accent="rose"
       headerAction={
         <button
           onClick={handleExport}

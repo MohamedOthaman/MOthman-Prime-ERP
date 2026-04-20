@@ -148,8 +148,7 @@ export default function ProductPerformanceReport() {
         Nearest_Expiry: r.nearest_expiry ?? "",
         Outbound_30d: r.outbound30d,
       })),
-      "ProductPerformance"
-    );
+    } as any);
   }
 
   return (
