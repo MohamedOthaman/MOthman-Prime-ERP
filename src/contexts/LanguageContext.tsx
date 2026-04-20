@@ -198,7 +198,7 @@ const translations = {
 interface LanguageContextType {
   lang: Lang;
   setLang: (l: Lang) => void;
-  t: (key: string) => string;
+  t: (key: keyof typeof translations.en) => string;
   dir: "ltr" | "rtl";
 }
 
@@ -210,8 +210,7 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
     return (saved === "ar" ? "ar" : "en") as Lang;
   });
 
-  const t = (key: string): string =>
-    (translations[lang] as Record<string, string>)[key] ?? key;
+  const t = (key: keyof typeof translations.en) => translations[lang][key] || key;
   const dir = lang === "ar" ? "rtl" : "ltr";
 
   const changeLang = (l: Lang) => {
