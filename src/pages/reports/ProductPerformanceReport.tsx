@@ -135,8 +135,12 @@ export default function ProductPerformanceReport() {
   ];
 
   function handleExport() {
-    exportExcel(
-      filtered.map(r => ({
+    exportExcel({
+      title: "Product Performance",
+      filename: "ProductPerformance",
+      sheetName: "Products",
+      columns: [],
+      rows: filtered.map(r => ({
         Code:         r.code ?? "",
         Item_Code:    r.item_code ?? "",
         Name:         r.name_en ?? "",

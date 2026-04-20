@@ -70,8 +70,12 @@ export default function SalesPerformanceReport() {
   ];
 
   function handleExport() {
-    exportExcel(
-      rows.map((r, i) => ({
+    exportExcel({
+      title: "Sales Performance",
+      filename: "SalesPerformance",
+      sheetName: "Sales",
+      columns: [],
+      rows: rows.map((r, i) => ({
         Rank:          i + 1,
         Name:          r.name,
         Code:          r.code ?? "",

@@ -149,8 +149,12 @@ export default function ExpiryAlertsReport() {
       return true;
     });
 
-    exportExcel(
-      unique.map(r => ({
+    exportExcel({
+      title: "Expiry Alerts",
+      filename: "ExpiryAlerts",
+      sheetName: "Expiry",
+      columns: [],
+      rows: unique.map(r => ({
         Code:          r.code ?? "",
         Name:          r.name_en ?? r.name ?? "",
         Brand:         r.brand ?? "",

@@ -94,8 +94,12 @@ export default function CustomerAnalysisReport() {
   ];
 
   function handleExport() {
-    exportExcel(
-      filtered.map(r => ({
+    exportExcel({
+      title: "Customer Analysis",
+      filename: "CustomerAnalysis",
+      sheetName: "Customers",
+      columns: [],
+      rows: filtered.map(r => ({
         Code:             r.code,
         Name:             r.name,
         Name_AR:          r.name_ar ?? "",
