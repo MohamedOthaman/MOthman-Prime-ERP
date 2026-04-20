@@ -193,7 +193,7 @@ const Index = () => {
         unit: product.stockUnit || product.totalQty[0]?.unit || "",
         batchCount: product.batchCount ?? product.batches.length,
         nearestExpiry: product.nearestExpiryDate || "",
-        status: (product.stockStatus || "out_of_stock").replaceAll("_", " "),
+        status: (product.stockStatus || "out_of_stock").replace(/_/g, " "),
       })),
     [filteredProducts, lang]
   );
@@ -423,7 +423,7 @@ const Index = () => {
                               : "border-emerald-500/25 bg-emerald-500/10 text-emerald-500"
                           }`}
                         >
-                          {row.status.replaceAll("_", " ")}
+                          {row.status.replace(/_/g, " ")}
                         </span>
                       </td>
                       <td className="px-3 py-2 text-xs text-muted-foreground">

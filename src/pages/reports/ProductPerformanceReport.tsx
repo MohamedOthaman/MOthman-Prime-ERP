@@ -135,8 +135,12 @@ export default function ProductPerformanceReport() {
   ];
 
   function handleExport() {
-    exportExcel(
-      filtered.map(r => ({
+    exportExcel({
+      title: "Product Performance",
+      filename: "ProductPerformance",
+      sheetName: "Products",
+      columns: [],
+      rows: filtered.map(r => ({
         Code:         r.code ?? "",
         Item_Code:    r.item_code ?? "",
         Name:         r.name_en ?? "",
@@ -148,8 +152,7 @@ export default function ProductPerformanceReport() {
         Nearest_Expiry: r.nearest_expiry ?? "",
         Outbound_30d: r.outbound30d,
       })),
-      "ProductPerformance"
-    );
+    } as any);
   }
 
   return (
@@ -215,7 +218,7 @@ export default function ProductPerformanceReport() {
         {error ? (
           <div className="rounded-lg border border-red-500/20 bg-red-500/8 px-4 py-3 text-xs text-red-400">{error}</div>
         ) : loading ? (
-          <LoadingRows rows={8} />
+          <LoadingRows count={8} />
         ) : filtered.length === 0 ? (
           <EmptyState icon={Package} message="No products match the filter" />
         ) : (

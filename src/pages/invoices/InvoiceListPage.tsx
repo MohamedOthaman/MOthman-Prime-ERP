@@ -36,6 +36,7 @@ const STATUS_CONFIG: Record<
   received:  { label: "Received",  color: "text-emerald-400",      bg: "bg-emerald-500/10",     border: "border-emerald-500/20",   icon: CheckCircle2 },
   cancelled: { label: "Cancelled", color: "text-red-400",          bg: "bg-red-500/10",         border: "border-red-500/20",       icon: XCircle     },
   returns:   { label: "Returns",   color: "text-violet-400",       bg: "bg-violet-500/10",      border: "border-violet-500/20",    icon: RotateCcw   },
+  posted:    { label: "Posted",    color: "text-emerald-400",      bg: "bg-emerald-500/10",     border: "border-emerald-500/20",   icon: CheckCircle2 },
 };
 
 const TABS: (SalesInvoiceStatus | "all")[] = ["all", "ready", "done", "received", "draft", "cancelled", "returns"];

@@ -308,7 +308,7 @@ export default function AuditLogPage() {
         {error ? (
           <div className="rounded-lg border border-red-500/20 bg-red-500/8 px-4 py-3 text-xs text-red-400">{error}</div>
         ) : loading ? (
-          <LoadingRows rows={10} />
+          <LoadingRows count={10} />
         ) : rows.length === 0 ? (
           <EmptyState icon={ShieldCheck} message="No audit log entries match the filter" />
         ) : (

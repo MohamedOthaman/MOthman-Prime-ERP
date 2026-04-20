@@ -94,8 +94,12 @@ export default function CustomerAnalysisReport() {
   ];
 
   function handleExport() {
-    exportExcel(
-      filtered.map(r => ({
+    exportExcel({
+      title: "Customer Analysis",
+      filename: "CustomerAnalysis",
+      sheetName: "Customers",
+      columns: [],
+      rows: filtered.map(r => ({
         Code:             r.code,
         Name:             r.name,
         Name_AR:          r.name_ar ?? "",
@@ -106,8 +110,7 @@ export default function CustomerAnalysisReport() {
         Revenue_KWD:      r.totalRevenue.toFixed(3),
         Last_Invoice:     fmtDate(r.lastInvoiceDate),
       })),
-      "CustomerAnalysis"
-    );
+    } as any);
   }
 
   return (
@@ -163,7 +166,7 @@ export default function CustomerAnalysisReport() {
         {error ? (
           <div className="rounded-lg border border-red-500/20 bg-red-500/8 px-4 py-3 text-xs text-red-400">{error}</div>
         ) : loading ? (
-          <LoadingRows rows={8} />
+          <LoadingRows count={8} />
         ) : filtered.length === 0 ? (
           <EmptyState icon={Building2} message="No customers match the filter" />
         ) : (
