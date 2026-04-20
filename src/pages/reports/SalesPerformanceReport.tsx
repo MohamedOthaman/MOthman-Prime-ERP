@@ -145,7 +145,7 @@ export default function SalesPerformanceReport() {
         {error ? (
           <div className="rounded-lg border border-red-500/20 bg-red-500/8 px-4 py-3 text-xs text-red-400">{error}</div>
         ) : loading ? (
-          <LoadingRows rows={6} />
+          <LoadingRows count={6} />
         ) : rows.length === 0 ? (
           <EmptyState icon={UserSquare2} message="No salesmen found" sub="Create salesmen in the Salesmen module" />
         ) : (

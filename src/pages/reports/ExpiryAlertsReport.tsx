@@ -202,7 +202,7 @@ export default function ExpiryAlertsReport() {
         icon={ShieldAlert}
         iconClass="text-red-400"
       >
-        {loading ? <LoadingRows rows={4} /> : expired.length === 0 ? (
+        {loading ? <LoadingRows count={4} /> : expired.length === 0 ? (
           <EmptyState icon={Package} message="No expired batches in stock" />
         ) : (
           <BucketTable
@@ -219,7 +219,7 @@ export default function ExpiryAlertsReport() {
         icon={AlertTriangle}
         iconClass="text-red-400"
       >
-        {loading ? <LoadingRows rows={4} /> : (b7?.items ?? []).length === 0 ? (
+        {loading ? <LoadingRows count={4} /> : (b7?.items ?? []).length === 0 ? (
           <EmptyState icon={Package} message="No batches expiring within 7 days" />
         ) : (
           <BucketTable
@@ -236,7 +236,7 @@ export default function ExpiryAlertsReport() {
         icon={AlertTriangle}
         iconClass="text-orange-400"
       >
-        {loading ? <LoadingRows rows={4} /> : items7to14.length === 0 ? (
+        {loading ? <LoadingRows count={4} /> : items7to14.length === 0 ? (
           <EmptyState icon={Package} message="No batches expiring in this window" />
         ) : (
           <BucketTable
@@ -253,7 +253,7 @@ export default function ExpiryAlertsReport() {
         icon={AlertTriangle}
         iconClass="text-amber-400"
       >
-        {loading ? <LoadingRows rows={4} /> : items15to30.length === 0 ? (
+        {loading ? <LoadingRows count={4} /> : items15to30.length === 0 ? (
           <EmptyState icon={Package} message="No batches expiring in this window" />
         ) : (
           <BucketTable

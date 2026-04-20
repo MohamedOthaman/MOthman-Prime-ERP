@@ -180,7 +180,7 @@ export default function StockReport() {
         {error ? (
           <div className="rounded-lg border border-red-500/20 bg-red-500/8 px-4 py-3 text-xs text-red-400">{error}</div>
         ) : loading ? (
-          <LoadingRows rows={8} />
+          <LoadingRows count={8} />
         ) : filtered.length === 0 ? (
           <EmptyState icon={Package} message="No batches match the filter" />
         ) : (
