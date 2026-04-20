@@ -107,25 +107,21 @@ export default function StockReport() {
   ];
 
   function handleExport() {
-    const rows = filtered.map(r => ({
-      Code:        r.code ?? "",
-      Name:        r.name_en ?? r.name ?? "",
-      Brand:       r.brand ?? "",
-      Storage:     r.storage_type ?? "",
-      Batch_No:    r.batch_no ?? "",
-      Expiry:      fmtDate(r.expiry_date),
-      Days_Left:   r.days_to_expiry ?? "",
-      Available:   r.available_quantity,
-      Status:      r.status,
-      GRN_No:      r.grn_no ?? "",
-    }));
-    exportExcel({
-      title: "Stock Report",
-      filename: "StockReport",
-      sheetName: "Stock",
-      columns: Object.keys(rows[0] ?? {}).map(k => ({ header: k, key: k })),
-      rows,
-    });
+    exportExcel(
+      filtered.map(r => ({
+        Code:        r.code ?? "",
+        Name:        r.name_en ?? r.name ?? "",
+        Brand:       r.brand ?? "",
+        Storage:     r.storage_type ?? "",
+        Batch_No:    r.batch_no ?? "",
+        Expiry:      fmtDate(r.expiry_date),
+        Days_Left:   r.days_to_expiry ?? "",
+        Available:   r.available_quantity,
+        Status:      r.status,
+        GRN_No:      r.grn_no ?? "",
+      })),
+      "StockReport"
+    );
   }
 
   return (
@@ -184,7 +180,7 @@ export default function StockReport() {
         {error ? (
           <div className="rounded-lg border border-red-500/20 bg-red-500/8 px-4 py-3 text-xs text-red-400">{error}</div>
         ) : loading ? (
-          <LoadingRows count={8} />
+          <LoadingRows rows={8} />
         ) : filtered.length === 0 ? (
           <EmptyState icon={Package} message="No batches match the filter" />
         ) : (

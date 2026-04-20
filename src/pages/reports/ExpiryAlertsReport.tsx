@@ -149,12 +149,8 @@ export default function ExpiryAlertsReport() {
       return true;
     });
 
-    exportExcel({
-      title: "Expiry Alerts",
-      filename: "ExpiryAlerts",
-      sheetName: "Expiry",
-      columns: [],
-      rows: unique.map(r => ({
+    exportExcel(
+      unique.map(r => ({
         Code:          r.code ?? "",
         Name:          r.name_en ?? r.name ?? "",
         Brand:         r.brand ?? "",
@@ -166,7 +162,8 @@ export default function ExpiryAlertsReport() {
         Status:        r.status,
         GRN_No:        r.grn_no ?? "",
       })),
-    } as any);
+      "ExpiryAlerts"
+    );
   }
 
   // Items in ≤14d but NOT in ≤7d (exclusive 8–14d band)
@@ -183,7 +180,7 @@ export default function ExpiryAlertsReport() {
       icon={AlertTriangle}
       title="Expiry Alerts"
       subtitle="Batches expiring within 7, 14, and 30 days — plus expired stock"
-      accent="rose"
+      accent="red"
       headerAction={
         <button
           onClick={handleExport}
@@ -205,7 +202,7 @@ export default function ExpiryAlertsReport() {
         icon={ShieldAlert}
         iconClass="text-red-400"
       >
-        {loading ? <LoadingRows count={4} /> : expired.length === 0 ? (
+        {loading ? <LoadingRows rows={4} /> : expired.length === 0 ? (
           <EmptyState icon={Package} message="No expired batches in stock" />
         ) : (
           <BucketTable
@@ -222,7 +219,7 @@ export default function ExpiryAlertsReport() {
         icon={AlertTriangle}
         iconClass="text-red-400"
       >
-        {loading ? <LoadingRows count={4} /> : (b7?.items ?? []).length === 0 ? (
+        {loading ? <LoadingRows rows={4} /> : (b7?.items ?? []).length === 0 ? (
           <EmptyState icon={Package} message="No batches expiring within 7 days" />
         ) : (
           <BucketTable
@@ -239,7 +236,7 @@ export default function ExpiryAlertsReport() {
         icon={AlertTriangle}
         iconClass="text-orange-400"
       >
-        {loading ? <LoadingRows count={4} /> : items7to14.length === 0 ? (
+        {loading ? <LoadingRows rows={4} /> : items7to14.length === 0 ? (
           <EmptyState icon={Package} message="No batches expiring in this window" />
         ) : (
           <BucketTable
@@ -256,7 +253,7 @@ export default function ExpiryAlertsReport() {
         icon={AlertTriangle}
         iconClass="text-amber-400"
       >
-        {loading ? <LoadingRows count={4} /> : items15to30.length === 0 ? (
+        {loading ? <LoadingRows rows={4} /> : items15to30.length === 0 ? (
           <EmptyState icon={Package} message="No batches expiring in this window" />
         ) : (
           <BucketTable

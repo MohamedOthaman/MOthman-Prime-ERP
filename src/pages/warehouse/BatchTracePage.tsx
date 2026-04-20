@@ -65,7 +65,7 @@ const MOVEMENT_CONFIG: Record<string, {
   color: string;
   bg: string;
   border: string;
-  sign: "+" | "-" | "±";
+  sign: "+" | "-";
 }> = {
   INBOUND:    { label: "Inbound",    icon: ArrowUpRight,   color: "text-emerald-400", bg: "bg-emerald-500/10", border: "border-emerald-500/20", sign: "+" },
   OUTBOUND:   { label: "Outbound",   icon: ArrowDownLeft,  color: "text-blue-400",    bg: "bg-blue-500/10",    border: "border-blue-500/20",    sign: "-" },

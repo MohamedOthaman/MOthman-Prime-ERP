@@ -70,12 +70,8 @@ export default function SalesPerformanceReport() {
   ];
 
   function handleExport() {
-    exportExcel({
-      title: "Sales Performance",
-      filename: "SalesPerformance",
-      sheetName: "Sales",
-      columns: [],
-      rows: rows.map((r, i) => ({
+    exportExcel(
+      rows.map((r, i) => ({
         Rank:          i + 1,
         Name:          r.name,
         Code:          r.code ?? "",
@@ -84,7 +80,8 @@ export default function SalesPerformanceReport() {
         Revenue_KWD:   r.totalRevenue.toFixed(3),
         Avg_Invoice:   r.avgInvoiceValue.toFixed(3),
       })),
-    } as any);
+      "SalesPerformance"
+    );
   }
 
   return (
@@ -148,7 +145,7 @@ export default function SalesPerformanceReport() {
         {error ? (
           <div className="rounded-lg border border-red-500/20 bg-red-500/8 px-4 py-3 text-xs text-red-400">{error}</div>
         ) : loading ? (
-          <LoadingRows count={6} />
+          <LoadingRows rows={6} />
         ) : rows.length === 0 ? (
           <EmptyState icon={UserSquare2} message="No salesmen found" sub="Create salesmen in the Salesmen module" />
         ) : (
