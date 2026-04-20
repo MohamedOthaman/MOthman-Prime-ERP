@@ -1,13 +1,11 @@
 /**
- * Loosens the strictly-typed Supabase client so app code can query tables
- * and columns that exist in the database but are not yet reflected in the
- * auto-generated `src/integrations/supabase/types.ts` (regenerated from the
- * live schema by Lovable Cloud).
- *
- * Build-only escape hatch — runtime behavior is unchanged. Delete once
- * the generated types catch up to restore full type safety.
+ * Build-only escape hatch — loosens Supabase's strict generated types so app
+ * code can query tables/columns not yet present in `src/integrations/supabase/types.ts`
+ * (auto-regenerated from the live schema). Runtime behavior is unchanged.
+ * Delete this file once the generated types catch up.
  */
 import "@supabase/supabase-js";
+import "@supabase/postgrest-js";
 
 declare module "@supabase/supabase-js" {
   interface SupabaseClient {
@@ -15,5 +13,21 @@ declare module "@supabase/supabase-js" {
     from(relation: string): any;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     rpc(fn: string, args?: Record<string, unknown>): any;
+  }
+}
+
+declare module "@supabase/postgrest-js" {
+  // Make every query builder behave as `any` for chaining + awaiting.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  interface PostgrestQueryBuilder<Schema, Row, Relation = unknown, RelationName = unknown> extends Promise<any> {
+    [key: string]: any;
+  }
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  interface PostgrestFilterBuilder<Schema, Row, Result, RelationName = unknown, Relationships = unknown> extends Promise<any> {
+    [key: string]: any;
+  }
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  interface PostgrestTransformBuilder<Schema, Row, Result, RelationName = unknown, Relationships = unknown> extends Promise<any> {
+    [key: string]: any;
   }
 }
