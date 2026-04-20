@@ -256,6 +256,167 @@
 }
 
 @layer base {
+  /* ────────────────────────────────────────
+     Glass Light Theme
+     ──────────────────────────────────────── */
+  .glass-light {
+    --background: 215 90% 95%;
+    --foreground: 220 30% 15%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 220 30% 15%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 220 30% 15%;
+
+    --primary: 217 91% 60%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 215 50% 90%;
+    --secondary-foreground: 220 30% 20%;
+
+    --muted: 215 40% 92%;
+    --muted-foreground: 220 15% 40%;
+
+    --accent: 217 91% 88%;
+    --accent-foreground: 217 91% 30%;
+
+    --destructive: 0 70% 50%;
+    --destructive-foreground: 0 0% 98%;
+
+    --border: 0 0% 100%;
+    --input: 215 40% 88%;
+    --ring: 217 91% 60%;
+
+    --storage-frozen: 210 90% 50%;
+    --storage-frozen-bg: 210 90% 90%;
+    --storage-chilled: 170 70% 40%;
+    --storage-chilled-bg: 170 70% 90%;
+    --storage-dry: 35 85% 50%;
+    --storage-dry-bg: 35 85% 90%;
+
+    --brand-header: 215 60% 92%;
+    --brand-border: 217 91% 60%;
+    --row-hover: 215 60% 94%;
+
+    --success: 145 65% 42%;
+    --success-bg: 145 65% 90%;
+    --warning: 35 85% 50%;
+    --warning-bg: 35 85% 90%;
+
+    --sidebar-background: 215 80% 96%;
+    --sidebar-foreground: 220 30% 15%;
+    --sidebar-primary: 217 91% 60%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 215 50% 90%;
+    --sidebar-accent-foreground: 220 30% 15%;
+    --sidebar-border: 0 0% 100%;
+    --sidebar-ring: 217 91% 60%;
+
+    --nav-bg: 0 0% 100%;
+    --nav-active: 217 91% 60%;
+    --nav-inactive: 220 15% 50%;
+  }
+
+  .glass-light body {
+    background: radial-gradient(circle at top left, hsl(217 91% 88%), hsl(215 90% 97%)) fixed;
+  }
+
+  .glass-light .bg-card,
+  .glass-light [class*="bg-card"],
+  .glass-light .bg-popover,
+  .glass-light .bg-secondary {
+    background: rgba(255, 255, 255, 0.6) !important;
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-color: rgba(255, 255, 255, 0.5);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+  }
+
+  /* ────────────────────────────────────────
+     Glass Dark Theme
+     ──────────────────────────────────────── */
+  .glass-dark {
+    --background: 222 47% 8%;
+    --foreground: 210 30% 95%;
+
+    --card: 222 47% 14%;
+    --card-foreground: 210 30% 95%;
+
+    --popover: 222 47% 14%;
+    --popover-foreground: 210 30% 95%;
+
+    --primary: 217 91% 65%;
+    --primary-foreground: 222 47% 8%;
+
+    --secondary: 222 40% 18%;
+    --secondary-foreground: 210 30% 90%;
+
+    --muted: 222 40% 16%;
+    --muted-foreground: 215 20% 65%;
+
+    --accent: 217 91% 25%;
+    --accent-foreground: 217 91% 80%;
+
+    --destructive: 0 70% 55%;
+    --destructive-foreground: 0 0% 98%;
+
+    --border: 0 0% 100%;
+    --input: 222 40% 22%;
+    --ring: 217 91% 65%;
+
+    --storage-frozen: 210 90% 60%;
+    --storage-frozen-bg: 210 90% 18%;
+    --storage-chilled: 170 70% 50%;
+    --storage-chilled-bg: 170 70% 15%;
+    --storage-dry: 35 85% 60%;
+    --storage-dry-bg: 35 85% 18%;
+
+    --brand-header: 222 47% 12%;
+    --brand-border: 217 91% 50%;
+    --row-hover: 222 47% 16%;
+
+    --success: 145 65% 50%;
+    --success-bg: 145 65% 15%;
+    --warning: 35 85% 60%;
+    --warning-bg: 35 85% 18%;
+
+    --sidebar-background: 222 47% 6%;
+    --sidebar-foreground: 210 30% 95%;
+    --sidebar-primary: 217 91% 65%;
+    --sidebar-primary-foreground: 222 47% 8%;
+    --sidebar-accent: 222 40% 18%;
+    --sidebar-accent-foreground: 210 30% 95%;
+    --sidebar-border: 0 0% 100%;
+    --sidebar-ring: 217 91% 65%;
+
+    --nav-bg: 222 47% 10%;
+    --nav-active: 217 91% 65%;
+    --nav-inactive: 215 20% 55%;
+  }
+
+  .glass-dark body {
+    background: radial-gradient(circle at top left, hsl(224 76% 25%), hsl(222 47% 5%)) fixed;
+  }
+
+  .glass-dark .bg-card,
+  .glass-dark [class*="bg-card"],
+  .glass-dark .bg-popover,
+  .glass-dark .bg-secondary {
+    background: rgba(255, 255, 255, 0.08) !important;
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-color: rgba(255, 255, 255, 0.2);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  }
+
+  .glass-light .border,
+  .glass-dark .border {
+    border-color: rgba(255, 255, 255, 0.3);
+  }
+}
+
+@layer base {
   * {
     @apply border-border;
   }
