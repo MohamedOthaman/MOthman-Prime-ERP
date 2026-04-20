@@ -1,12 +1,14 @@
 import { useLang } from "@/contexts/LanguageContext";
 import { useTheme } from "@/contexts/ThemeContext";
-import { Globe, Sun, Moon, SunMedium, MoonStar } from "lucide-react";
+import { Globe, Sun, Moon, SunMedium, MoonStar, Sparkles, Sparkle } from "lucide-react";
 
 const themeIcon = {
   light: Sun,
   "soft-gray": SunMedium,
   dim: MoonStar,
   dark: Moon,
+  "glass-light": Sparkle,
+  "glass-dark": Sparkles,
 } as const;
 
 const themeLabel = {
@@ -14,6 +16,8 @@ const themeLabel = {
   "soft-gray": "Gray",
   dim: "Dim",
   dark: "Dark",
+  "glass-light": "Glass L",
+  "glass-dark": "Glass D",
 } as const;
 
 export function LanguageToggle() {
