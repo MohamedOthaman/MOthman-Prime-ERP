@@ -253,6 +253,130 @@
     --nav-active: 200 80% 55%;
     --nav-inactive: 215 12% 45%;
   }
+
+  /* ─── Glass Dark Theme ─── */
+  .glass-dark {
+    --background: 228 52% 8%;
+    --foreground: 210 15% 93%;
+
+    --card: 222 45% 13%;
+    --card-foreground: 210 15% 93%;
+
+    --popover: 222 45% 13%;
+    --popover-foreground: 210 15% 93%;
+
+    --primary: 200 88% 62%;
+    --primary-foreground: 228 52% 5%;
+
+    --secondary: 222 38% 18%;
+    --secondary-foreground: 210 15% 85%;
+
+    --muted: 222 32% 16%;
+    --muted-foreground: 215 15% 60%;
+
+    --accent: 200 65% 20%;
+    --accent-foreground: 200 88% 80%;
+
+    --destructive: 0 72% 56%;
+    --destructive-foreground: 0 0% 98%;
+
+    --border: 222 32% 22%;
+    --input: 222 32% 22%;
+    --ring: 200 88% 62%;
+
+    --storage-frozen: 210 90% 60%;
+    --storage-frozen-bg: 210 90% 15%;
+    --storage-chilled: 170 70% 50%;
+    --storage-chilled-bg: 170 70% 13%;
+    --storage-dry: 35 85% 58%;
+    --storage-dry-bg: 35 85% 14%;
+
+    --brand-header: 222 45% 11%;
+    --brand-border: 200 70% 40%;
+
+    --row-hover: 222 38% 18%;
+
+    --success: 145 65% 50%;
+    --success-bg: 145 65% 12%;
+
+    --warning: 35 85% 62%;
+    --warning-bg: 35 85% 14%;
+
+    --sidebar-background: 228 52% 6%;
+    --sidebar-foreground: 210 15% 90%;
+    --sidebar-primary: 200 88% 62%;
+    --sidebar-primary-foreground: 228 52% 5%;
+    --sidebar-accent: 222 38% 16%;
+    --sidebar-accent-foreground: 210 15% 85%;
+    --sidebar-border: 222 32% 18%;
+    --sidebar-ring: 200 88% 62%;
+
+    --nav-bg: 228 52% 6%;
+    --nav-active: 200 88% 62%;
+    --nav-inactive: 215 15% 50%;
+  }
+
+  /* ─── Glass Light Theme ─── */
+  .glass-light {
+    --background: 220 65% 96%;
+    --foreground: 220 30% 12%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 220 30% 12%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 220 30% 12%;
+
+    --primary: 210 82% 48%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 220 35% 90%;
+    --secondary-foreground: 220 25% 25%;
+
+    --muted: 220 28% 92%;
+    --muted-foreground: 220 15% 46%;
+
+    --accent: 210 65% 88%;
+    --accent-foreground: 210 82% 28%;
+
+    --destructive: 0 70% 50%;
+    --destructive-foreground: 0 0% 98%;
+
+    --border: 220 28% 82%;
+    --input: 220 28% 82%;
+    --ring: 210 82% 48%;
+
+    --storage-frozen: 210 90% 48%;
+    --storage-frozen-bg: 210 90% 90%;
+    --storage-chilled: 170 70% 38%;
+    --storage-chilled-bg: 170 70% 90%;
+    --storage-dry: 35 85% 48%;
+    --storage-dry-bg: 35 85% 90%;
+
+    --brand-header: 220 35% 92%;
+    --brand-border: 210 60% 52%;
+
+    --row-hover: 220 28% 94%;
+
+    --success: 145 65% 38%;
+    --success-bg: 145 65% 90%;
+
+    --warning: 35 85% 50%;
+    --warning-bg: 35 85% 90%;
+
+    --sidebar-background: 220 55% 97%;
+    --sidebar-foreground: 220 30% 12%;
+    --sidebar-primary: 210 82% 48%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 220 35% 90%;
+    --sidebar-accent-foreground: 220 30% 12%;
+    --sidebar-border: 220 28% 82%;
+    --sidebar-ring: 210 82% 48%;
+
+    --nav-bg: 220 55% 97%;
+    --nav-active: 210 82% 48%;
+    --nav-inactive: 220 15% 50%;
+  }
 }
 
 @layer base {
@@ -269,6 +393,106 @@
   .font-mono {
     font-family: var(--font-mono);
   }
+}
+
+/* ════════════════════════════════════════════
+   GLASS DARK — Glassmorphism background & cards
+   ════════════════════════════════════════════ */
+
+html.glass-dark body {
+  background:
+    radial-gradient(ellipse at 25% 15%, rgba(56, 130, 246, 0.18) 0%, transparent 50%),
+    radial-gradient(ellipse at 75% 85%, rgba(124, 58, 237, 0.12) 0%, transparent 50%),
+    linear-gradient(135deg, #050c22 0%, #0b1840 40%, #0d2055 70%, #050c22 100%) !important;
+  min-height: 100vh;
+}
+
+.glass-dark .bg-card,
+.glass-dark [data-slot="card"] {
+  background: rgba(255, 255, 255, 0.055) !important;
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  border-color: rgba(255, 255, 255, 0.1) !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+.glass-dark .bg-popover {
+  background: rgba(15, 28, 72, 0.88) !important;
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+.glass-dark [data-sidebar="sidebar"] {
+  background: rgba(8, 18, 58, 0.78) !important;
+  backdrop-filter: blur(28px) saturate(180%);
+  -webkit-backdrop-filter: blur(28px) saturate(180%);
+  border-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+.glass-dark .sticky.top-0 {
+  background: rgba(8, 18, 55, 0.72) !important;
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border-bottom-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+.glass-dark .bg-secondary {
+  background: rgba(255, 255, 255, 0.07) !important;
+}
+
+.glass-dark .bg-muted {
+  background: rgba(255, 255, 255, 0.05) !important;
+}
+
+/* ════════════════════════════════════════════
+   GLASS LIGHT — Glassmorphism background & cards
+   ════════════════════════════════════════════ */
+
+html.glass-light body {
+  background:
+    radial-gradient(ellipse at 20% 25%, rgba(147, 197, 253, 0.35) 0%, transparent 55%),
+    radial-gradient(ellipse at 80% 75%, rgba(196, 181, 253, 0.25) 0%, transparent 55%),
+    linear-gradient(135deg, #eef2ff 0%, #e8f0fe 40%, #f0f5ff 70%, #eef2ff 100%) !important;
+  min-height: 100vh;
+}
+
+.glass-light .bg-card,
+.glass-light [data-slot="card"] {
+  background: rgba(255, 255, 255, 0.68) !important;
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  border-color: rgba(148, 187, 255, 0.22) !important;
+  box-shadow: 0 4px 24px rgba(80, 130, 240, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+
+.glass-light .bg-popover {
+  background: rgba(255, 255, 255, 0.88) !important;
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  border-color: rgba(148, 187, 255, 0.2) !important;
+}
+
+.glass-light [data-sidebar="sidebar"] {
+  background: rgba(255, 255, 255, 0.80) !important;
+  backdrop-filter: blur(24px) saturate(160%);
+  -webkit-backdrop-filter: blur(24px) saturate(160%);
+  border-color: rgba(148, 187, 255, 0.18) !important;
+}
+
+.glass-light .sticky.top-0 {
+  background: rgba(238, 245, 255, 0.78) !important;
+  backdrop-filter: blur(18px) saturate(160%);
+  -webkit-backdrop-filter: blur(18px) saturate(160%);
+  border-bottom-color: rgba(148, 187, 255, 0.18) !important;
+}
+
+.glass-light .bg-secondary {
+  background: rgba(230, 240, 255, 0.65) !important;
+}
+
+.glass-light .bg-muted {
+  background: rgba(220, 233, 255, 0.5) !important;
 }
 
 /* iOS-style wheel picker */

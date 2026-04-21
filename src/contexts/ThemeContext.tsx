@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 
-type Theme = "light" | "soft-gray" | "dim" | "dark";
+type Theme = "light" | "soft-gray" | "dim" | "dark" | "glass-dark" | "glass-light";
 
 interface ThemeContextType {
   theme: Theme;
@@ -10,22 +10,22 @@ interface ThemeContextType {
 
 const ThemeContext = createContext<ThemeContextType | null>(null);
 
-const THEME_ORDER: Theme[] = ["light", "soft-gray", "dim", "dark"];
+const THEME_ORDER: Theme[] = ["light", "soft-gray", "dim", "dark", "glass-dark", "glass-light"];
+
+const ALL_THEMES = ["light", "dim", "soft-gray", "dark", "glass-dark", "glass-light"] as const;
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [theme, setThemeState] = useState<Theme>(() => {
     const saved = localStorage.getItem("app-theme");
-    if (saved === "light" || saved === "dim" || saved === "soft-gray" || saved === "dark") {
+    if (ALL_THEMES.includes(saved as Theme)) {
       return saved as Theme;
     }
-    return "light"; // default to light
+    return "light";
   });
 
   useEffect(() => {
     const root = document.documentElement;
-    // Remove all theme classes
-    root.classList.remove("light", "dim", "soft-gray", "dark");
-    // Add current theme class
+    root.classList.remove(...ALL_THEMES);
     root.classList.add(theme);
     localStorage.setItem("app-theme", theme);
   }, [theme]);
