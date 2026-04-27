@@ -396,104 +396,136 @@
 }
 
 /* ════════════════════════════════════════════
-   GLASS DARK — Glassmorphism background & cards
+   GLASS DARK — Glassmorphism
+   Gradient lives on <html> so backdrop-filter
+   on cards can blur it through all transparent layers.
    ════════════════════════════════════════════ */
 
-html.glass-dark body {
+html.glass-dark {
   background:
-    radial-gradient(ellipse at 25% 15%, rgba(56, 130, 246, 0.18) 0%, transparent 50%),
-    radial-gradient(ellipse at 75% 85%, rgba(124, 58, 237, 0.12) 0%, transparent 50%),
-    linear-gradient(135deg, #050c22 0%, #0b1840 40%, #0d2055 70%, #050c22 100%) !important;
-  min-height: 100vh;
+    radial-gradient(ellipse at 25% 15%, rgba(56, 130, 246, 0.22) 0%, transparent 55%),
+    radial-gradient(ellipse at 75% 85%, rgba(124, 58, 237, 0.15) 0%, transparent 55%),
+    linear-gradient(135deg, #050c22 0%, #0b1840 40%, #0d2055 70%, #050c22 100%);
+  background-attachment: fixed;
+  min-height: 100%;
 }
 
+/* Body and all bg-background containers must be transparent
+   so the html gradient shows through to the cards */
+html.glass-dark body,
+.glass-dark [class*="bg-background"] {
+  background: transparent !important;
+}
+
+/* Cards — frosted glass */
 .glass-dark .bg-card,
 .glass-dark [data-slot="card"] {
-  background: rgba(255, 255, 255, 0.055) !important;
+  background: rgba(255, 255, 255, 0.07) !important;
   backdrop-filter: blur(24px) saturate(180%);
   -webkit-backdrop-filter: blur(24px) saturate(180%);
-  border-color: rgba(255, 255, 255, 0.1) !important;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.12) !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.1);
 }
 
+/* Dropdowns / popovers */
 .glass-dark .bg-popover {
-  background: rgba(15, 28, 72, 0.88) !important;
+  background: rgba(12, 22, 65, 0.92) !important;
   backdrop-filter: blur(24px) saturate(180%);
   -webkit-backdrop-filter: blur(24px) saturate(180%);
   border-color: rgba(255, 255, 255, 0.1) !important;
 }
 
+/* Sidebar */
 .glass-dark [data-sidebar="sidebar"] {
-  background: rgba(8, 18, 58, 0.78) !important;
+  background: rgba(8, 18, 58, 0.75) !important;
   backdrop-filter: blur(28px) saturate(180%);
   -webkit-backdrop-filter: blur(28px) saturate(180%);
   border-color: rgba(255, 255, 255, 0.08) !important;
 }
 
+/* TopBar */
 .glass-dark .sticky.top-0 {
-  background: rgba(8, 18, 55, 0.72) !important;
+  background: rgba(8, 18, 55, 0.65) !important;
   backdrop-filter: blur(20px) saturate(180%);
   -webkit-backdrop-filter: blur(20px) saturate(180%);
   border-bottom-color: rgba(255, 255, 255, 0.08) !important;
 }
 
-.glass-dark .bg-secondary {
-  background: rgba(255, 255, 255, 0.07) !important;
+/* Bottom nav */
+.glass-dark .bg-nav-bg,
+.glass-dark [class*="bg-nav-bg"] {
+  background: rgba(8, 18, 55, 0.75) !important;
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border-color: rgba(255, 255, 255, 0.08) !important;
 }
 
-.glass-dark .bg-muted {
-  background: rgba(255, 255, 255, 0.05) !important;
-}
+.glass-dark .bg-secondary { background: rgba(255, 255, 255, 0.08) !important; }
+.glass-dark .bg-muted     { background: rgba(255, 255, 255, 0.05) !important; }
 
 /* ════════════════════════════════════════════
-   GLASS LIGHT — Glassmorphism background & cards
+   GLASS LIGHT — Glassmorphism
    ════════════════════════════════════════════ */
 
-html.glass-light body {
+html.glass-light {
   background:
-    radial-gradient(ellipse at 20% 25%, rgba(147, 197, 253, 0.35) 0%, transparent 55%),
-    radial-gradient(ellipse at 80% 75%, rgba(196, 181, 253, 0.25) 0%, transparent 55%),
-    linear-gradient(135deg, #eef2ff 0%, #e8f0fe 40%, #f0f5ff 70%, #eef2ff 100%) !important;
-  min-height: 100vh;
+    radial-gradient(ellipse at 20% 25%, rgba(147, 197, 253, 0.4) 0%, transparent 55%),
+    radial-gradient(ellipse at 80% 75%, rgba(196, 181, 253, 0.3) 0%, transparent 55%),
+    linear-gradient(135deg, #dde9ff 0%, #e4efff 40%, #eef5ff 70%, #dde9ff 100%);
+  background-attachment: fixed;
+  min-height: 100%;
 }
 
+html.glass-light body,
+.glass-light [class*="bg-background"] {
+  background: transparent !important;
+}
+
+/* Cards — frosted white glass */
 .glass-light .bg-card,
 .glass-light [data-slot="card"] {
-  background: rgba(255, 255, 255, 0.68) !important;
+  background: rgba(255, 255, 255, 0.62) !important;
   backdrop-filter: blur(20px) saturate(160%);
   -webkit-backdrop-filter: blur(20px) saturate(160%);
-  border-color: rgba(148, 187, 255, 0.22) !important;
-  box-shadow: 0 4px 24px rgba(80, 130, 240, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  border-color: rgba(160, 200, 255, 0.3) !important;
+  box-shadow: 0 4px 24px rgba(80, 130, 240, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.95);
 }
 
+/* Dropdowns / popovers */
 .glass-light .bg-popover {
-  background: rgba(255, 255, 255, 0.88) !important;
+  background: rgba(255, 255, 255, 0.92) !important;
   backdrop-filter: blur(20px) saturate(160%);
   -webkit-backdrop-filter: blur(20px) saturate(160%);
-  border-color: rgba(148, 187, 255, 0.2) !important;
+  border-color: rgba(160, 200, 255, 0.25) !important;
 }
 
+/* Sidebar */
 .glass-light [data-sidebar="sidebar"] {
-  background: rgba(255, 255, 255, 0.80) !important;
+  background: rgba(255, 255, 255, 0.75) !important;
   backdrop-filter: blur(24px) saturate(160%);
   -webkit-backdrop-filter: blur(24px) saturate(160%);
-  border-color: rgba(148, 187, 255, 0.18) !important;
+  border-color: rgba(160, 200, 255, 0.2) !important;
 }
 
+/* TopBar */
 .glass-light .sticky.top-0 {
-  background: rgba(238, 245, 255, 0.78) !important;
+  background: rgba(235, 245, 255, 0.72) !important;
   backdrop-filter: blur(18px) saturate(160%);
   -webkit-backdrop-filter: blur(18px) saturate(160%);
-  border-bottom-color: rgba(148, 187, 255, 0.18) !important;
+  border-bottom-color: rgba(160, 200, 255, 0.2) !important;
 }
 
-.glass-light .bg-secondary {
-  background: rgba(230, 240, 255, 0.65) !important;
+/* Bottom nav */
+.glass-light .bg-nav-bg,
+.glass-light [class*="bg-nav-bg"] {
+  background: rgba(240, 248, 255, 0.80) !important;
+  backdrop-filter: blur(18px) saturate(160%);
+  -webkit-backdrop-filter: blur(18px) saturate(160%);
+  border-color: rgba(160, 200, 255, 0.2) !important;
 }
 
-.glass-light .bg-muted {
-  background: rgba(220, 233, 255, 0.5) !important;
-}
+.glass-light .bg-secondary { background: rgba(220, 238, 255, 0.6) !important; }
+.glass-light .bg-muted     { background: rgba(210, 230, 255, 0.45) !important; }
 
 /* iOS-style wheel picker */
 .wheel-picker {
