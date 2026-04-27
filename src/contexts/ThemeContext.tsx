@@ -30,12 +30,21 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     localStorage.setItem("app-theme", theme);
   }, [theme]);
 
-  const setTheme = (t: Theme) => setThemeState(t);
+  const setTheme = (t: Theme) => {
+    const root = document.documentElement;
+    root.classList.add("theme-transitioning");
+    setThemeState(t);
+    setTimeout(() => root.classList.remove("theme-transitioning"), 600);
+  };
+
   const cycleTheme = () => {
     setThemeState((current) => {
       const idx = THEME_ORDER.indexOf(current);
       return THEME_ORDER[(idx + 1) % THEME_ORDER.length];
     });
+    const root = document.documentElement;
+    root.classList.add("theme-transitioning");
+    setTimeout(() => root.classList.remove("theme-transitioning"), 600);
   };
 
   return (

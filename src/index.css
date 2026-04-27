@@ -395,137 +395,335 @@
   }
 }
 
-/* ════════════════════════════════════════════
-   GLASS DARK — Glassmorphism
-   Gradient lives on <html> so backdrop-filter
-   on cards can blur it through all transparent layers.
-   ════════════════════════════════════════════ */
+/* ══════════════════════════════════════════════════════════
+   iOS LIQUID GLASS THEMES
+   Architecture: gradient on <html> → transparent body/containers
+   → frosted glass cards with specular highlights + animations
+   ══════════════════════════════════════════════════════════ */
+
+/* ── Shared keyframes ────────────────────────────────────── */
+
+@keyframes glass-card-in {
+  0%   { opacity: 0; transform: translateY(14px) scale(0.96); filter: blur(10px); }
+  60%  { filter: blur(0px); }
+  100% { opacity: 1; transform: translateY(0)   scale(1);    filter: blur(0px);  }
+}
+
+@keyframes glass-nav-in {
+  0%   { opacity: 0; transform: translateX(-50%) translateY(24px) scale(0.88); }
+  100% { opacity: 1; transform: translateX(-50%) translateY(0)    scale(1);    }
+}
+
+/* Smooth cross-fade when switching any theme */
+html.theme-transitioning * {
+  transition:
+    background-color 0.45s cubic-bezier(0.4, 0, 0.2, 1),
+    background      0.45s cubic-bezier(0.4, 0, 0.2, 1),
+    border-color    0.4s  cubic-bezier(0.4, 0, 0.2, 1),
+    color           0.35s cubic-bezier(0.4, 0, 0.2, 1),
+    box-shadow      0.45s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+/* ══════════════════════════════════════════════════════════
+   GLASS DARK
+   ══════════════════════════════════════════════════════════ */
 
 html.glass-dark {
   background:
-    radial-gradient(ellipse at 25% 15%, rgba(56, 130, 246, 0.22) 0%, transparent 55%),
-    radial-gradient(ellipse at 75% 85%, rgba(124, 58, 237, 0.15) 0%, transparent 55%),
-    linear-gradient(135deg, #050c22 0%, #0b1840 40%, #0d2055 70%, #050c22 100%);
+    radial-gradient(ellipse at 18% 12%, rgba(99,  179, 237, 0.28) 0%, transparent 52%),
+    radial-gradient(ellipse at 82% 88%, rgba(159, 122, 234, 0.22) 0%, transparent 52%),
+    radial-gradient(ellipse at 55% 48%, rgba(49,  130, 206, 0.10) 0%, transparent 65%),
+    linear-gradient(158deg, #040919 0%, #08133a 35%, #0d1e58 65%, #060e2e 100%);
   background-attachment: fixed;
-  min-height: 100%;
 }
 
-/* Body and all bg-background containers must be transparent
-   so the html gradient shows through to the cards */
 html.glass-dark body,
-.glass-dark [class*="bg-background"] {
-  background: transparent !important;
+.glass-dark [class*="bg-background"] { background: transparent !important; }
+
+/* ── Cards ── */
+.glass-dark .bg-card {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  background: rgba(255, 255, 255, 0.08) !important;
+  backdrop-filter: blur(40px) saturate(200%) brightness(1.08);
+  -webkit-backdrop-filter: blur(40px) saturate(200%) brightness(1.08);
+  border: 1px solid rgba(255, 255, 255, 0.14) !important;
+  box-shadow:
+    inset 0 1.5px 0 rgba(255, 255, 255, 0.35),
+    inset 0 -1px  0 rgba(0, 0, 0, 0.18),
+    0 20px 60px rgba(0, 0, 0, 0.5),
+    0 4px  16px rgba(0, 0, 0, 0.25);
+  transition: transform 0.35s cubic-bezier(0.34, 1.3, 0.64, 1), box-shadow 0.3s ease;
+  animation: glass-card-in 0.55s cubic-bezier(0.34, 1.15, 0.64, 1) both;
 }
 
-/* Cards — frosted glass */
-.glass-dark .bg-card,
-.glass-dark [data-slot="card"] {
-  background: rgba(255, 255, 255, 0.07) !important;
-  backdrop-filter: blur(24px) saturate(180%);
-  -webkit-backdrop-filter: blur(24px) saturate(180%);
-  border-color: rgba(255, 255, 255, 0.12) !important;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+/* Inner lens refraction — top radial glow */
+.glass-dark .bg-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at 50% -8%, rgba(255,255,255,0.14) 0%, transparent 62%);
+  pointer-events: none;
+  border-radius: inherit;
+  z-index: 0;
 }
 
-/* Dropdowns / popovers */
-.glass-dark .bg-popover {
-  background: rgba(12, 22, 65, 0.92) !important;
-  backdrop-filter: blur(24px) saturate(180%);
-  -webkit-backdrop-filter: blur(24px) saturate(180%);
-  border-color: rgba(255, 255, 255, 0.1) !important;
+/* Specular highlight — bright top edge line */
+.glass-dark .bg-card::after {
+  content: '';
+  position: absolute;
+  top: 0; left: 8%; right: 8%;
+  height: 1px;
+  background: linear-gradient(90deg,
+    transparent 0%, rgba(255,255,255,0.55) 35%,
+    rgba(255,255,255,0.75) 50%,
+    rgba(255,255,255,0.55) 65%, transparent 100%);
+  pointer-events: none;
+  z-index: 1;
 }
 
-/* Sidebar */
-.glass-dark [data-sidebar="sidebar"] {
-  background: rgba(8, 18, 58, 0.75) !important;
-  backdrop-filter: blur(28px) saturate(180%);
-  -webkit-backdrop-filter: blur(28px) saturate(180%);
-  border-color: rgba(255, 255, 255, 0.08) !important;
+/* Staggered entrance */
+.glass-dark .bg-card:nth-child(1) { animation-delay:   0ms; }
+.glass-dark .bg-card:nth-child(2) { animation-delay:  60ms; }
+.glass-dark .bg-card:nth-child(3) { animation-delay: 120ms; }
+.glass-dark .bg-card:nth-child(4) { animation-delay: 180ms; }
+.glass-dark .bg-card:nth-child(5) { animation-delay: 240ms; }
+.glass-dark .bg-card:nth-child(6) { animation-delay: 300ms; }
+.glass-dark .bg-card:nth-child(n+7) { animation-delay: 360ms; }
+
+/* Hover lift + glow */
+.glass-dark .bg-card:hover {
+  background: rgba(255, 255, 255, 0.12) !important;
+  transform: translateY(-3px);
+  box-shadow:
+    inset 0 1.5px 0 rgba(255, 255, 255, 0.4),
+    inset 0 -1px  0 rgba(0, 0, 0, 0.18),
+    0 28px 70px rgba(0, 0, 0, 0.55),
+    0 8px  24px rgba(0, 0, 0, 0.3),
+    0 0    0 1px rgba(255, 255, 255, 0.12);
 }
 
-/* TopBar */
+/* ── TopBar ── */
 .glass-dark .sticky.top-0 {
-  background: rgba(8, 18, 55, 0.65) !important;
-  backdrop-filter: blur(20px) saturate(180%);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
-  border-bottom-color: rgba(255, 255, 255, 0.08) !important;
+  background: rgba(5, 14, 50, 0.72) !important;
+  backdrop-filter: blur(36px) saturate(200%) brightness(1.05);
+  -webkit-backdrop-filter: blur(36px) saturate(200%) brightness(1.05);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.09) !important;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.3), inset 0 -1px 0 rgba(255,255,255,0.05);
 }
 
-/* Bottom nav */
-.glass-dark .bg-nav-bg,
-.glass-dark [class*="bg-nav-bg"] {
-  background: rgba(8, 18, 55, 0.75) !important;
-  backdrop-filter: blur(20px) saturate(180%);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
-  border-color: rgba(255, 255, 255, 0.08) !important;
+/* ── Popovers / Dropdowns ── */
+.glass-dark .bg-popover {
+  background: rgba(8, 18, 62, 0.94) !important;
+  backdrop-filter: blur(40px) saturate(200%);
+  -webkit-backdrop-filter: blur(40px) saturate(200%);
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  box-shadow: 0 24px 60px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.14);
 }
 
-.glass-dark .bg-secondary { background: rgba(255, 255, 255, 0.08) !important; }
+/* ── Sidebar ── */
+.glass-dark [data-sidebar="sidebar"] {
+  background: rgba(4, 12, 46, 0.84) !important;
+  backdrop-filter: blur(40px) saturate(200%);
+  -webkit-backdrop-filter: blur(40px) saturate(200%);
+  border-right: 1px solid rgba(255, 255, 255, 0.08) !important;
+}
+
+/* ── Misc ── */
+.glass-dark .bg-secondary { background: rgba(255, 255, 255, 0.09) !important; }
 .glass-dark .bg-muted     { background: rgba(255, 255, 255, 0.05) !important; }
 
-/* ════════════════════════════════════════════
-   GLASS LIGHT — Glassmorphism
-   ════════════════════════════════════════════ */
+/* Active icon glow */
+.glass-dark nav button.text-primary svg {
+  filter: drop-shadow(0 0 6px hsl(var(--primary) / 0.8));
+}
+
+/* ══════════════════════════════════════════════════════════
+   GLASS LIGHT
+   ══════════════════════════════════════════════════════════ */
 
 html.glass-light {
   background:
-    radial-gradient(ellipse at 20% 25%, rgba(147, 197, 253, 0.4) 0%, transparent 55%),
-    radial-gradient(ellipse at 80% 75%, rgba(196, 181, 253, 0.3) 0%, transparent 55%),
-    linear-gradient(135deg, #dde9ff 0%, #e4efff 40%, #eef5ff 70%, #dde9ff 100%);
+    radial-gradient(ellipse at 15% 18%, rgba(147, 210, 255, 0.55) 0%, transparent 52%),
+    radial-gradient(ellipse at 85% 82%, rgba(200, 180, 255, 0.42) 0%, transparent 52%),
+    radial-gradient(ellipse at 50% 50%, rgba(190, 225, 255, 0.22) 0%, transparent 70%),
+    linear-gradient(148deg, #e4effe 0%, #d8e8ff 30%, #e0edff 60%, #eaf3ff 100%);
   background-attachment: fixed;
-  min-height: 100%;
 }
 
 html.glass-light body,
-.glass-light [class*="bg-background"] {
-  background: transparent !important;
+.glass-light [class*="bg-background"] { background: transparent !important; }
+
+/* ── Cards ── */
+.glass-light .bg-card {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  background: rgba(255, 255, 255, 0.64) !important;
+  backdrop-filter: blur(36px) saturate(180%) brightness(1.04);
+  -webkit-backdrop-filter: blur(36px) saturate(180%) brightness(1.04);
+  border: 1px solid rgba(255, 255, 255, 0.78) !important;
+  box-shadow:
+    inset 0 1.5px 0 rgba(255, 255, 255, 0.95),
+    inset 0 -1px  0 rgba(100, 150, 220, 0.07),
+    0 8px  32px rgba(80, 130, 240, 0.13),
+    0 2px  8px  rgba(0,   0,   0,   0.05);
+  transition: transform 0.35s cubic-bezier(0.34, 1.3, 0.64, 1), box-shadow 0.3s ease;
+  animation: glass-card-in 0.45s cubic-bezier(0.34, 1.15, 0.64, 1) both;
 }
 
-/* Cards — frosted white glass */
-.glass-light .bg-card,
-.glass-light [data-slot="card"] {
-  background: rgba(255, 255, 255, 0.62) !important;
-  backdrop-filter: blur(20px) saturate(160%);
-  -webkit-backdrop-filter: blur(20px) saturate(160%);
-  border-color: rgba(160, 200, 255, 0.3) !important;
-  box-shadow: 0 4px 24px rgba(80, 130, 240, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.95);
+.glass-light .bg-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at 50% -15%, rgba(255,255,255,0.6) 0%, transparent 65%);
+  pointer-events: none;
+  border-radius: inherit;
+  z-index: 0;
 }
 
-/* Dropdowns / popovers */
-.glass-light .bg-popover {
-  background: rgba(255, 255, 255, 0.92) !important;
-  backdrop-filter: blur(20px) saturate(160%);
-  -webkit-backdrop-filter: blur(20px) saturate(160%);
-  border-color: rgba(160, 200, 255, 0.25) !important;
+.glass-light .bg-card::after {
+  content: '';
+  position: absolute;
+  top: 0; left: 5%; right: 5%;
+  height: 1px;
+  background: linear-gradient(90deg,
+    transparent 0%, rgba(255,255,255,0.95) 30%,
+    white 50%, rgba(255,255,255,0.95) 70%, transparent 100%);
+  pointer-events: none;
+  z-index: 1;
 }
 
-/* Sidebar */
-.glass-light [data-sidebar="sidebar"] {
-  background: rgba(255, 255, 255, 0.75) !important;
-  backdrop-filter: blur(24px) saturate(160%);
-  -webkit-backdrop-filter: blur(24px) saturate(160%);
-  border-color: rgba(160, 200, 255, 0.2) !important;
+.glass-light .bg-card:nth-child(1) { animation-delay:   0ms; }
+.glass-light .bg-card:nth-child(2) { animation-delay:  60ms; }
+.glass-light .bg-card:nth-child(3) { animation-delay: 120ms; }
+.glass-light .bg-card:nth-child(4) { animation-delay: 180ms; }
+.glass-light .bg-card:nth-child(5) { animation-delay: 240ms; }
+.glass-light .bg-card:nth-child(6) { animation-delay: 300ms; }
+.glass-light .bg-card:nth-child(n+7) { animation-delay: 360ms; }
+
+.glass-light .bg-card:hover {
+  background: rgba(255, 255, 255, 0.82) !important;
+  transform: translateY(-3px);
+  box-shadow:
+    inset 0 1.5px 0 rgba(255,255,255,1),
+    inset 0 -1px  0 rgba(100, 150, 220, 0.09),
+    0 14px 44px rgba(80, 130, 240, 0.2),
+    0 4px  14px rgba(0, 0, 0, 0.06),
+    0 0    0 1px rgba(255, 255, 255, 0.65);
 }
 
-/* TopBar */
+/* ── TopBar ── */
 .glass-light .sticky.top-0 {
-  background: rgba(235, 245, 255, 0.72) !important;
-  backdrop-filter: blur(18px) saturate(160%);
-  -webkit-backdrop-filter: blur(18px) saturate(160%);
-  border-bottom-color: rgba(160, 200, 255, 0.2) !important;
+  background: rgba(232, 244, 255, 0.80) !important;
+  backdrop-filter: blur(32px) saturate(180%) brightness(1.03);
+  -webkit-backdrop-filter: blur(32px) saturate(180%) brightness(1.03);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.72) !important;
+  box-shadow: 0 4px 20px rgba(80,130,240,0.1), inset 0 -1px 0 rgba(160,200,255,0.2);
 }
 
-/* Bottom nav */
-.glass-light .bg-nav-bg,
-.glass-light [class*="bg-nav-bg"] {
-  background: rgba(240, 248, 255, 0.80) !important;
-  backdrop-filter: blur(18px) saturate(160%);
-  -webkit-backdrop-filter: blur(18px) saturate(160%);
-  border-color: rgba(160, 200, 255, 0.2) !important;
+/* ── Popovers / Dropdowns ── */
+.glass-light .bg-popover {
+  background: rgba(255, 255, 255, 0.90) !important;
+  backdrop-filter: blur(36px) saturate(180%);
+  -webkit-backdrop-filter: blur(36px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.82) !important;
+  box-shadow: 0 16px 48px rgba(80,130,240,0.15), inset 0 1px 0 rgba(255,255,255,1);
 }
 
-.glass-light .bg-secondary { background: rgba(220, 238, 255, 0.6) !important; }
-.glass-light .bg-muted     { background: rgba(210, 230, 255, 0.45) !important; }
+/* ── Sidebar ── */
+.glass-light [data-sidebar="sidebar"] {
+  background: rgba(255, 255, 255, 0.74) !important;
+  backdrop-filter: blur(40px) saturate(180%);
+  -webkit-backdrop-filter: blur(40px) saturate(180%);
+  border-right: 1px solid rgba(255, 255, 255, 0.72) !important;
+}
+
+/* ── Misc ── */
+.glass-light .bg-secondary { background: rgba(220, 238, 255, 0.62) !important; }
+.glass-light .bg-muted     { background: rgba(210, 228, 255, 0.46) !important; }
+
+/* Active icon glow */
+.glass-light nav button.text-primary svg {
+  filter: drop-shadow(0 0 5px hsl(var(--primary) / 0.6));
+}
+
+/* ══════════════════════════════════════════════════════════
+   FLOATING PILL BOTTOM NAV  (both glass themes)
+   ══════════════════════════════════════════════════════════ */
+
+html.glass-dark  nav.fixed,
+html.glass-light nav.fixed {
+  bottom: 20px !important;
+  left: 50% !important;
+  right: auto !important;
+  transform: translateX(-50%) !important;
+  width: auto !important;
+  min-width: 280px !important;
+  max-width: min(500px, calc(100vw - 32px)) !important;
+  border-radius: 100px !important;
+  border: none !important;
+  padding: 5px 6px !important;
+  animation: glass-nav-in 0.6s cubic-bezier(0.34, 1.2, 0.64, 1) both;
+  animation-delay: 180ms;
+}
+
+html.glass-dark nav.fixed {
+  background: rgba(6, 15, 55, 0.78) !important;
+  backdrop-filter: blur(40px) saturate(200%);
+  -webkit-backdrop-filter: blur(40px) saturate(200%);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.18),
+    0 20px 60px rgba(0,0,0,0.6),
+    0 8px  24px rgba(0,0,0,0.35),
+    0 0    0 1px rgba(255,255,255,0.08);
+}
+
+html.glass-light nav.fixed {
+  background: rgba(255, 255, 255, 0.76) !important;
+  backdrop-filter: blur(36px) saturate(180%);
+  -webkit-backdrop-filter: blur(36px) saturate(180%);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.95),
+    0 12px 40px rgba(80,130,240,0.18),
+    0 4px  16px rgba(0,0,0,0.07),
+    0 0    0 1px rgba(160,200,255,0.22);
+}
+
+/* Spring-physics button animation */
+html.glass-dark  nav button,
+html.glass-light nav button {
+  border-radius: 100px !important;
+  padding: 10px 16px !important;
+  min-width: 52px;
+  transition:
+    transform    0.5s cubic-bezier(0.34, 1.56, 0.64, 1),
+    color        0.2s ease,
+    background   0.2s ease,
+    box-shadow   0.2s ease !important;
+}
+
+html.glass-dark  nav button:active,
+html.glass-light nav button:active {
+  transform: scale(0.78) !important;
+  transition: transform 0.08s cubic-bezier(0.4, 0, 1, 1) !important;
+}
+
+/* Active tab pill highlight */
+.glass-dark  nav button.text-primary {
+  background: rgba(255, 255, 255, 0.14) !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.22), 0 2px 10px rgba(0,0,0,0.25) !important;
+}
+
+.glass-light nav button.text-primary {
+  background: rgba(255, 255, 255, 0.72) !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.95), 0 2px 10px rgba(80,130,240,0.18) !important;
+}
+
+/* Extra bottom padding so content isn't hidden behind floating nav */
+.glass-dark  div[dir].pb-16,
+.glass-light div[dir].pb-16 { padding-bottom: 88px !important; }
 
 /* iOS-style wheel picker */
 .wheel-picker {
