@@ -23,28 +23,36 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     return "light";
   });
 
+  // Apply saved theme class on mount
   useEffect(() => {
     const root = document.documentElement;
     root.classList.remove(...ALL_THEMES);
     root.classList.add(theme);
     localStorage.setItem("app-theme", theme);
-  }, [theme]);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const setTheme = (t: Theme) => {
-    const root = document.documentElement;
-    root.classList.add("theme-transitioning");
-    setThemeState(t);
-    setTimeout(() => root.classList.remove("theme-transitioning"), 600);
+    const commit = () => {
+      const root = document.documentElement;
+      root.classList.remove(...ALL_THEMES);
+      root.classList.add(t);
+      localStorage.setItem("app-theme", t);
+      setThemeState(t);
+    };
+
+    if ((document as unknown as { startViewTransition?: (cb: () => void) => void }).startViewTransition) {
+      (document as unknown as { startViewTransition: (cb: () => void) => void }).startViewTransition(commit);
+    } else {
+      const root = document.documentElement;
+      root.classList.add("theme-transitioning");
+      commit();
+      setTimeout(() => root.classList.remove("theme-transitioning"), 600);
+    }
   };
 
   const cycleTheme = () => {
-    setThemeState((current) => {
-      const idx = THEME_ORDER.indexOf(current);
-      return THEME_ORDER[(idx + 1) % THEME_ORDER.length];
-    });
-    const root = document.documentElement;
-    root.classList.add("theme-transitioning");
-    setTimeout(() => root.classList.remove("theme-transitioning"), 600);
+    const idx = THEME_ORDER.indexOf(theme);
+    setTheme(THEME_ORDER[(idx + 1) % THEME_ORDER.length]);
   };
 
   return (
