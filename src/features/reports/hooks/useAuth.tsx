@@ -3,13 +3,41 @@ import { supabase } from "@/integrations/supabase/client";
 import type { User, Session } from "@supabase/supabase-js";
 import { getAppUrl } from "@/config/appUrl";
 
+const LOCAL_SESSION_KEY = "prime-local-session";
+
+interface LocalSession {
+  role: string;
+  loginTime: number;
+}
+
+function makeLocalUser(role: string): User {
+  return {
+    id: `local-${role}`,
+    email: `${role}@local.erp`,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+    app_metadata: {},
+    user_metadata: { full_name: role },
+    aud: "authenticated",
+    role: "",
+    factors: [],
+    identities: [],
+    last_sign_in_at: new Date().toISOString(),
+    phone: "",
+    confirmed_at: new Date().toISOString(),
+    email_confirmed_at: new Date().toISOString(),
+    is_anonymous: false,
+  } as unknown as User;
+}
+
 interface AuthContextType {
   user: User | null;
   session: Session | null;
   loading: boolean;
   role: string;
-  signUp: (email: string, password: string, fullName: string) => Promise<{ error: any }>;
-  signIn: (email: string, password: string) => Promise<{ error: any }>;
+  signUp: (email: string, password: string, fullName: string) => Promise<{ error: unknown }>;
+  signIn: (email: string, password: string) => Promise<{ error: unknown }>;
+  signInWithRole: (role: string) => void;
   signOut: () => Promise<void>;
 }
 
@@ -23,18 +51,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const initializedRef = useRef(false);
 
   useEffect(() => {
-    const fetchUserRole = async (userId?: string, email?: string | null) => {
-      if (!userId) {
-        setRole("read_only");
+    // Local role session takes priority over Supabase auth
+    const raw = localStorage.getItem(LOCAL_SESSION_KEY);
+    if (raw) {
+      try {
+        const parsed: LocalSession = JSON.parse(raw);
+        setRole(parsed.role);
+        setUser(makeLocalUser(parsed.role));
+        setLoading(false);
         return;
+      } catch {
+        localStorage.removeItem(LOCAL_SESSION_KEY);
       }
+    }
 
-      // Owner override: system owner email → highest authority
-      // Falls back to DB role if the profile already has role = 'owner'
-      if (email?.toLowerCase() === "mohamed22othman@yahoo.com") {
-        setRole("owner");
-        return;
-      }
+    const fetchUserRole = async (userId?: string, email?: string | null) => {
+      if (!userId) { setRole("read_only"); return; }
+      if (email?.toLowerCase() === "mohamed22othman@yahoo.com") { setRole("owner"); return; }
 
       const { data, error } = await supabase
         .from("profiles")
@@ -42,46 +75,40 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         .eq("id", userId)
         .maybeSingle();
 
-      if (error || !data?.role) {
-        setRole("read_only");
-      } else {
-        setRole(data.role);
-      }
+      setRole(error || !data?.role ? "read_only" : data.role);
     };
 
-    const handleSession = async (session: Session | null) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      await fetchUserRole(session?.user?.id, session?.user?.email ?? null);
+    const handleSession = async (s: Session | null) => {
+      setSession(s);
+      setUser(s?.user ?? null);
+      await fetchUserRole(s?.user?.id, s?.user?.email ?? null);
       setLoading(false);
     };
 
-    // 1. First, get the initial session — this is the source of truth on page load
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(({ data: { session: s } }) => {
       initializedRef.current = true;
-      void handleSession(session);
+      void handleSession(s);
     });
 
-    // 2. Then subscribe to auth changes for ongoing updates (sign in, sign out, token refresh)
-    //    Skip events until getSession has completed to avoid race conditions
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (!initializedRef.current) return; // skip until getSession completes
-      void handleSession(session);
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, s) => {
+      if (!initializedRef.current) return;
+      void handleSession(s);
     });
 
     return () => subscription.unsubscribe();
   }, []);
 
+  const signInWithRole = (selectedRole: string) => {
+    const localSession: LocalSession = { role: selectedRole, loginTime: Date.now() };
+    localStorage.setItem(LOCAL_SESSION_KEY, JSON.stringify(localSession));
+    setRole(selectedRole);
+    setUser(makeLocalUser(selectedRole));
+  };
+
   const signUp = async (email: string, password: string, fullName: string) => {
     const { error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: { full_name: fullName },
-        emailRedirectTo: getAppUrl(),
-      },
+      email, password,
+      options: { data: { full_name: fullName }, emailRedirectTo: getAppUrl() },
     });
     return { error };
   };
@@ -92,12 +119,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signOut = async () => {
-    await supabase.auth.signOut();
+    localStorage.removeItem(LOCAL_SESSION_KEY);
+    const { data } = await supabase.auth.getSession();
+    if (data.session) await supabase.auth.signOut();
+    setUser(null);
+    setSession(null);
     setRole("read_only");
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, loading, role, signUp, signIn, signOut }}>
+    <AuthContext.Provider value={{ user, session, loading, role, signUp, signIn, signInWithRole, signOut }}>
       {children}
     </AuthContext.Provider>
   );
