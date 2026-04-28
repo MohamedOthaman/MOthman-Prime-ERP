@@ -396,6 +396,116 @@
 }
 
 /* ══════════════════════════════════════════════════════════
+   SHARED ANIMATIONS — used by all themes
+   ══════════════════════════════════════════════════════════ */
+
+@keyframes card-in {
+  from { opacity: 0; transform: translateY(10px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0)    scale(1);    }
+}
+
+@keyframes page-in {
+  from { opacity: 0; transform: translateY(7px); }
+  to   { opacity: 1; transform: translateY(0);   }
+}
+
+.page-enter { animation: page-in 0.2s cubic-bezier(0.4, 0, 0.2, 1) both; }
+
+/* ══════════════════════════════════════════════════════════
+   LIGHT — card polish
+   ══════════════════════════════════════════════════════════ */
+.light .bg-card {
+  transition: transform 0.3s cubic-bezier(0.34, 1.3, 0.64, 1), box-shadow 0.25s ease;
+  animation: card-in 0.3s cubic-bezier(0.34, 1.2, 0.64, 1) both;
+}
+.light .bg-card:nth-child(1) { animation-delay:   0ms; }
+.light .bg-card:nth-child(2) { animation-delay:  40ms; }
+.light .bg-card:nth-child(3) { animation-delay:  80ms; }
+.light .bg-card:nth-child(4) { animation-delay: 120ms; }
+.light .bg-card:nth-child(5) { animation-delay: 160ms; }
+.light .bg-card:nth-child(n+6) { animation-delay: 200ms; }
+.light .bg-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.08), 0 2px 6px rgba(0,0,0,0.04) !important;
+}
+
+/* ══════════════════════════════════════════════════════════
+   SOFT-GRAY — card polish
+   ══════════════════════════════════════════════════════════ */
+.soft-gray .bg-card {
+  transition: transform 0.3s cubic-bezier(0.34, 1.3, 0.64, 1), box-shadow 0.25s ease;
+  animation: card-in 0.3s cubic-bezier(0.34, 1.2, 0.64, 1) both;
+}
+.soft-gray .bg-card:nth-child(1) { animation-delay:   0ms; }
+.soft-gray .bg-card:nth-child(2) { animation-delay:  40ms; }
+.soft-gray .bg-card:nth-child(3) { animation-delay:  80ms; }
+.soft-gray .bg-card:nth-child(4) { animation-delay: 120ms; }
+.soft-gray .bg-card:nth-child(5) { animation-delay: 160ms; }
+.soft-gray .bg-card:nth-child(n+6) { animation-delay: 200ms; }
+.soft-gray .bg-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(0,0,0,0.07), 0 2px 6px rgba(0,0,0,0.04) !important;
+}
+
+/* ══════════════════════════════════════════════════════════
+   DIM — card polish + subtle highlight
+   ══════════════════════════════════════════════════════════ */
+.dim .bg-card {
+  position: relative;
+  transition: transform 0.32s cubic-bezier(0.34, 1.3, 0.64, 1), box-shadow 0.25s ease;
+  animation: card-in 0.34s cubic-bezier(0.34, 1.2, 0.64, 1) both;
+}
+.dim .bg-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0; height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.07) 50%, transparent);
+  pointer-events: none;
+}
+.dim .bg-card:nth-child(1) { animation-delay:   0ms; }
+.dim .bg-card:nth-child(2) { animation-delay:  45ms; }
+.dim .bg-card:nth-child(3) { animation-delay:  90ms; }
+.dim .bg-card:nth-child(4) { animation-delay: 135ms; }
+.dim .bg-card:nth-child(5) { animation-delay: 180ms; }
+.dim .bg-card:nth-child(n+6) { animation-delay: 225ms; }
+.dim .bg-card:hover {
+  transform: translateY(-2px);
+  box-shadow:
+    0 12px 28px rgba(0,0,0,0.3),
+    0 4px 10px rgba(0,0,0,0.2),
+    0 0 0 1px rgba(200,220,255,0.06) !important;
+}
+
+/* ══════════════════════════════════════════════════════════
+   DARK — card polish + subtle highlight
+   ══════════════════════════════════════════════════════════ */
+.dark .bg-card {
+  position: relative;
+  transition: transform 0.32s cubic-bezier(0.34, 1.3, 0.64, 1), box-shadow 0.25s ease;
+  animation: card-in 0.36s cubic-bezier(0.34, 1.2, 0.64, 1) both;
+}
+.dark .bg-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0; height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.09) 50%, transparent);
+  pointer-events: none;
+}
+.dark .bg-card:nth-child(1) { animation-delay:   0ms; }
+.dark .bg-card:nth-child(2) { animation-delay:  45ms; }
+.dark .bg-card:nth-child(3) { animation-delay:  90ms; }
+.dark .bg-card:nth-child(4) { animation-delay: 135ms; }
+.dark .bg-card:nth-child(5) { animation-delay: 180ms; }
+.dark .bg-card:nth-child(n+6) { animation-delay: 225ms; }
+.dark .bg-card:hover {
+  transform: translateY(-2px);
+  box-shadow:
+    0 14px 32px rgba(0,0,0,0.4),
+    0 4px 12px rgba(0,0,0,0.25),
+    0 0 0 1px rgba(200,220,255,0.07) !important;
+}
+
+/* ══════════════════════════════════════════════════════════
    iOS LIQUID GLASS THEMES
    Architecture: gradient on <html> → transparent body/containers
    → frosted glass cards with specular highlights + animations
@@ -455,7 +565,7 @@ html.glass-dark body,
     0 20px 60px rgba(0, 0, 0, 0.5),
     0 4px  16px rgba(0, 0, 0, 0.25);
   transition: transform 0.35s cubic-bezier(0.34, 1.3, 0.64, 1), box-shadow 0.3s ease;
-  animation: glass-card-in 0.55s cubic-bezier(0.34, 1.15, 0.64, 1) both;
+  animation: glass-card-in 0.4s cubic-bezier(0.34, 1.28, 0.64, 1) both;
 }
 
 /* Inner lens refraction — top radial glow */
@@ -570,7 +680,7 @@ html.glass-light body,
     0 8px  32px rgba(80, 130, 240, 0.13),
     0 2px  8px  rgba(0,   0,   0,   0.05);
   transition: transform 0.35s cubic-bezier(0.34, 1.3, 0.64, 1), box-shadow 0.3s ease;
-  animation: glass-card-in 0.45s cubic-bezier(0.34, 1.15, 0.64, 1) both;
+  animation: glass-card-in 0.38s cubic-bezier(0.34, 1.28, 0.64, 1) both;
 }
 
 .glass-light .bg-card::before {
