@@ -2,8 +2,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
-import { PageTransition } from "@/components/PageTransition";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/features/reports/hooks/useAuth";
 import { StockProvider } from "@/contexts/StockContext";
 import { LanguageProvider, useLang } from "@/contexts/LanguageContext";
@@ -79,7 +78,6 @@ function FullScreenLoader() {
 function ProtectedRoutes() {
   const { user, loading } = useAuth();
   const { dir } = useLang();
-  const location = useLocation();
 
   if (loading) return <FullScreenLoader />;
   if (!user) return <Navigate to="/auth" replace />;
@@ -91,7 +89,6 @@ function ProtectedRoutes() {
       <PreviewModeBanner />
 
       <div dir={dir} className="flex-1 pb-16">
-        <PageTransition key={location.pathname}>
         <Routes>
           {/* ── Dashboard (role-adaptive) ─────────────────────── */}
           <Route path="/" element={<DashboardRouter />} />
@@ -626,7 +623,6 @@ function ProtectedRoutes() {
           <Route path="/unauthorized" element={<Unauthorized />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
-        </PageTransition>
       </div>
 
       <BottomNav />
