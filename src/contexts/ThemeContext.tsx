@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 
-type Theme = "light" | "soft-gray" | "dim" | "dark" | "glass-dark" | "glass-light";
+type Theme = "light" | "soft-gray" | "dim" | "dark" | "glass-dark" | "glass-deep" | "glass-light";
 
 interface ThemeContextType {
   theme: Theme;
@@ -10,9 +10,9 @@ interface ThemeContextType {
 
 const ThemeContext = createContext<ThemeContextType | null>(null);
 
-const THEME_ORDER: Theme[] = ["light", "soft-gray", "dim", "dark", "glass-dark", "glass-light"];
+const THEME_ORDER: Theme[] = ["light", "soft-gray", "dim", "dark", "glass-dark", "glass-deep", "glass-light"];
 
-const ALL_THEMES = ["light", "dim", "soft-gray", "dark", "glass-dark", "glass-light"] as const;
+const ALL_THEMES = ["light", "dim", "soft-gray", "dark", "glass-dark", "glass-deep", "glass-light"] as const;
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [theme, setThemeState] = useState<Theme>(() => {

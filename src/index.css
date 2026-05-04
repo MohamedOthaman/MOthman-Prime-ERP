@@ -315,6 +315,68 @@
     --nav-active: 200 88% 62%;
     --nav-inactive: 215 15% 50%;
   }
+ 
+  /* ─── Dark Glass Theme ─── */
+  .glass-deep {
+    --background: 240 10% 4%;
+    --foreground: 0 0% 98%;
+ 
+    --card: 240 10% 8%;
+    --card-foreground: 0 0% 98%;
+ 
+    --popover: 240 10% 8%;
+    --popover-foreground: 0 0% 98%;
+ 
+    --primary: 210 100% 66%;
+    --primary-foreground: 240 10% 2%;
+ 
+    --secondary: 240 8% 14%;
+    --secondary-foreground: 210 20% 90%;
+ 
+    --muted: 240 8% 12%;
+    --muted-foreground: 215 15% 65%;
+ 
+    --accent: 210 60% 20%;
+    --accent-foreground: 210 100% 80%;
+ 
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 98%;
+ 
+    --border: 240 8% 18%;
+    --input: 240 8% 18%;
+    --ring: 210 100% 66%;
+ 
+    --storage-frozen: 210 90% 65%;
+    --storage-frozen-bg: 210 90% 12%;
+    --storage-chilled: 170 70% 55%;
+    --storage-chilled-bg: 170 70% 10%;
+    --storage-dry: 35 85% 60%;
+    --storage-dry-bg: 35 85% 12%;
+ 
+    --brand-header: 240 10% 6%;
+    --brand-border: 210 80% 45%;
+ 
+    --row-hover: 240 8% 12%;
+ 
+    --success: 145 65% 55%;
+    --success-bg: 145 65% 10%;
+ 
+    --warning: 35 85% 65%;
+    --warning-bg: 35 85% 12%;
+ 
+    --sidebar-background: 240 10% 3%;
+    --sidebar-foreground: 210 15% 95%;
+    --sidebar-primary: 210 100% 66%;
+    --sidebar-primary-foreground: 240 10% 2%;
+    --sidebar-accent: 240 8% 12%;
+    --sidebar-accent-foreground: 210 15% 95%;
+    --sidebar-border: 240 8% 15%;
+    --sidebar-ring: 210 100% 66%;
+ 
+    --nav-bg: 240 10% 3%;
+    --nav-active: 210 100% 66%;
+    --nav-inactive: 215 15% 55%;
+  }
 
   /* ─── Glass Light Theme ─── */
   .glass-light {
@@ -569,7 +631,74 @@ html.glass-dark body,
    GLASS LIGHT
    ══════════════════════════════════════════════════════════ */
 
-html.glass-light {
+/* ══════════════════════════════════════════════════════════
+    DARK GLASS (Midnight)
+    ══════════════════════════════════════════════════════════ */
+ 
+ html.glass-deep {
+   background: 
+     radial-gradient(circle at 20% 20%, rgba(20, 20, 25, 1) 0%, transparent 60%),
+     radial-gradient(circle at 80% 80%, rgba(10, 10, 15, 1) 0%, transparent 60%),
+     linear-gradient(180deg, #020204 0%, #050508 100%);
+   background-attachment: fixed;
+ }
+ 
+ html.glass-deep body,
+ .glass-deep [class*="bg-background"] { background: transparent !important; }
+ 
+ .glass-deep .bg-card {
+   position: relative;
+   overflow: hidden;
+   isolation: isolate;
+   background: rgba(15, 15, 20, 0.85) !important;
+   backdrop-filter: blur(50px) saturate(200%) brightness(0.9);
+   -webkit-backdrop-filter: blur(50px) saturate(200%) brightness(0.9);
+   border: 1px solid rgba(255, 255, 255, 0.08) !important;
+   box-shadow: 
+     inset 0 1px 1px rgba(255, 255, 255, 0.1),
+     0 20px 50px rgba(0, 0, 0, 0.8);
+   animation: glass-card-in 0.5s cubic-bezier(0.34, 1.15, 0.64, 1) both;
+ }
+ 
+ .glass-deep .bg-card::before {
+   content: '';
+   position: absolute;
+   inset: 0;
+   background: linear-gradient(135deg, rgba(255,255,255,0.05) 0%, transparent 40%);
+   pointer-events: none;
+   z-index: 0;
+ }
+ 
+ .glass-deep .bg-card:hover {
+   background: rgba(20, 20, 25, 0.9) !important;
+   transform: translateY(-2px);
+   box-shadow: 
+     inset 0 1px 1px rgba(255, 255, 255, 0.15),
+     0 30px 60px rgba(0, 0, 0, 0.9);
+ }
+ 
+ .glass-deep .sticky.top-0 {
+   background: rgba(5, 5, 10, 0.85) !important;
+   backdrop-filter: blur(40px) saturate(200%);
+   border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
+ }
+ 
+ .glass-deep .bg-popover {
+   background: rgba(10, 10, 15, 0.95) !important;
+   backdrop-filter: blur(50px);
+   border: 1px solid rgba(255, 255, 255, 0.1) !important;
+ }
+ 
+ .glass-deep [data-sidebar="sidebar"] {
+   background: rgba(5, 5, 8, 0.9) !important;
+   backdrop-filter: blur(40px);
+   border-right: 1px solid rgba(255, 255, 255, 0.05) !important;
+ }
+ 
+ .glass-deep .bg-secondary { background: rgba(255, 255, 255, 0.06) !important; }
+ .glass-deep .bg-muted     { background: rgba(255, 255, 255, 0.04) !important; }
+ 
+ html.glass-light {
   background:
     radial-gradient(ellipse at 15% 18%, rgba(147, 210, 255, 0.55) 0%, transparent 52%),
     radial-gradient(ellipse at 85% 82%, rgba(200, 180, 255, 0.42) 0%, transparent 52%),
@@ -680,6 +809,7 @@ html.glass-light body,
    ══════════════════════════════════════════════════════════ */
 
 html.glass-dark  nav.fixed,
+html.glass-deep  nav.fixed,
 html.glass-light nav.fixed {
   bottom: 20px !important;
   left: 50% !important;
@@ -706,6 +836,17 @@ html.glass-dark nav.fixed {
     0 0    0 1px rgba(255,255,255,0.08);
 }
 
+html.glass-deep nav.fixed {
+  background: rgba(5, 5, 10, 0.85) !important;
+  backdrop-filter: blur(40px) saturate(200%);
+  -webkit-backdrop-filter: blur(40px) saturate(200%);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.1),
+    0 20px 60px rgba(0,0,0,0.8),
+    0 8px  24px rgba(0,0,0,0.4),
+    0 0    0 1px rgba(255,255,255,0.05);
+}
+
 html.glass-light nav.fixed {
   background: rgba(255, 255, 255, 0.76) !important;
   backdrop-filter: blur(36px) saturate(180%);
@@ -719,6 +860,7 @@ html.glass-light nav.fixed {
 
 /* Spring-physics button animation */
 html.glass-dark  nav button,
+html.glass-deep  nav button,
 html.glass-light nav button {
   border-radius: 100px !important;
   padding: 10px 16px !important;
@@ -731,13 +873,15 @@ html.glass-light nav button {
 }
 
 html.glass-dark  nav button:active,
+html.glass-deep  nav button:active,
 html.glass-light nav button:active {
   transform: scale(0.78) !important;
   transition: transform 0.08s cubic-bezier(0.4, 0, 1, 1) !important;
 }
 
 /* Active tab pill highlight */
-.glass-dark  nav button.text-primary {
+.glass-dark  nav button.text-primary,
+ .glass-deep  nav button.text-primary {
   background: rgba(255, 255, 255, 0.14) !important;
   box-shadow: inset 0 1px 0 rgba(255,255,255,0.22), 0 2px 10px rgba(0,0,0,0.25) !important;
 }
@@ -749,6 +893,7 @@ html.glass-light nav button:active {
 
 /* Extra bottom padding so content isn't hidden behind floating nav */
 .glass-dark  div[dir].pb-16,
+.glass-deep  div[dir].pb-16,
 .glass-light div[dir].pb-16 { padding-bottom: 88px !important; }
 
 /* iOS-style wheel picker */

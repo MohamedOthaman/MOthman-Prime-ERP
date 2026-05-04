@@ -8,6 +8,7 @@ const themeIcon = {
   dim: MoonStar,
   dark: Moon,
   "glass-dark": Sparkles,
+  "glass-deep": MoonStar,
   "glass-light": Gem,
 } as const;
 
@@ -17,6 +18,7 @@ const themeLabel = {
   dim: "Dim",
   dark: "Dark",
   "glass-dark": "Glass",
+  "glass-deep": "Dark Glass",
   "glass-light": "Crystal",
 } as const;
 
