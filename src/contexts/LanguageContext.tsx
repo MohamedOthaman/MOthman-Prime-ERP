@@ -5,6 +5,7 @@ type Lang = "en" | "ar";
 const translations = {
   en: {
     stockOverview: "Stock Overview",
+    home: "Home",
     items: "items",
     searchProduct: "Search product or code...",
     noProducts: "No products found",
@@ -105,6 +106,7 @@ const translations = {
     searchProduct: "ابحث عن منتج أو كود...",
     noProducts: "لا توجد منتجات",
     productManagement: "إدارة المنتجات",
+    home: "الرئيسية",
     add: "إضافة",
     addNewProduct: "إضافة منتج جديد",
     editProduct: "تعديل المنتج",

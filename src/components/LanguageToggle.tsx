@@ -1,7 +1,7 @@
 import { useLang } from "@/contexts/LanguageContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import { Globe, Sun, Moon, SunMedium, MoonStar, Sparkles, Gem } from "lucide-react";
-
+ 
 const themeIcon = {
   light: Sun,
   "soft-gray": SunMedium,
@@ -11,7 +11,7 @@ const themeIcon = {
   "glass-deep": MoonStar,
   "glass-light": Gem,
 } as const;
-
+ 
 const themeLabel = {
   light: "Light",
   "soft-gray": "Gray",
@@ -21,12 +21,12 @@ const themeLabel = {
   "glass-deep": "Dark Glass",
   "glass-light": "Crystal",
 } as const;
-
+ 
 export function LanguageToggle() {
   const { lang, setLang } = useLang();
   const { theme, cycleTheme } = useTheme();
   const ThemeIcon = themeIcon[theme];
-
+ 
   return (
     <div className="flex items-center gap-1.5">
       <button
