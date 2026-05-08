@@ -46,6 +46,7 @@ import ReturnIntakePage from "./pages/returns/ReturnIntakePage";
 import ReturnDetailsPage from "./pages/returns/ReturnDetailsPage";
 import BatchTracePage from "./pages/warehouse/BatchTracePage";
 import FridgeStoragePage from "./pages/warehouse/FridgeStoragePage";
+import NetWeightPage from "./pages/warehouse/NetWeightPage";
 import ProductTracePage from "./pages/products/ProductTracePage";
 import AdminSettingsPage from "./pages/admin/AdminSettingsPage";
 
@@ -549,6 +550,22 @@ function ProtectedRoutes() {
                 ]}
               >
                 <GRNPrintPage />
+              </RoleGuard>
+            }
+          />
+
+          {/* ── Net Weight Tracking ───────────────────────────── */}
+          <Route
+            path="/warehouse/net-weight"
+            element={
+              <RoleGuard
+                allowedRoles={[
+                  "admin", "ops_manager",
+                  "warehouse_manager", "warehouse",
+                  "inventory_controller", "purchase_manager", "qc",
+                ]}
+              >
+                <NetWeightPage />
               </RoleGuard>
             }
           />
