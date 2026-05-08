@@ -29,3 +29,9 @@ ios/App/build
 *.njsproj
 *.sln
 *.sw?
+
+# Build and caches
+.next
+build
+.cache
+.eslintcache
