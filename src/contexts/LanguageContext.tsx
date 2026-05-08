@@ -98,7 +98,6 @@ const translations = {
     saved: "saved",
     warehouseErp: "Food Choice ERP",
     logout: "Logout",
-    home: "Home",
   },
   ar: {
     stockOverview: "نظرة عامة على المخزون",
@@ -195,7 +194,6 @@ const translations = {
     saved: "تم الحفظ",
     warehouseErp: "فود تشويس ERP",
     logout: "تسجيل الخروج",
-    home: "الرئيسية",
   },
 };
 
