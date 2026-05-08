@@ -102,6 +102,11 @@ export default {
         "accordion-up": "accordion-up 0.2s ease-out",
         "slide-up": "slide-up 0.3s ease-out",
       },
+      boxShadow: {
+        "soft": "0 2px 12px hsla(0,0%,0%,0.04), 0 1px 2px hsla(0,0%,0%,0.02)",
+        "soft-md": "0 8px 24px hsla(0,0%,0%,0.06), 0 2px 8px hsla(0,0%,0%,0.04)",
+        "soft-lg": "0 16px 48px hsla(0,0%,0%,0.08), 0 4px 16px hsla(0,0%,0%,0.04)",
+      },
     },
   },
   plugins: [require("tailwindcss-animate")],

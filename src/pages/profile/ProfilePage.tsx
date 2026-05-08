@@ -19,11 +19,18 @@ import {
   Briefcase,
   Settings,
   Clock,
+  TrendingUp,
+  TrendingDown,
+  Minus,
+  Activity,
+  HeartPulse,
+  Zap,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/features/reports/hooks/useAuth";
 import { usePermissions } from "@/hooks/usePermissions";
 import type { RoleTier } from "@/types/roles";
+import { getMockUserByRole, getMockUserByEmail, type MockKPI } from "@/data/mockUsers";
 
 // ─── Tier display config ──────────────────────────────────────────────────────
 
@@ -38,38 +45,38 @@ const TIER_CONFIG: Record<RoleTier, {
 }> = {
   owner: {
     label: "Owner",
-    color: "text-amber-400",
-    bg: "bg-amber-500/10",
-    border: "border-amber-500/30",
+    color: "text-amber-600 dark:text-amber-400",
+    bg: "bg-amber-50 dark:bg-amber-500/10",
+    border: "border-amber-200 dark:border-amber-500/20",
     icon: Crown,
-    accentBar: "bg-gradient-to-r from-amber-500 via-amber-400 to-yellow-300",
-    avatarCls: "bg-amber-500 text-amber-950",
+    accentBar: "bg-amber-500",
+    avatarCls: "bg-amber-500 text-white",
   },
   executive: {
     label: "Executive",
-    color: "text-amber-300",
-    bg: "bg-amber-400/10",
-    border: "border-amber-400/25",
+    color: "text-amber-600 dark:text-amber-300",
+    bg: "bg-amber-50 dark:bg-amber-400/10",
+    border: "border-amber-200 dark:border-amber-400/20",
     icon: Star,
-    accentBar: "bg-gradient-to-r from-amber-400 to-yellow-300",
+    accentBar: "bg-amber-400",
     avatarCls: "bg-amber-400 text-amber-950",
   },
   admin: {
     label: "Admin",
-    color: "text-blue-400",
-    bg: "bg-blue-500/10",
-    border: "border-blue-500/25",
+    color: "text-blue-600 dark:text-blue-400",
+    bg: "bg-blue-50 dark:bg-blue-500/10",
+    border: "border-blue-200 dark:border-blue-500/20",
     icon: Shield,
-    accentBar: "bg-gradient-to-r from-blue-600 to-blue-400",
+    accentBar: "bg-blue-500",
     avatarCls: "bg-blue-500 text-white",
   },
   manager: {
     label: "Manager",
-    color: "text-violet-400",
-    bg: "bg-violet-500/10",
-    border: "border-violet-500/25",
+    color: "text-violet-600 dark:text-violet-400",
+    bg: "bg-violet-50 dark:bg-violet-500/10",
+    border: "border-violet-200 dark:border-violet-500/20",
     icon: Briefcase,
-    accentBar: "bg-gradient-to-r from-violet-600 to-violet-400",
+    accentBar: "bg-violet-500",
     avatarCls: "bg-violet-500 text-white",
   },
   user: {
@@ -78,8 +85,8 @@ const TIER_CONFIG: Record<RoleTier, {
     bg: "bg-muted/40",
     border: "border-border",
     icon: User,
-    accentBar: "bg-muted",
-    avatarCls: "bg-muted text-muted-foreground",
+    accentBar: "bg-muted-foreground/40",
+    avatarCls: "bg-muted text-muted-foreground border border-border",
   },
 };
 
@@ -113,6 +120,34 @@ const PERMISSIONS = [
   { key: "canUseVisualBuilder" as const, label: "Dashboard Builder", icon: LayoutDashboard },
 ];
 
+// ─── KPI icon mapping ─────────────────────────────────────────────────────────
+
+const KPI_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
+  "Total Sales": TrendingUp,
+  "Inventory Health": HeartPulse,
+  "Activity Count": Activity,
+};
+
+const KPI_COLORS: Record<string, { text: string; bg: string; border: string }> = {
+  emerald: { text: "text-emerald-600 dark:text-emerald-400", bg: "bg-emerald-50 dark:bg-emerald-500/10", border: "border-emerald-100 dark:border-emerald-500/15" },
+  blue:    { text: "text-blue-600 dark:text-blue-400",       bg: "bg-blue-50 dark:bg-blue-500/10",       border: "border-blue-100 dark:border-blue-500/15"    },
+  violet:  { text: "text-violet-600 dark:text-violet-400",   bg: "bg-violet-50 dark:bg-violet-500/10",   border: "border-violet-100 dark:border-violet-500/15" },
+  amber:   { text: "text-amber-600 dark:text-amber-400",     bg: "bg-amber-50 dark:bg-amber-500/10",     border: "border-amber-100 dark:border-amber-500/15"   },
+  rose:    { text: "text-rose-600 dark:text-rose-400",       bg: "bg-rose-50 dark:bg-rose-500/10",       border: "border-rose-100 dark:border-rose-500/15"     },
+};
+
+// ─── Quick action icon mapping ────────────────────────────────────────────────
+
+const ACTION_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
+  FileText: FileText,
+  BarChart3: BarChart3,
+  Package: Package,
+  Users: Users,
+  ClipboardList: Truck,
+  AlertTriangle: Zap,
+  ScanLine: FileSpreadsheet,
+};
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function getInitials(fullName?: string, email?: string): string {
@@ -140,6 +175,33 @@ function formatSignIn(iso?: string): string {
   }
 }
 
+function TrendIndicator({ trend, value }: { trend?: string; value?: string }) {
+  if (!trend || !value || value === "N/A") return null;
+
+  if (trend === "up") {
+    return (
+      <span className="inline-flex items-center gap-0.5 text-[11px] text-emerald-600 dark:text-emerald-400 font-medium">
+        <TrendingUp className="w-3 h-3" />
+        {value}
+      </span>
+    );
+  }
+  if (trend === "down") {
+    return (
+      <span className="inline-flex items-center gap-0.5 text-[11px] text-rose-600 dark:text-rose-400 font-medium">
+        <TrendingDown className="w-3 h-3" />
+        {value}
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center gap-0.5 text-[11px] text-muted-foreground font-medium">
+      <Minus className="w-3 h-3" />
+      {value}
+    </span>
+  );
+}
+
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function ProfilePage() {
@@ -154,6 +216,19 @@ export default function ProfilePage() {
   const initials = getInitials(fullName, user?.email);
   const tierIndex = TIER_STEPS.indexOf(tier);
   const deptLabel = DEPT_LABELS[department] ?? department;
+
+  // Get mock KPIs and quick actions for the current user
+  const userEmail = user?.email ?? "";
+  const mockUser = getMockUserByEmail(userEmail) || getMockUserByRole(role);
+  const kpis: MockKPI[] = mockUser?.kpis ?? [
+    { label: "Total Sales", value: "—", color: "emerald" },
+    { label: "Inventory Health", value: "—", color: "blue" },
+    { label: "Activity Count", value: "—", color: "violet" },
+  ];
+  const quickActions = mockUser?.quickActions ?? [
+    { label: "View Reports", path: "/reports", icon: "BarChart3", color: "violet" },
+    { label: "Check Stock", path: "/stock", icon: "Package", color: "emerald" },
+  ];
 
   const handleSignOut = async () => {
     await signOut();
@@ -179,7 +254,7 @@ export default function ProfilePage() {
       <main className="max-w-2xl mx-auto px-4 py-5 space-y-4">
         {/* ── Identity card ──────────────────────────────────── */}
         <div className="rounded-xl border border-border bg-card overflow-hidden">
-          {/* Tier accent bar */}
+          {/* Tier accent bar — thin, solid color */}
           <div className={`h-[3px] w-full ${cfg.accentBar}`} />
 
           <div className="p-5 flex items-start gap-4">
@@ -208,6 +283,64 @@ export default function ProfilePage() {
                 </span>
               </div>
             </div>
+          </div>
+        </div>
+
+        {/* ── KPI Cards ───────────────────────────────────────── */}
+        <div>
+          <h3 className="text-[11px] font-semibold text-muted-foreground uppercase tracking-widest mb-2.5">
+            Key Metrics
+          </h3>
+          <div className="grid grid-cols-3 gap-3">
+            {kpis.map((kpi) => {
+              const colors = KPI_COLORS[kpi.color] ?? KPI_COLORS.blue;
+              const KpiIcon = KPI_ICONS[kpi.label] ?? Activity;
+              return (
+                <div key={kpi.label} className="kpi-card">
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${colors.bg} ${colors.border} border`}>
+                      <KpiIcon className={`w-3.5 h-3.5 ${colors.text}`} />
+                    </div>
+                  </div>
+                  <p className="text-lg font-bold text-foreground leading-tight">
+                    {kpi.value}
+                  </p>
+                  <div className="flex items-center justify-between mt-1">
+                    <p className="text-[11px] text-muted-foreground">
+                      {kpi.label}
+                    </p>
+                    <TrendIndicator trend={kpi.trend} value={kpi.trendValue} />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* ── Quick Actions ───────────────────────────────────── */}
+        <div>
+          <h3 className="text-[11px] font-semibold text-muted-foreground uppercase tracking-widest mb-2.5">
+            Quick Actions
+          </h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            {quickActions.map((action) => {
+              const ActionIcon = ACTION_ICONS[action.icon] ?? Zap;
+              return (
+                <button
+                  key={action.path}
+                  onClick={() => navigate(action.path)}
+                  className="action-card group"
+                >
+                  <div className="w-8 h-8 rounded-lg bg-muted/60 border border-border flex items-center justify-center shrink-0 group-hover:border-primary/20 transition-colors">
+                    <ActionIcon className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-foreground">{action.label}</p>
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-muted-foreground/40" />
+                </button>
+              );
+            })}
           </div>
         </div>
 
@@ -253,14 +386,14 @@ export default function ProfilePage() {
               return (
                 <div
                   key={key}
-                  className={`flex items-center gap-2.5 rounded-lg px-3 py-2 border ${granted ? "bg-emerald-500/5 border-emerald-500/15" : "bg-muted/15 border-border"}`}
+                  className={`flex items-center gap-2.5 rounded-lg px-3 py-2 border ${granted ? "bg-emerald-50 dark:bg-emerald-500/5 border-emerald-200 dark:border-emerald-500/15" : "bg-muted/15 border-border"}`}
                 >
-                  <Icon className={`w-3.5 h-3.5 shrink-0 ${granted ? "text-emerald-400" : "text-muted-foreground/30"}`} />
+                  <Icon className={`w-3.5 h-3.5 shrink-0 ${granted ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground/30"}`} />
                   <span className={`text-xs flex-1 ${granted ? "text-foreground" : "text-muted-foreground/45"}`}>
                     {label}
                   </span>
                   {granted
-                    ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                    ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
                     : <XCircle className="w-3.5 h-3.5 text-muted-foreground/25 shrink-0" />
                   }
                 </div>
@@ -280,8 +413,8 @@ export default function ProfilePage() {
               onClick={() => navigate("/admin/preview-as")}
               className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-muted/30 transition border-t border-border"
             >
-              <div className="w-8 h-8 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center shrink-0">
-                <Eye className="w-3.5 h-3.5 text-amber-400" />
+              <div className="w-8 h-8 rounded-lg bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 flex items-center justify-center shrink-0">
+                <Eye className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
               </div>
               <div className="flex-1 text-left">
                 <p className="text-sm font-medium text-foreground">View as Another User</p>
@@ -296,8 +429,8 @@ export default function ProfilePage() {
               onClick={() => navigate("/admin/dashboard-builder")}
               className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-muted/30 transition border-t border-border"
             >
-              <div className="w-8 h-8 rounded-lg bg-violet-500/10 border border-violet-500/20 flex items-center justify-center shrink-0">
-                <LayoutDashboard className="w-3.5 h-3.5 text-violet-400" />
+              <div className="w-8 h-8 rounded-lg bg-violet-50 dark:bg-violet-500/10 border border-violet-200 dark:border-violet-500/20 flex items-center justify-center shrink-0">
+                <LayoutDashboard className="w-3.5 h-3.5 text-violet-600 dark:text-violet-400" />
               </div>
               <div className="flex-1 text-left">
                 <p className="text-sm font-medium text-foreground">Dashboard Builder</p>
@@ -312,8 +445,8 @@ export default function ProfilePage() {
               onClick={() => navigate("/admin/users")}
               className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-muted/30 transition border-t border-border"
             >
-              <div className="w-8 h-8 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center justify-center shrink-0">
-                <Settings className="w-3.5 h-3.5 text-blue-400" />
+              <div className="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-500/10 border border-blue-200 dark:border-blue-500/20 flex items-center justify-center shrink-0">
+                <Settings className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
               </div>
               <div className="flex-1 text-left">
                 <p className="text-sm font-medium text-foreground">User Management</p>

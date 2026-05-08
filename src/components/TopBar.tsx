@@ -47,7 +47,7 @@ export function TopBar() {
   };
 
   return (
-    <header className="sticky top-0 z-50 bg-background/95 backdrop-blur border-b border-border">
+    <header className="sticky top-0 z-50 surface-nav border-b border-border">
       <div className="max-w-7xl mx-auto px-4 h-11 flex items-center gap-2">
         <AppBrand compact className="mr-auto" />
 
