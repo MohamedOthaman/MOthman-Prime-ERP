@@ -9,6 +9,7 @@ import {
   ScanLine,
   RotateCcw,
   Activity,
+  Home,
 } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useLang } from "@/contexts/LanguageContext";
@@ -42,9 +43,7 @@ export function BottomNav() {
     role,
   } = usePermissions();
 
-  const tabs: Tab[] = [
-    { path: "/", icon: LayoutDashboard, label: t("home") ?? "Home" },
-  ];
+  const tabs: Tab[] = [];
 
   // ── Slot 2: primary workflow ──────────────────────────────────────────────
 
@@ -114,7 +113,11 @@ export function BottomNav() {
   for (const tab of tabs) {
     if (!seen.has(tab.path)) { unique.push(tab); seen.add(tab.path); }
   }
-  const final = unique.slice(0, 5);
+  const otherFinal = unique.slice(0, 4);
+
+  const homeTab: Tab = { path: "/", icon: Home, label: t("home") ?? "Home" };
+  const final = [...otherFinal];
+  final.splice(Math.floor(final.length / 2), 0, homeTab);
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-background/95 backdrop-blur">
@@ -128,6 +131,7 @@ export function BottomNav() {
               ? location.pathname === "/"
               : location.pathname === tab.path || location.pathname.startsWith(`${tab.path}/`);
           const Icon = tab.icon;
+
           return (
             <button
               key={tab.path}
