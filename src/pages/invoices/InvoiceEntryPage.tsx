@@ -74,7 +74,10 @@ const EMPTY_LINE: InvoiceLineForm = {
 };
 
 const lineInputClass =
-  "h-9 w-full rounded-md border border-border bg-background px-2.5 text-[13px] text-foreground focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-60";
+  "h-7 w-full rounded-sm border border-border bg-background px-1.5 text-[11.5px] text-foreground focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-60";
+
+const fieldLabelClass =
+  "shrink-0 text-[11px] font-medium text-foreground/80 whitespace-nowrap";
 
 function createDraftInvoiceNo() {
   const now = new Date();
