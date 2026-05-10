@@ -74,7 +74,10 @@ const EMPTY_LINE: InvoiceLineForm = {
 };
 
 const lineInputClass =
-  "h-9 w-full rounded-md border border-border bg-background px-2.5 text-[13px] text-foreground focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-60";
+  "h-7 w-full rounded-sm border border-border bg-background px-1.5 text-[11.5px] text-foreground focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-60";
+
+const fieldLabelClass =
+  "shrink-0 text-[11px] font-medium text-foreground/80 whitespace-nowrap";
 
 function createDraftInvoiceNo() {
   const now = new Date();
@@ -854,141 +857,131 @@ export default function InvoiceEntryPage() {
         </div>
       </header>
 
-      <main className="mx-auto max-w-7xl space-y-4 px-4 py-4">
+      <main className="mx-auto w-full max-w-[1340px] space-y-2 px-3 py-2">
         {error && (
-          <div className="flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3">
-            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
-            <p className="text-sm text-destructive">{error}</p>
+          <div className="flex items-start gap-2 rounded-sm border border-destructive/30 bg-destructive/10 px-2 py-1.5">
+            <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-destructive" />
+            <p className="text-xs text-destructive">{error}</p>
           </div>
         )}
 
-        <section className="rounded-lg border border-border bg-secondary p-3">
-          <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-              Invoice Header
-            </h2>
-            <div className="flex items-center gap-3 text-[11px] text-muted-foreground">
-              <span>{selectedCustomer ? selectedCustomer.name : "No customer selected"}</span>
-              <span>{selectedSalesman ? selectedSalesman.name : "No salesman selected"}</span>
-              <span>{activeLineCount} lines</span>
-            </div>
+        {/* Sales Master — classic ERP fieldset */}
+        <section className="rounded-sm border border-border bg-secondary/40 px-2 pt-1 pb-2">
+          <div className="-mt-2.5 mb-1 inline-block bg-background px-1 text-[11px] font-semibold text-foreground/80">
+            Sales Master
           </div>
 
-          <div className="grid gap-3 xl:grid-cols-[1.1fr_0.9fr_1.3fr_1.1fr_0.8fr]">
-            <div>
-              <label className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-                Invoice No
-              </label>
+          <div className="grid grid-cols-12 gap-x-2 gap-y-1.5">
+            <div className="col-span-3 flex items-center gap-1.5">
+              <label className={`${fieldLabelClass} w-[70px]`}>Invoice No</label>
               <input
                 value={invoiceNo}
-                onChange={(event) => setInvoiceNo(event.target.value)}
+                onChange={(e) => setInvoiceNo(e.target.value)}
                 readOnly={isReadOnly}
                 className={`${lineInputClass} font-mono`}
               />
             </div>
-
-            <div>
-              <label className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-                Invoice Date
-              </label>
+            <div className="col-span-3 flex items-center gap-1.5">
+              <label className={`${fieldLabelClass} w-[80px]`}>Invoice Date</label>
               <input
                 type="date"
                 value={invoiceDate}
-                onChange={(event) => setInvoiceDate(event.target.value)}
+                onChange={(e) => setInvoiceDate(e.target.value)}
                 readOnly={isReadOnly}
                 className={lineInputClass}
               />
             </div>
-
-            <div>
-              <label className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-                Customer
-              </label>
-              <InvoiceLookupSelect
-                value={customerId}
-                options={customerOptions}
-                placeholder="Select customer"
-                searchPlaceholder="Search by code or name..."
-                emptyText="No customer found."
-                disabled={isReadOnly}
-                onSelect={handleCustomerChange}
-              />
+            <div className="col-span-3 flex items-center gap-1.5">
+              <label className={`${fieldLabelClass} w-[90px]`}>Payment Type</label>
+              <input value="CREDIT" readOnly className={lineInputClass} />
             </div>
-
-            <div>
-              <label className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-                Salesman
-              </label>
-              <InvoiceLookupSelect
-                value={salesmanId}
-                options={salesmanOptions}
-                placeholder="Select salesman"
-                searchPlaceholder="Search salesman..."
-                emptyText="No salesman found."
-                disabled={isReadOnly}
-                onSelect={handleSalesmanSelect}
-              />
-            </div>
-
-            <div>
-              <label className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-                Status
-              </label>
+            <div className="col-span-3 flex items-center gap-1.5">
+              <label className={`${fieldLabelClass} w-[70px]`}>Status</label>
               <input value={status} readOnly className={`${lineInputClass} capitalize`} />
             </div>
-          </div>
 
-          <div className="mt-3">
-            <label className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-              Notes
-            </label>
-            <textarea
-              value={notes}
-              onChange={(event) => setNotes(event.target.value)}
-              readOnly={isReadOnly}
-              rows={2}
-              className="w-full rounded-md border border-border bg-background px-2.5 py-2 text-[13px] text-foreground focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-60"
-              placeholder="Invoice notes..."
-            />
+            <div className="col-span-3 flex items-center gap-1.5">
+              <label className={`${fieldLabelClass} w-[70px]`}>Cust. Code</label>
+              <input
+                value={selectedCustomer?.code ?? ""}
+                readOnly
+                className={`${lineInputClass} font-mono`}
+                placeholder="—"
+              />
+            </div>
+            <div className="col-span-6 flex items-center gap-1.5">
+              <label className={`${fieldLabelClass} w-[80px]`}>Cust. Name</label>
+              <div className="flex-1">
+                <InvoiceLookupSelect
+                  value={customerId}
+                  options={customerOptions}
+                  placeholder="Select customer"
+                  searchPlaceholder="Search by code or name..."
+                  emptyText="No customer found."
+                  disabled={isReadOnly}
+                  onSelect={handleCustomerChange}
+                />
+              </div>
+            </div>
+            <div className="col-span-3 flex items-center gap-1.5">
+              <label className={`${fieldLabelClass} w-[70px]`}>Salesman</label>
+              <div className="flex-1">
+                <InvoiceLookupSelect
+                  value={salesmanId}
+                  options={salesmanOptions}
+                  placeholder="Select salesman"
+                  searchPlaceholder="Search salesman..."
+                  emptyText="No salesman found."
+                  disabled={isReadOnly}
+                  onSelect={handleSalesmanSelect}
+                />
+              </div>
+            </div>
+
+            <div className="col-span-12 flex items-center gap-1.5">
+              <label className={`${fieldLabelClass} w-[70px]`}>Comments</label>
+              <input
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                readOnly={isReadOnly}
+                className={lineInputClass}
+                placeholder="Invoice notes..."
+              />
+            </div>
           </div>
         </section>
 
-        <section className="rounded-lg border border-border bg-secondary p-3">
-          <div className="mb-3 flex items-center justify-between">
-            <div>
-              <h2 className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-                Invoice Lines
-              </h2>
-              <p className="mt-1 text-[11px] text-muted-foreground">
-                Enter by item code or barcode. Item details and FEFO preview update automatically.
-              </p>
-            </div>
+        {/* Sales Detail — dense ERP table */}
+        <section className="rounded-sm border border-border bg-secondary/40 px-2 pt-1 pb-2">
+          <div className="-mt-2.5 mb-1 flex items-center justify-between">
+            <span className="inline-block bg-background px-1 text-[11px] font-semibold text-foreground/80">
+              Sales Detail
+            </span>
             {!isReadOnly && (
               <button
                 type="button"
                 onClick={addLine}
-                className="inline-flex h-8 items-center gap-1 rounded-md bg-primary px-3 text-xs font-semibold text-primary-foreground hover:opacity-90"
+                className="inline-flex h-6 items-center gap-1 rounded-sm bg-primary px-2 text-[11px] font-semibold text-primary-foreground hover:opacity-90"
               >
-                <Plus className="h-3.5 w-3.5" />
-                Add Row
+                <Plus className="h-3 w-3" /> Add Row
               </button>
             )}
           </div>
 
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[1380px] border-separate border-spacing-0">
+            <table className="w-full border-separate border-spacing-0 text-[11px]">
               <thead>
-                <tr className="text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                  <th className="w-14 px-1.5 py-2">#</th>
-                  <th className="w-28 px-1.5 py-2">Item Code</th>
-                  <th className="w-36 px-1.5 py-2">Barcode</th>
-                  <th className="px-1.5 py-2">Item Name</th>
-                  <th className="w-24 px-1.5 py-2">Qty</th>
-                  <th className="w-20 px-1.5 py-2">Unit</th>
-                  <th className="w-28 px-1.5 py-2">Unit Price</th>
-                  <th className="w-24 px-1.5 py-2">Discount</th>
-                  <th className="w-28 px-1.5 py-2">Line Total</th>
-                  <th className="w-28 px-1.5 py-2">Actions</th>
+                <tr className="bg-muted/40 text-center text-[10.5px] font-semibold uppercase tracking-wide text-foreground/70">
+                  <th className="w-10 border border-border px-1 py-1">SNo</th>
+                  <th className="w-24 border border-border px-1 py-1 text-red-500">Item Code</th>
+                  <th className="w-28 border border-border px-1 py-1">Barcode</th>
+                  <th className="border border-border px-1 py-1">Item Name</th>
+                  <th className="w-16 border border-border px-1 py-1">Uom</th>
+                  <th className="w-20 border border-border px-1 py-1">Qty</th>
+                  <th className="w-24 border border-border px-1 py-1">Unit Price</th>
+                  <th className="w-16 border border-border px-1 py-1">Disc(%)</th>
+                  <th className="w-24 border border-border px-1 py-1">Total Price</th>
+                  <th className="w-16 border border-border px-1 py-1">Act</th>
                 </tr>
               </thead>
 
@@ -1016,14 +1009,14 @@ export default function InvoiceEntryPage() {
 
                   return (
                     <Fragment key={line.id ?? `line-${index}`}>
-                      <tr className="align-top">
-                        <td className="px-1.5 py-1.5">
-                          <div className="flex h-9 items-center rounded-md border border-border bg-background px-2.5 font-mono text-xs text-foreground">
+                      <tr className="align-middle">
+                        <td className="border border-border px-0.5 py-0.5">
+                          <div className="flex h-7 items-center justify-center bg-background px-1 font-mono text-[11px] text-foreground">
                             {index + 1}
                           </div>
                         </td>
 
-                        <td className="px-1.5 py-1.5">
+                        <td className="border border-border px-0.5 py-0.5">
                           <input
                             value={line.product_code}
                             data-line-code={index}
@@ -1038,7 +1031,7 @@ export default function InvoiceEntryPage() {
                           />
                         </td>
 
-                        <td className="px-1.5 py-1.5">
+                        <td className="border border-border px-0.5 py-0.5">
                           <input
                             value={line.product_barcode}
                             data-line-barcode={index}
@@ -1053,7 +1046,7 @@ export default function InvoiceEntryPage() {
                           />
                         </td>
 
-                        <td className="px-1.5 py-1.5">
+                        <td className="border border-border px-0.5 py-0.5">
                           <Popover
                             open={line.product_picker_open && !isReadOnly}
                             onOpenChange={(open) => handleProductPickerOpenChange(index, open)}
@@ -1064,17 +1057,17 @@ export default function InvoiceEntryPage() {
                                 variant="outline"
                                 disabled={isReadOnly}
                                 data-line-product={index}
-                                className="h-9 w-full justify-between bg-background px-2.5 font-normal"
+                                className="h-7 w-full justify-between rounded-sm bg-background px-1.5 text-[11.5px] font-normal"
                               >
                                 <span
                                   className={cn(
-                                    "truncate text-left text-[13px]",
+                                    "truncate text-left text-[11.5px]",
                                     !line.product_id && "text-muted-foreground"
                                   )}
                                 >
                                   {line.product_name || "Select item"}
                                 </span>
-                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                <ChevronsUpDown className="ml-1 h-3 w-3 shrink-0 opacity-50" />
                               </Button>
                             </PopoverTrigger>
 
@@ -1116,24 +1109,18 @@ export default function InvoiceEntryPage() {
                               </Command>
                             </PopoverContent>
                           </Popover>
-
-                          <div className="mt-1 flex items-center justify-between gap-2">
-                            <span className="truncate text-[11px] text-muted-foreground">
-                              {line.search || "No item selected"}
-                            </span>
-                            {!isReadOnly && line.product_id && (
-                              <button
-                                type="button"
-                                onClick={() => clearLineProduct(index)}
-                                className="shrink-0 text-[11px] text-muted-foreground underline"
-                              >
-                                Clear
-                              </button>
-                            )}
-                          </div>
                         </td>
 
-                        <td className="px-1.5 py-1.5">
+                        <td className="border border-border px-0.5 py-0.5">
+                          <input
+                            value={line.unit}
+                            readOnly
+                            className={`${lineInputClass} text-center font-medium`}
+                            placeholder="-"
+                          />
+                        </td>
+
+                        <td className="border border-border px-0.5 py-0.5">
                           <input
                             type="number"
                             min="0"
@@ -1143,20 +1130,11 @@ export default function InvoiceEntryPage() {
                             onChange={(event) => handleQuantityChange(index, event.target.value)}
                             onKeyDown={(e) => handleLineKeyDown(e, index, "quantity")}
                             readOnly={isReadOnly}
-                            className={lineInputClass}
+                            className={`${lineInputClass} text-right`}
                           />
                         </td>
 
-                        <td className="px-1.5 py-1.5">
-                          <input
-                            value={line.unit}
-                            readOnly
-                            className={`${lineInputClass} text-center font-medium`}
-                            placeholder="Unit"
-                          />
-                        </td>
-
-                        <td className="px-1.5 py-1.5">
+                        <td className="border border-border px-0.5 py-0.5">
                           <input
                             type="number"
                             min="0"
@@ -1166,11 +1144,11 @@ export default function InvoiceEntryPage() {
                             onChange={(event) => setLineValue(index, "unit_price", event.target.value)}
                             onKeyDown={(e) => handleLineKeyDown(e, index, "unit_price")}
                             readOnly={isReadOnly}
-                            className={lineInputClass}
+                            className={`${lineInputClass} text-right`}
                           />
                         </td>
 
-                        <td className="px-1.5 py-1.5">
+                        <td className="border border-border px-0.5 py-0.5">
                           <input
                             type="number"
                             min="0"
@@ -1180,36 +1158,36 @@ export default function InvoiceEntryPage() {
                             onChange={(event) => setLineValue(index, "discount", event.target.value)}
                             onKeyDown={(e) => handleLineKeyDown(e, index, "discount")}
                             readOnly={isReadOnly}
-                            className={lineInputClass}
+                            className={`${lineInputClass} text-right`}
                           />
                         </td>
 
-                        <td className="px-1.5 py-1.5">
-                          <div className="flex h-9 items-center rounded-md border border-border bg-background px-2.5 text-sm font-semibold text-foreground">
+                        <td className="border border-border px-0.5 py-0.5">
+                          <div className="flex h-7 items-center justify-end bg-background px-1.5 text-[11.5px] font-semibold text-foreground">
                             {getLineTotal(line).toFixed(3)}
                           </div>
                         </td>
 
-                        <td className="px-1.5 py-1.5">
-                          <div className="flex h-9 items-center justify-center gap-1 rounded-md border border-border bg-background px-1.5">
-                            {!isReadOnly && (
+                        <td className="border border-border px-0.5 py-0.5">
+                          <div className="flex h-7 items-center justify-center gap-0.5">
+                            {!isReadOnly && line.product_id && (
                               <button
                                 type="button"
-                                onClick={addLine}
-                                className="inline-flex h-7 w-7 items-center justify-center rounded border border-border text-foreground transition-colors hover:bg-secondary"
-                                title="Add row"
+                                onClick={() => clearLineProduct(index)}
+                                title="Clear"
+                                className="inline-flex h-5 w-5 items-center justify-center rounded-sm border border-border text-[10px] text-muted-foreground hover:bg-secondary"
                               >
-                                <Plus className="h-3.5 w-3.5" />
+                                ×
                               </button>
                             )}
                             <button
                               type="button"
                               onClick={() => removeLine(index)}
                               disabled={isReadOnly}
-                              className="inline-flex h-7 w-7 items-center justify-center rounded border border-border text-foreground transition-colors hover:bg-secondary disabled:opacity-60"
                               title="Remove row"
+                              className="inline-flex h-5 w-5 items-center justify-center rounded-sm border border-border text-foreground hover:bg-secondary disabled:opacity-60"
                             >
-                              <Trash2 className="h-3.5 w-3.5" />
+                              <Trash2 className="h-3 w-3" />
                             </button>
                           </div>
                         </td>
@@ -1217,9 +1195,9 @@ export default function InvoiceEntryPage() {
 
                       {(line.product_id || exceedsStock || line.fefo_preview_open) && (
                         <tr>
-                          <td colSpan={10} className="px-1.5 pb-1.5">
-                            <div className="rounded-md border border-border/70 bg-background px-3 py-2">
-                              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px]">
+                          <td colSpan={10} className="border-x border-b border-border bg-background px-1.5 py-1">
+                            <div>
+                              <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[10.5px]">
                                 <span className="text-muted-foreground">
                                   Available:{" "}
                                   <span
@@ -1277,11 +1255,11 @@ export default function InvoiceEntryPage() {
                               </div>
 
                               {line.fefo_preview.length > 1 && line.fefo_preview_open && (
-                                <div className="mt-2 space-y-1">
+                                <div className="mt-1 space-y-0.5">
                                   {line.fefo_preview.map((allocation, allocationIndex) => (
                                     <div
                                       key={`${allocation.batch_no ?? "batch"}-${allocation.expiry_date ?? "no-expiry"}-${allocationIndex}`}
-                                      className="grid grid-cols-[1.2fr_1fr_0.7fr] gap-3 rounded border border-border/60 px-2 py-1.5 text-[11px]"
+                                      className="grid grid-cols-[1.2fr_1fr_0.7fr] gap-3 rounded-sm border border-border/60 px-2 py-0.5 text-[10.5px]"
                                     >
                                       <span className="font-mono text-foreground">
                                         {allocation.batch_no || "No batch"}
@@ -1303,72 +1281,69 @@ export default function InvoiceEntryPage() {
                     </Fragment>
                   );
                 })}
+                {/* Empty placeholder rows to mimic ERP look */}
+                {Array.from({ length: Math.max(0, 10 - lines.length) }).map((_, i) => (
+                  <tr key={`empty-${i}`}>
+                    <td className="h-7 border border-border bg-background/40" />
+                    <td className="border border-border bg-background/40" />
+                    <td className="border border-border bg-background/40" />
+                    <td className="border border-border bg-background/40" />
+                    <td className="border border-border bg-background/40" />
+                    <td className="border border-border bg-background/40" />
+                    <td className="border border-border bg-background/40" />
+                    <td className="border border-border bg-background/40" />
+                    <td className="border border-border bg-background/40" />
+                    <td className="border border-border bg-background/40" />
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>
         </section>
 
-        <section className="rounded-lg border border-border bg-secondary p-3">
-          <div className="flex flex-wrap items-end justify-between gap-4">
-            <div>
-              <h2 className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-                Totals
-              </h2>
-              <p className="mt-1 text-[11px] text-muted-foreground">
-                Posting deducts stock only after successful FEFO allocation.
-              </p>
-            </div>
-
-            <div className="grid min-w-[320px] gap-2 sm:grid-cols-3">
-              <div className="rounded-md border border-border bg-background px-3 py-2">
-                <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Subtotal</p>
-                <p className="text-base font-semibold text-foreground">{subtotalAmount.toFixed(3)}</p>
-              </div>
-              <div className="rounded-md border border-border bg-background px-3 py-2">
-                <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Discount Total</p>
-                <p className="text-base font-semibold text-foreground">{discountTotal.toFixed(3)}</p>
-              </div>
-              <div className="rounded-md border border-primary/25 bg-primary/5 px-3 py-2">
-                <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Grand Total</p>
-                <p className="text-lg font-semibold text-foreground">{grandTotal.toFixed(3)}</p>
-              </div>
-            </div>
+        {/* Footer: totals + actions in one strip */}
+        <section className="flex flex-wrap items-center justify-between gap-2 rounded-sm border border-border bg-secondary/40 px-2 py-1.5">
+          <div className="flex items-center gap-3 text-[11px]">
+            <span className="text-muted-foreground">
+              Lines: <span className="font-semibold text-foreground">{activeLineCount}</span>
+            </span>
+            <span className="text-muted-foreground">
+              Subtotal: <span className="font-semibold text-foreground">{subtotalAmount.toFixed(3)}</span>
+            </span>
+            <span className="text-muted-foreground">
+              Disc: <span className="font-semibold text-foreground">{discountTotal.toFixed(3)}</span>
+            </span>
+            <span className="rounded-sm border border-primary/30 bg-primary/10 px-2 py-0.5 text-[12px]">
+              Gross Tot: <span className="font-bold text-foreground">{grandTotal.toFixed(3)}</span>
+            </span>
           </div>
-        </section>
-
-        <section className="flex flex-wrap items-center justify-end gap-2">
-          <button
-            type="button"
-            onClick={handlePrint}
-            className="inline-flex h-9 items-center gap-2 rounded-md border border-border bg-background px-4 text-sm font-medium text-foreground hover:bg-secondary"
-          >
-            <Printer className="h-4 w-4" />
-            Print
-          </button>
-
-          <button
-            type="button"
-            onClick={saveDraft}
-            disabled={isReadOnly || saving || posting}
-            className="inline-flex h-9 items-center gap-2 rounded-md border border-border bg-background px-4 text-sm font-medium text-foreground hover:bg-secondary disabled:opacity-60"
-          >
-            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-            Save Draft
-          </button>
-
-          <button
-            type="button"
-            onClick={postInvoice}
-            disabled={isReadOnly || saving || posting}
-            className="inline-flex h-9 items-center gap-2 rounded-md bg-primary px-4 text-sm font-semibold text-primary-foreground hover:opacity-90 disabled:opacity-60"
-          >
-            {posting ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <CheckCircle2 className="h-4 w-4" />
-            )}
-            Post Invoice
-          </button>
+          <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={handlePrint}
+              className="inline-flex h-7 items-center gap-1 rounded-sm border border-border bg-background px-2.5 text-[11.5px] font-medium text-foreground hover:bg-secondary"
+            >
+              <Printer className="h-3 w-3" /> Print
+            </button>
+            <button
+              type="button"
+              onClick={saveDraft}
+              disabled={isReadOnly || saving || posting}
+              className="inline-flex h-7 items-center gap-1 rounded-sm border border-border bg-background px-2.5 text-[11.5px] font-medium text-foreground hover:bg-secondary disabled:opacity-60"
+            >
+              {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
+              Save
+            </button>
+            <button
+              type="button"
+              onClick={postInvoice}
+              disabled={isReadOnly || saving || posting}
+              className="inline-flex h-7 items-center gap-1 rounded-sm bg-primary px-2.5 text-[11.5px] font-semibold text-primary-foreground hover:opacity-90 disabled:opacity-60"
+            >
+              {posting ? <Loader2 className="h-3 w-3 animate-spin" /> : <CheckCircle2 className="h-3 w-3" />}
+              Post Invoice
+            </button>
+          </div>
         </section>
       </main>
     </div>
