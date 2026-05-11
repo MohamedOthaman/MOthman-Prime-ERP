@@ -3,6 +3,7 @@ import { useAuth } from "@/features/reports/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { AppBrand } from "@/components/AppBrand";
+import { SyncStatusBadge } from "@/components/SyncStatusBadge";
 import { useLang } from "@/contexts/LanguageContext";
 import { usePermissions } from "@/hooks/usePermissions";
 import { usePreviewMode } from "@/contexts/PreviewModeContext";
@@ -60,6 +61,8 @@ export function TopBar() {
             </span>
           </div>
         )}
+
+        <SyncStatusBadge />
 
         <LanguageToggle />
 

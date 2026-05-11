@@ -30,13 +30,13 @@ import {
   getProductFefoPreview,
   getProductLabel,
   postSalesInvoice,
-  saveSalesInvoiceDraft,
   type CustomerLookup,
   type FefoPreviewAllocation,
   type ProductLookup,
   type SalesInvoiceStatus,
   type SalesmanLookup,
 } from "@/features/invoices/salesInvoiceService";
+import { useOfflineSaveDraft } from "@/features/invoices/queries/useOfflineSaveDraft";
 import InvoiceLookupSelect, { type InvoiceLookupOption } from "./InvoiceLookupSelect";
 import InvoicePrintView, { type InvoicePrintData, type PrintLineItem } from "./InvoicePrintView";
 
@@ -151,6 +151,7 @@ export default function InvoiceEntryPage() {
   const { lang } = useLang();
   const isNew = !id;
   const printRef = useRef<HTMLDivElement>(null);
+  const offlineSaveDraft = useOfflineSaveDraft();
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -694,7 +695,7 @@ export default function InvoiceEntryPage() {
       setSaving(true);
       setError(null);
 
-      const savedHeaderId = await saveSalesInvoiceDraft({
+      const { headerId: savedHeaderId } = await offlineSaveDraft.mutateAsync({
         headerId,
         invoiceNo,
         invoiceDate,

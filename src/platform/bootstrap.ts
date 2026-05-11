@@ -1,4 +1,5 @@
 import { applyRuntimeAttributes, getRuntimeInfo } from "./runtime";
+import { initTauriBridge } from "./tauriBridge";
 
 export function bootstrapPlatformRuntime() {
   if (typeof window === "undefined") {
@@ -8,6 +9,10 @@ export function bootstrapPlatformRuntime() {
   const runtime = getRuntimeInfo();
   window.__FOOD_CHOICE_RUNTIME__ = runtime;
   applyRuntimeAttributes(runtime);
+
+  if (runtime.platform === "tauri") {
+    initTauriBridge();
+  }
 
   if (import.meta.env.DEV) {
     console.info(
