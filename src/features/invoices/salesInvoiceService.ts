@@ -438,6 +438,71 @@ export async function fetchInvoiceDetail(invoiceId: string) {
   };
 }
 
+export interface InvoiceListPageCursor {
+  /** ISO timestamp of the last loaded row's created_at. */
+  createdAt: string;
+  /** UUID of the last loaded row. Tiebreaker for rows with identical timestamps. */
+  id: string;
+}
+
+export interface InvoiceListPageResult {
+  rows: Awaited<ReturnType<typeof fetchInvoiceList>>;
+  nextCursor: InvoiceListPageCursor | null;
+}
+
+/**
+ * Cursor-paginated variant of fetchInvoiceList for use with useInfiniteQuery.
+ * Sorted (created_at desc, id desc) with a (created_at, id) tuple cursor for
+ * deterministic ordering even when timestamps collide.
+ */
+export async function fetchInvoiceListPage(input: {
+  status?: SalesInvoiceStatus | "all";
+  pageSize?: number;
+  salesmanId?: string | null;
+  cursor?: InvoiceListPageCursor | null;
+  search?: string | null;
+}): Promise<InvoiceListPageResult> {
+  const pageSize = input.pageSize ?? 50;
+  let q = supabase
+    .from("sales_invoices" as any)
+    .select(
+      "id, invoice_number, invoice_date, customer_name, salesman_name, status, total_amount, created_at, ready_at, done_at, received_at, cancelled_at"
+    )
+    .order("created_at", { ascending: false })
+    .order("id", { ascending: false })
+    .limit(pageSize);
+
+  if (input.status && input.status !== "all") {
+    q = q.eq("status", input.status);
+  }
+  if (input.salesmanId) {
+    q = q.eq("salesman_id", input.salesmanId);
+  }
+  if (input.search && input.search.trim()) {
+    const term = input.search.trim();
+    q = q.or(
+      `invoice_number.ilike.%${term}%,customer_name.ilike.%${term}%,salesman_name.ilike.%${term}%`
+    );
+  }
+  if (input.cursor) {
+    // Postgres "less than" tuple-style: rows older than the cursor.
+    // Composite: (created_at, id) < (cursor.createdAt, cursor.id)
+    q = q.or(
+      `and(created_at.lt.${input.cursor.createdAt}),and(created_at.eq.${input.cursor.createdAt},id.lt.${input.cursor.id})`
+    );
+  }
+
+  const { data, error } = await q;
+  if (error) throw new Error(`Failed to load invoices page: ${error.message}`);
+  const rows = (data ?? []) as Awaited<ReturnType<typeof fetchInvoiceList>>;
+  const last = rows[rows.length - 1];
+  const nextCursor: InvoiceListPageCursor | null =
+    rows.length < pageSize || !last
+      ? null
+      : { createdAt: last.created_at, id: last.id };
+  return { rows, nextCursor };
+}
+
 export async function fetchInvoiceList(filters?: {
   status?: SalesInvoiceStatus | "all";
   limit?: number;

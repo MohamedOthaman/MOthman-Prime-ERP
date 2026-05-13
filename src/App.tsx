@@ -1,7 +1,10 @@
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { PersistGate } from "@/offline/PersistGate";
+import { OfflineProvider } from "@/offline/OfflineProvider";
+import { DatabaseProvider } from "@/database/DatabaseProvider";
+import { useSyncWorker } from "@/sync/useSyncWorker";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/features/reports/hooks/useAuth";
 import { StockProvider } from "@/contexts/StockContext";
@@ -10,6 +13,9 @@ import { ThemeProvider } from "@/contexts/ThemeContext";
 import { PreviewModeProvider } from "@/contexts/PreviewModeContext";
 import { BottomNav } from "@/components/BottomNav";
 import { TopBar } from "@/components/TopBar";
+import { Sidebar } from "@/components/layout/Sidebar";
+import { useDesktopLayout } from "@/components/layout/useDesktopLayout";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { PreviewModeBanner } from "@/components/PreviewModeBanner";
 import RoleGuard from "@/components/RoleGuard";
 
@@ -49,6 +55,7 @@ import FridgeStoragePage from "./pages/warehouse/FridgeStoragePage";
 import NetWeightPage from "./pages/warehouse/NetWeightPage";
 import ProductTracePage from "./pages/products/ProductTracePage";
 import AdminSettingsPage from "./pages/admin/AdminSettingsPage";
+import SyncLogPage from "./pages/admin/SyncLogPage";
 
 import CustomersBySalesman from "./pages/reports/CustomersBySalesman";
 import CustomersWithoutSalesman from "./pages/reports/CustomersWithoutSalesman";
@@ -66,8 +73,6 @@ import ResetPasswordPage from "./pages/ResetPasswordPage";
 
 import { Loader2 } from "lucide-react";
 
-const queryClient = new QueryClient();
-
 function FullScreenLoader() {
   return (
     <div className="min-h-screen bg-background flex items-center justify-center">
@@ -79,6 +84,8 @@ function FullScreenLoader() {
 function ProtectedRoutes() {
   const { user, loading } = useAuth();
   const { dir } = useLang();
+  const isDesktop = useDesktopLayout();
+  useSyncWorker();
 
   if (loading) return <FullScreenLoader />;
   if (!user) return <Navigate to="/auth" replace />;
@@ -89,7 +96,9 @@ function ProtectedRoutes() {
       {/* Preview mode banner — shown below TopBar when an admin is viewing as another role */}
       <PreviewModeBanner />
 
-      <div dir={dir} className="flex-1 pb-16">
+      <div className={isDesktop ? "flex" : ""}>
+      {isDesktop && <Sidebar />}
+      <div dir={dir} className={`flex-1 ${isDesktop ? "" : "pb-16"}`}>
         <Routes>
           {/* ── Dashboard (role-adaptive) ─────────────────────── */}
           <Route path="/" element={<DashboardRouter />} />
@@ -636,14 +645,36 @@ function ProtectedRoutes() {
             }
           />
 
+          <Route
+            path="/admin/sync-log"
+            element={
+              <RoleGuard allowedRoles={["admin", "ops_manager"]}>
+                <SyncLogPage />
+              </RoleGuard>
+            }
+          />
+
           {/* ── Fallbacks ─────────────────────────────────────── */}
           <Route path="/unauthorized" element={<Unauthorized />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </div>
+      </div>
 
-      <BottomNav />
+      {!isDesktop && <BottomNav />}
     </StockProvider>
+  );
+}
+
+function RoutesWithBoundary() {
+  return (
+    <ErrorBoundary scope="app-routes">
+      <Routes>
+        <Route path="/auth" element={<AuthRoute />} />
+        <Route path="/reset-password" element={<ResetPasswordPage />} />
+        <Route path="/*" element={<ProtectedRoutes />} />
+      </Routes>
+    </ErrorBoundary>
   );
 }
 
@@ -657,32 +688,32 @@ function AuthRoute() {
 }
 
 const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <ThemeProvider>
-        <LanguageProvider>
-          <Toaster />
-          <Sonner />
-          <AuthProvider>
-            {/*
-              PreviewModeProvider wraps the entire auth tree so that:
-              1. usePreviewMode() is available in TopBar, DashboardRouter, and usePermissions
-              2. The preview state persists across route navigations (session-only, no DB)
-            */}
-            <PreviewModeProvider>
-              <BrowserRouter>
-                <Routes>
-                  <Route path="/auth" element={<AuthRoute />} />
-                  <Route path="/reset-password" element={<ResetPasswordPage />} />
-                  <Route path="/*" element={<ProtectedRoutes />} />
-                </Routes>
-              </BrowserRouter>
-            </PreviewModeProvider>
-          </AuthProvider>
-        </LanguageProvider>
-      </ThemeProvider>
-    </TooltipProvider>
-  </QueryClientProvider>
+  <PersistGate>
+    <OfflineProvider>
+      <DatabaseProvider>
+        <TooltipProvider>
+        <ThemeProvider>
+          <LanguageProvider>
+            <Toaster />
+            <Sonner />
+            <AuthProvider>
+              {/*
+                PreviewModeProvider wraps the entire auth tree so that:
+                1. usePreviewMode() is available in TopBar, DashboardRouter, and usePermissions
+                2. The preview state persists across route navigations (session-only, no DB)
+              */}
+              <PreviewModeProvider>
+                <BrowserRouter>
+                  <RoutesWithBoundary />
+                </BrowserRouter>
+              </PreviewModeProvider>
+            </AuthProvider>
+          </LanguageProvider>
+        </ThemeProvider>
+        </TooltipProvider>
+      </DatabaseProvider>
+    </OfflineProvider>
+  </PersistGate>
 );
 
 export default App;

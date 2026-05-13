@@ -6,7 +6,7 @@
  * Phase 2 core page — replaces the old /invoice-entry as the nav destination.
  */
 
-import { useCallback, useEffect, useState } from "react";
+import { useState } from "react";
 import {
   Plus, Search, RefreshCw, FileText, CheckCircle2,
   Truck, XCircle, RotateCcw, Clock, Loader2, ChevronRight,
@@ -15,12 +15,15 @@ import { useNavigate } from "react-router-dom";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useSalesmanScope } from "@/hooks/useSalesmanScope";
 import {
-  cancelInvoice,
   fetchInvoiceList,
-  markInvoiceDone,
-  markInvoiceReceived,
   type SalesInvoiceStatus,
 } from "@/features/invoices/salesInvoiceService";
+import { useInvoiceList } from "@/features/invoices/queries/useInvoiceList";
+import {
+  useCancelInvoice,
+  useMarkInvoiceDone,
+  useMarkInvoiceReceived,
+} from "@/features/invoices/queries/useInvoiceMutations";
 import { toast } from "sonner";
 
 // ─── Status config ─────────────────────────────────────────────────────────
@@ -60,8 +63,6 @@ export default function InvoiceListPage() {
   const { salesmanId, loading: scopeLoading } = useSalesmanScope();
 
   const [tab, setTab]           = useState<SalesInvoiceStatus | "all">("all");
-  const [invoices, setInvoices] = useState<Invoice[]>([]);
-  const [loading, setLoading]   = useState(true);
   const [search, setSearch]     = useState("");
   const [acting, setActing]     = useState<Record<string, boolean>>({});
   const [cancelTarget, setCancelTarget] = useState<Invoice | null>(null);
@@ -69,26 +70,32 @@ export default function InvoiceListPage() {
 
   const isSalesmanRole = role === "salesman" || role === "sales";
 
-  const load = useCallback(async () => {
-    // Wait for salesman scope to resolve before fetching — avoids briefly exposing
-    // the full invoice list to scoped users while the hook is still querying.
-    if (isSalesmanRole && scopeLoading) return;
-
-    setLoading(true);
-    try {
-      const rows = await fetchInvoiceList({
-        status: tab,
-        limit: 200,
-        salesmanId: isSalesmanRole ? salesmanId : null,
-      });
-      setInvoices(rows);
-    } catch (e: any) {
-      toast.error(e.message);
+  const listQuery = useInvoiceList(
+    {
+      status: tab,
+      limit: 200,
+      salesmanId: isSalesmanRole ? salesmanId : null,
+    },
+    {
+      // Wait for salesman scope to resolve before fetching.
+      enabled: !(isSalesmanRole && scopeLoading),
     }
-    setLoading(false);
-  }, [tab, isSalesmanRole, salesmanId, scopeLoading]);
+  );
 
-  useEffect(() => { void load(); }, [load]);
+  const invoices: Invoice[] = listQuery.data ?? [];
+  const loading = listQuery.isPending || listQuery.isFetching;
+
+  const load = () => {
+    void listQuery.refetch();
+  };
+
+  if (listQuery.error) {
+    toast.error((listQuery.error as Error).message);
+  }
+
+  const markDoneMutation = useMarkInvoiceDone();
+  const markReceivedMutation = useMarkInvoiceReceived();
+  const cancelMutation = useCancelInvoice();
 
   const filtered = invoices.filter(inv => {
     const q = search.toLowerCase().trim();
@@ -106,9 +113,8 @@ export default function InvoiceListPage() {
   const handleMarkDone = async (inv: Invoice) => {
     setBusy(inv.id, true);
     try {
-      await markInvoiceDone(inv.id);
+      await markDoneMutation.mutateAsync(inv.id);
       toast.success(`Invoice ${inv.invoice_number ?? inv.id.slice(0,8)} marked DONE`);
-      void load();
     } catch (e: any) { toast.error(e.message); }
     setBusy(inv.id, false);
   };
@@ -116,9 +122,8 @@ export default function InvoiceListPage() {
   const handleMarkReceived = async (inv: Invoice) => {
     setBusy(inv.id, true);
     try {
-      await markInvoiceReceived(inv.id);
+      await markReceivedMutation.mutateAsync(inv.id);
       toast.success(`Invoice ${inv.invoice_number ?? inv.id.slice(0,8)} marked RECEIVED`);
-      void load();
     } catch (e: any) { toast.error(e.message); }
     setBusy(inv.id, false);
   };
@@ -128,11 +133,10 @@ export default function InvoiceListPage() {
     if (!cancelReason.trim()) { toast.error("Cancel reason required"); return; }
     setBusy(cancelTarget.id, true);
     try {
-      await cancelInvoice(cancelTarget.id, cancelReason);
+      await cancelMutation.mutateAsync({ headerId: cancelTarget.id, reason: cancelReason });
       toast.success(`Invoice ${cancelTarget.invoice_number ?? "—"} cancelled`);
       setCancelTarget(null);
       setCancelReason("");
-      void load();
     } catch (e: any) {
       const err = e as Error & { code?: string };
       if (err.code === "14_DAY_RULE") {
