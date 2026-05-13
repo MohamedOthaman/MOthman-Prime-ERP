@@ -92,6 +92,7 @@ export function Sidebar() {
         { to: "/admin/settings", icon: Settings, label: "Settings", show: isAdmin },
         { to: "/admin/preview-as", icon: Shield, label: "Preview As", show: isAdmin },
         { to: "/admin/sync-log", icon: Activity, label: "Sync Log", show: isAdmin },
+        { to: "/admin/telemetry", icon: Activity, label: "Telemetry", show: isAdmin },
         { to: "/audit", icon: Activity, label: "Audit", show: isAdmin || isOwner },
       ],
     },

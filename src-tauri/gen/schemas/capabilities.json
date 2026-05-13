@@ -1,0 +1,1 @@
+{"main-capability":{"identifier":"main-capability","description":"Default runtime permissions for the Food Choice ERP main window.","local":true,"windows":["main"],"permissions":["core:default","sql:default","sql:allow-load","sql:allow-execute","sql:allow-select","sql:allow-close","dialog:default","dialog:allow-save","dialog:allow-open","fs:default"]}}

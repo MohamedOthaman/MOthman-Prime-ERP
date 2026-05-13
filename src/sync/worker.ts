@@ -6,6 +6,12 @@ import {
   markSuccess,
 } from "./outbox";
 import { getHandler } from "./handlers";
+import {
+  recordSyncCycleComplete,
+  recordSyncCycleStart,
+  recordSyncLatency,
+  recordRetry,
+} from "@/telemetry/metrics";
 
 const DISABLED_KEY = "food-choice-erp.sync.disabled";
 const DRY_RUN_KEY = "food-choice-erp.sync.dryrun";
@@ -46,6 +52,7 @@ export function createSyncWorker(
     if (draining) return;
     if (isDisabled() || !options.isOnline()) return;
     draining = true;
+    recordSyncCycleStart();
     try {
       // Keep going while there's still work — but cap to avoid hot loops.
       for (let pass = 0; pass < 5; pass++) {
@@ -56,9 +63,6 @@ export function createSyncWorker(
           if (isDisabled() || !options.isOnline()) return;
           const handler = getHandler(entry);
           if (!handler) {
-            // No registered handler — leave it pending so a future
-            // bundle that registers the handler can drain it.
-            // Avoid hot-looping by bumping nextAttemptAt forward.
             await markFailed(
               db,
               entry.id,
@@ -68,6 +72,7 @@ export function createSyncWorker(
           }
 
           await markInFlight(db, entry.id);
+          const startedAt = Date.now();
           try {
             if (isDryRun()) {
               // eslint-disable-next-line no-console
@@ -76,13 +81,37 @@ export function createSyncWorker(
               await handler(entry);
             }
             await markSuccess(db, entry.id);
+            recordSyncLatency({
+              entity: entry.entity,
+              op: entry.op,
+              durationMs: Date.now() - startedAt,
+              attempts: entry.attempts + 1,
+              outcome: "success",
+            });
           } catch (err) {
-            await markFailed(db, entry.id, err as Error);
+            const error = err as Error;
+            await markFailed(db, entry.id, error);
+            recordSyncLatency({
+              entity: entry.entity,
+              op: entry.op,
+              durationMs: Date.now() - startedAt,
+              attempts: entry.attempts + 1,
+              outcome: "retry",
+              error: error.message,
+            });
+            recordRetry({
+              entity: entry.entity,
+              outboxId: entry.id,
+              attempts: entry.attempts + 1,
+              reason: error.message,
+              nextAttemptInMs: 0,
+            });
           }
         }
       }
     } finally {
       draining = false;
+      recordSyncCycleComplete();
       options.onTick?.();
     }
   };

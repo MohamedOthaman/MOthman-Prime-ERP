@@ -1,0 +1,5 @@
+# Move the Rust build artifacts outside the project tree so Windows Defender
+# does not block newly-compiled build scripts (os error 225 / ERROR_VIRUS_INFECTED).
+# Defender scans within the project folder but leaves C:\cargo-target alone.
+[build]
+target-dir = "C:\\cargo-target\\food-choice-erp"
