@@ -6,7 +6,6 @@ import {
   CheckCircle2,
   ChevronsUpDown,
   Loader2,
-  Plus,
   Printer,
   Save,
   Trash2,
@@ -170,7 +169,7 @@ export default function InvoiceEntryPage() {
   const [notes, setNotes] = useState("");
   const [status, setStatus] = useState<SalesInvoiceStatus>("draft");
   const [lines, setLines] = useState<InvoiceLineForm[]>([{ ...EMPTY_LINE }]);
-  const isReadOnly = status === "posted";
+  const isReadOnly = status !== "draft";
 
   const selectedCustomer = useMemo(
     () => customers.find((item) => item.id === customerId) ?? null,
@@ -418,8 +417,8 @@ export default function InvoiceEntryPage() {
         currentLines[index]?.unit_price ||
         String(product.selling_price == null ? 0 : Number(product.selling_price));
 
-      setLines((current) =>
-        current.map((line, lineIndex) =>
+      setLines((current) => {
+        const updated = current.map((line, lineIndex) =>
           lineIndex === index
             ? {
                 ...line,
@@ -435,12 +434,17 @@ export default function InvoiceEntryPage() {
                 fefo_preview_open: false,
               }
             : line
-        )
-      );
+        );
+        // Auto-add a new empty row if this was the last line
+        if (index === updated.length - 1 && !isReadOnly) {
+          updated.push({ ...EMPTY_LINE });
+        }
+        return updated;
+      });
 
       await updateLineInventoryPreview(index, product.id, requestedQuantity);
     },
-    [formatProductLookup, lang, lines, updateLineInventoryPreview]
+    [formatProductLookup, isReadOnly, lang, lines, updateLineInventoryPreview]
   );
 
   const resolveProductByCodeOrBarcode = useCallback(
@@ -613,12 +617,6 @@ export default function InvoiceEntryPage() {
 
       if (field === "product_code") {
         void resolveManualProductLookup(index, "code");
-        focusNextField(index, `[data-line-barcode="{i}"]`);
-        return;
-      }
-
-      if (field === "product_barcode") {
-        void resolveManualProductLookup(index, "barcode");
         focusNextField(index, `[data-line-qty="{i}"]`);
         return;
       }
@@ -752,7 +750,7 @@ export default function InvoiceEntryPage() {
       setPosting(true);
       setError(null);
       await postSalesInvoice(targetHeaderId);
-      setStatus("posted");
+      setStatus("ready");
     } catch (postError) {
       setError(postError instanceof Error ? postError.message : "Failed to post invoice.");
     } finally {
@@ -825,28 +823,23 @@ export default function InvoiceEntryPage() {
     <div className="min-h-screen bg-background pb-20">
       <InvoicePrintView ref={printRef} data={printData} />
 
-      <header className="sticky top-0 z-10 border-b border-border bg-background/95 px-4 py-3 backdrop-blur">
-        <div className="mx-auto flex max-w-7xl items-center gap-3">
+      <header className="sticky top-0 z-10 border-b border-border bg-background/95 px-2 py-1.5 backdrop-blur">
+        <div className="mx-auto flex max-w-7xl items-center gap-2">
           <button
             type="button"
             onClick={() => navigate("/")}
-            className="rounded-md p-1.5 transition-colors hover:bg-secondary"
+            className="rounded-md p-1 transition-colors hover:bg-secondary"
           >
-            <ArrowLeft className="h-5 w-5 text-foreground" />
+            <ArrowLeft className="h-4 w-4 text-foreground" />
           </button>
 
-          <div className="min-w-0">
-            <h1 className="text-lg font-bold tracking-tight text-foreground">Sales Invoice Entry</h1>
-            <p className="text-[11px] text-muted-foreground">
-              Fast code-driven sales invoice entry with FEFO posting
-            </p>
-          </div>
+          <h1 className="text-sm font-bold tracking-tight text-foreground">Invoice Entry</h1>
 
           <div className="ml-auto flex items-center gap-2">
             <span
               className={cn(
-                "rounded-md border px-2 py-1 text-[11px] font-semibold uppercase tracking-wide",
-                status === "posted"
+                "rounded-md border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide",
+                status !== "draft"
                   ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-600"
                   : "border-amber-500/30 bg-amber-500/10 text-amber-700"
               )}
@@ -957,15 +950,6 @@ export default function InvoiceEntryPage() {
             <span className="inline-block bg-background px-1 text-[11px] font-semibold text-foreground/80">
               Sales Detail
             </span>
-            {!isReadOnly && (
-              <button
-                type="button"
-                onClick={addLine}
-                className="inline-flex h-6 items-center gap-1 rounded-sm bg-primary px-2 text-[11px] font-semibold text-primary-foreground hover:opacity-90"
-              >
-                <Plus className="h-3 w-3" /> Add Row
-              </button>
-            )}
           </div>
 
           <div className="overflow-x-auto">
@@ -974,7 +958,6 @@ export default function InvoiceEntryPage() {
                 <tr className="bg-muted/40 text-center text-[10.5px] font-semibold uppercase tracking-wide text-foreground/70">
                   <th className="w-10 border border-border px-1 py-1">SNo</th>
                   <th className="w-24 border border-border px-1 py-1 text-red-500">Item Code</th>
-                  <th className="w-28 border border-border px-1 py-1">Barcode</th>
                   <th className="border border-border px-1 py-1">Item Name</th>
                   <th className="w-16 border border-border px-1 py-1">Uom</th>
                   <th className="w-20 border border-border px-1 py-1">Qty</th>
@@ -1031,20 +1014,7 @@ export default function InvoiceEntryPage() {
                           />
                         </td>
 
-                        <td className="border border-border px-0.5 py-0.5">
-                          <input
-                            value={line.product_barcode}
-                            data-line-barcode={index}
-                            onChange={(event) =>
-                              handleCodeOrBarcodeChange(index, "product_barcode", event.target.value)
-                            }
-                            onBlur={() => void resolveManualProductLookup(index, "barcode")}
-                            onKeyDown={(e) => handleLineKeyDown(e, index, "product_barcode")}
-                            readOnly={isReadOnly}
-                            placeholder="Barcode"
-                            className={`${lineInputClass} font-mono`}
-                          />
-                        </td>
+
 
                         <td className="border border-border px-0.5 py-0.5">
                           <Popover
@@ -1195,7 +1165,7 @@ export default function InvoiceEntryPage() {
 
                       {(line.product_id || exceedsStock || line.fefo_preview_open) && (
                         <tr>
-                          <td colSpan={10} className="border-x border-b border-border bg-background px-1.5 py-1">
+                          <td colSpan={9} className="border-x border-b border-border bg-background px-1.5 py-1">
                             <div>
                               <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[10.5px]">
                                 <span className="text-muted-foreground">
@@ -1281,21 +1251,7 @@ export default function InvoiceEntryPage() {
                     </Fragment>
                   );
                 })}
-                {/* Empty placeholder rows to mimic ERP look */}
-                {Array.from({ length: Math.max(0, 10 - lines.length) }).map((_, i) => (
-                  <tr key={`empty-${i}`}>
-                    <td className="h-7 border border-border bg-background/40" />
-                    <td className="border border-border bg-background/40" />
-                    <td className="border border-border bg-background/40" />
-                    <td className="border border-border bg-background/40" />
-                    <td className="border border-border bg-background/40" />
-                    <td className="border border-border bg-background/40" />
-                    <td className="border border-border bg-background/40" />
-                    <td className="border border-border bg-background/40" />
-                    <td className="border border-border bg-background/40" />
-                    <td className="border border-border bg-background/40" />
-                  </tr>
-                ))}
+
               </tbody>
             </table>
           </div>

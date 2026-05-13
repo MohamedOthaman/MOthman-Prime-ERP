@@ -88,13 +88,11 @@ export function getProductLabel(product: ProductLookup, lang: ProductDisplayLang
 }
 
 async function fetchProductLookups() {
-  const baseQuery = supabase
+  const preferredResult = await supabase
     .from("products_overview" as any)
-    .order("item_code", { ascending: true });
-
-  const preferredResult = await baseQuery
     .select("id, item_code, name, name_en, name_ar, uom, primary_barcode, all_barcodes, selling_price, is_active")
-    .or("is_active.eq.true,is_active.is.null");
+    .or("is_active.eq.true,is_active.is.null")
+    .order("item_code", { ascending: true });
 
   if (!preferredResult.error) {
     return preferredResult;
