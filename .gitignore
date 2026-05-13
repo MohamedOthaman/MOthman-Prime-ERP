@@ -15,6 +15,11 @@ dist-ssr
 .env.*
 !.env.example
 src-tauri/target
+
+# Tauri updater signing keys — NEVER commit private keys
+src-tauri/updater.key
+src-tauri/*.key
+*.key.pub
 android/.gradle
 android/app/build
 ios/App/build

@@ -1,0 +1,245 @@
+name: Release
+
+# Trigger by pushing a semantic version tag:
+#   Stable:   git tag v1.2.3   && git push origin v1.2.3
+#   Beta:     git tag v1.2.3-beta.1  && git push origin v1.2.3-beta.1
+#   Internal: git tag v1.2.3-internal.1 && git push origin v1.2.3-internal.1
+
+on:
+  push:
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+'
+      - 'v[0-9]+.[0-9]+.[0-9]+-beta.[0-9]+'
+      - 'v[0-9]+.[0-9]+.[0-9]+-internal.[0-9]+'
+
+permissions:
+  contents: write
+
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_INCREMENTAL: 0
+
+jobs:
+  # ─── Step 1: Determine which release channel this tag targets ─────────────
+  determine-channel:
+    name: Determine Release Channel
+    runs-on: ubuntu-latest
+    outputs:
+      channel: ${{ steps.parse.outputs.channel }}
+      prerelease: ${{ steps.parse.outputs.prerelease }}
+      version: ${{ steps.parse.outputs.version }}
+    steps:
+      - id: parse
+        run: |
+          TAG="${{ github.ref_name }}"
+          VERSION="${TAG#v}"
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+
+          if [[ "$TAG" == *"-internal."* ]]; then
+            echo "channel=internal" >> "$GITHUB_OUTPUT"
+            echo "prerelease=true"  >> "$GITHUB_OUTPUT"
+          elif [[ "$TAG" == *"-beta."* ]]; then
+            echo "channel=beta"     >> "$GITHUB_OUTPUT"
+            echo "prerelease=true"  >> "$GITHUB_OUTPUT"
+          else
+            echo "channel=stable"   >> "$GITHUB_OUTPUT"
+            echo "prerelease=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  # ─── Step 2: Build on all platforms in parallel ───────────────────────────
+  build:
+    name: Build — ${{ matrix.platform }}
+    needs: determine-channel
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Primary target: Windows x64 (NSIS installer)
+          - platform: windows-latest
+            rust-targets: ''
+            args: '--target x86_64-pc-windows-msvc'
+
+          # Linux x64 (AppImage + deb)
+          - platform: ubuntu-22.04
+            rust-targets: ''
+            args: ''
+
+          # macOS universal binary (Intel + Apple Silicon in one installer)
+          - platform: macos-latest
+            rust-targets: 'aarch64-apple-darwin,x86_64-apple-darwin'
+            args: '--target universal-apple-darwin'
+
+    runs-on: ${{ matrix.platform }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.rust-targets }}
+
+      - name: Cache Rust build artifacts
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: './src-tauri -> ../C:/cargo-target/food-choice-erp'
+          key: ${{ matrix.platform }}-rust-cache-v1
+
+      # Required system libraries for WebKit on Linux
+      - name: Install Linux system dependencies
+        if: matrix.platform == 'ubuntu-22.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libgtk-3-dev \
+            libwebkit2gtk-4.1-dev \
+            libappindicator3-dev \
+            librsvg2-dev \
+            patchelf \
+            libjavascriptcoregtk-4.1-dev \
+            libsoup-3.0-dev
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      # tauri-action builds, signs, and publishes to GitHub Releases.
+      # It also generates latest.json (the updater manifest) when
+      # includeUpdaterJson is true.
+      - name: Build Tauri app and publish release
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          # Expose channel to Vite build so the app knows its channel
+          VITE_UPDATE_CHANNEL: ${{ needs.determine-channel.outputs.channel }}
+          VITE_APP_VERSION: ${{ needs.determine-channel.outputs.version }}
+        with:
+          tagName: ${{ github.ref_name }}
+          releaseName: 'Food Choice ERP ${{ github.ref_name }}'
+          releaseBody: |
+            ## Food Choice ERP ${{ github.ref_name }}
+
+            **Channel:** ${{ needs.determine-channel.outputs.channel }}
+
+            ### Installation
+            - **Windows**: Download the `.msi` or `.exe` installer below
+            - **macOS**: Download the `.dmg` file
+            - **Linux**: Download the `.AppImage` or `.deb` package
+
+            ### Existing Installations
+            The application will auto-update within the next 4 hours, or immediately
+            via **Settings → About → Check for Updates**.
+
+            ---
+            See [CHANGELOG.md](https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md) for full release notes.
+          releaseDraft: false
+          prerelease: ${{ needs.determine-channel.outputs.prerelease }}
+          args: ${{ matrix.args }}
+          includeUpdaterJson: true
+          updaterJsonPreferNsis: true
+
+  # ─── Step 3: Push updated channel manifest to release-channels branch ─────
+  update-channel-manifest:
+    name: Update Channel Manifest (${{ needs.determine-channel.outputs.channel }})
+    needs: [determine-channel, build]
+    runs-on: ubuntu-latest
+    if: success()
+
+    steps:
+      - name: Checkout release-channels branch
+        uses: actions/checkout@v4
+        with:
+          ref: release-channels
+          token: ${{ secrets.GITHUB_TOKEN }}
+          path: channels-repo
+
+      - name: Ensure channels directory exists
+        run: mkdir -p channels-repo/channels
+
+      - name: Download update manifest from release (with retry)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="${{ github.ref_name }}"
+          CHANNEL="${{ needs.determine-channel.outputs.channel }}"
+          REPO="${{ github.repository }}"
+
+          echo "Downloading latest.json for tag ${TAG}, channel ${CHANNEL}..."
+
+          # Retry up to 6 times — asset upload can take a minute after release creation
+          for i in 1 2 3 4 5 6; do
+            if gh release download "$TAG" \
+                --pattern "latest.json" \
+                --output "channels-repo/channels/${CHANNEL}.json" \
+                --clobber \
+                --repo "$REPO" 2>/dev/null; then
+              echo "Download succeeded on attempt $i"
+              break
+            fi
+            if [ "$i" -eq 6 ]; then
+              echo "::error::Failed to download latest.json after 6 attempts"
+              exit 1
+            fi
+            echo "Attempt $i failed — waiting 30s before retry..."
+            sleep 30
+          done
+
+          echo "=== Channel manifest contents ==="
+          cat "channels-repo/channels/${CHANNEL}.json"
+
+      - name: Commit and push channel manifest
+        working-directory: channels-repo
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          CHANNEL="${{ needs.determine-channel.outputs.channel }}"
+          TAG="${{ github.ref_name }}"
+
+          git add "channels/${CHANNEL}.json"
+
+          if git diff --staged --quiet; then
+            echo "Channel manifest is unchanged — skipping commit"
+          else
+            git commit -m "chore: update ${CHANNEL} channel to ${TAG} [skip ci]"
+            git push
+            echo "Channel manifest updated for ${CHANNEL}"
+          fi
+
+  # ─── Step 4: Post-release health check ────────────────────────────────────
+  verify-release:
+    name: Verify Release Assets
+    needs: [determine-channel, update-channel-manifest]
+    runs-on: ubuntu-latest
+    if: success()
+
+    steps:
+      - name: Verify channel manifest is reachable
+        run: |
+          CHANNEL="${{ needs.determine-channel.outputs.channel }}"
+          REPO="${{ github.repository }}"
+          URL="https://raw.githubusercontent.com/${REPO}/release-channels/channels/${CHANNEL}.json"
+
+          echo "Verifying: ${URL}"
+
+          # Allow up to 5 minutes for GitHub CDN propagation
+          for i in 1 2 3 4 5; do
+            STATUS=$(curl -sL -o /dev/null -w "%{http_code}" "$URL")
+            if [ "$STATUS" = "200" ]; then
+              echo "Channel manifest is reachable (HTTP 200)"
+              curl -sL "$URL" | python3 -m json.tool
+              exit 0
+            fi
+            echo "HTTP $STATUS — waiting 60s for CDN propagation (attempt $i/5)..."
+            sleep 60
+          done
+
+          echo "::warning::Channel manifest not reachable after 5 minutes — CDN may still be propagating"

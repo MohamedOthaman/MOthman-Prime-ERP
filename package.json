@@ -17,7 +17,15 @@
     "typecheck": "tsc --noEmit",
     "tauri": "tauri",
     "tauri:dev": "tauri dev",
-    "tauri:build": "tauri build"
+    "tauri:build": "tauri build",
+    "version:patch": "node scripts/bump-version.mjs patch --tag --push",
+    "version:minor": "node scripts/bump-version.mjs minor --tag --push",
+    "version:major": "node scripts/bump-version.mjs major --tag --push",
+    "version:beta": "node scripts/bump-version.mjs",
+    "version:bump": "node scripts/bump-version.mjs",
+    "release:stable": "node scripts/bump-version.mjs patch --tag --push",
+    "release:beta": "node scripts/bump-version.mjs",
+    "keygen": "npx tauri signer generate -w src-tauri/updater.key"
   },
   "dependencies": {
     "@capacitor/android": "^8.2.0",
@@ -61,6 +69,7 @@
     "@tauri-apps/plugin-dialog": "^2.7.1",
     "@tauri-apps/plugin-fs": "^2.5.1",
     "@tauri-apps/plugin-sql": "^2.4.0",
+    "@tauri-apps/plugin-updater": "^2",
     "@types/file-saver": "^2.0.7",
     "@zxing/library": "^0.21.3",
     "class-variance-authority": "^0.7.1",
