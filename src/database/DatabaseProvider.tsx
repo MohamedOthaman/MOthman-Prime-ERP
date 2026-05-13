@@ -3,6 +3,7 @@ import { Loader2 } from "lucide-react";
 import { getRuntimePlatform } from "@/platform/runtime";
 import type { DatabaseAdapter } from "./types";
 import { IndexedDBProvider } from "./IndexedDBProvider";
+import { runDataMigrations } from "./migrations";
 
 let cachedAdapter: DatabaseAdapter | null = null;
 
@@ -10,14 +11,13 @@ async function createAdapter(): Promise<DatabaseAdapter> {
   if (cachedAdapter) return cachedAdapter;
 
   const platform = getRuntimePlatform();
+  let adapter: DatabaseAdapter | null = null;
 
   if (platform === "tauri") {
     try {
       const { SQLiteProvider } = await import("./SQLiteProvider");
-      const adapter = new SQLiteProvider();
+      adapter = new SQLiteProvider();
       await adapter.init();
-      cachedAdapter = adapter;
-      return adapter;
     } catch (err) {
       // Fall back to IndexedDB if the SQL plugin failed to load.
       // eslint-disable-next-line no-console
@@ -25,11 +25,22 @@ async function createAdapter(): Promise<DatabaseAdapter> {
         "[DatabaseProvider] SQLite init failed, falling back to IndexedDB",
         err
       );
+      adapter = null;
     }
   }
 
-  const adapter = new IndexedDBProvider();
-  await adapter.init();
+  if (!adapter) {
+    adapter = new IndexedDBProvider();
+    await adapter.init();
+  }
+
+  const results = await runDataMigrations(adapter);
+  const failures = results.filter((r) => r.status === "failed");
+  if (failures.length > 0) {
+    // eslint-disable-next-line no-console
+    console.error("[DatabaseProvider] migration failures", failures);
+  }
+
   cachedAdapter = adapter;
   return adapter;
 }

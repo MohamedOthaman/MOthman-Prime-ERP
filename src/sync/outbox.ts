@@ -1,5 +1,6 @@
 import type { DatabaseAdapter, OutboxRecord } from "@/database/types";
 import { getDeviceId } from "./deviceId";
+import { recordEnqueue } from "@/telemetry/metrics";
 
 function generateId(): string {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
@@ -35,6 +36,7 @@ export async function enqueue(
     nextAttemptAt: now,
   };
   await db.put("outbox", record);
+  recordEnqueue();
   return record;
 }
 

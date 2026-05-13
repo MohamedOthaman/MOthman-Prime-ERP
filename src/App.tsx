@@ -5,6 +5,7 @@ import { PersistGate } from "@/offline/PersistGate";
 import { OfflineProvider } from "@/offline/OfflineProvider";
 import { DatabaseProvider } from "@/database/DatabaseProvider";
 import { useSyncWorker } from "@/sync/useSyncWorker";
+import { useBootstrapCache } from "@/offline/useBootstrapCache";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/features/reports/hooks/useAuth";
 import { StockProvider } from "@/contexts/StockContext";
@@ -19,57 +20,60 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { PreviewModeBanner } from "@/components/PreviewModeBanner";
 import RoleGuard from "@/components/RoleGuard";
 
+import { Suspense, lazy } from "react";
+
+// Eager-loaded: hot paths and small components.
 import Index from "./pages/Index";
 import DashboardRouter from "./pages/DashboardRouter";
 import OwnerDashboard from "./pages/dashboards/OwnerDashboard";
-import InvoiceScan from "./pages/InvoiceScan";
 import InvoiceListPage from "./pages/invoices/InvoiceListPage";
-import ImportExport from "./pages/ImportExport";
-import Reports from "./pages/Reports";
-import ProductsPage from "./pages/products/ProductsPage";
-import UsersPage from "./pages/admin/UsersPage";
-import PreviewAsPage from "./pages/admin/PreviewAsPage";
+import InvoiceEntryPage from "./pages/invoices/InvoiceEntryPage";
+import InvoiceDetailsPage from "./pages/invoices/InvoiceDetailsPage";
 import ProfilePage from "./pages/profile/ProfilePage";
-
 import CustomersPage from "./pages/customers/CustomersPage";
 import CustomerForm from "./pages/customers/CustomerForm";
-
 import SalesmenPage from "./pages/salesmen/SalesmenPage";
 import SalesmanForm from "./pages/salesmen/SalesmanForm";
 import GRNListPage from "./pages/grn/GRNListPage";
 import GRNFormPage from "./pages/grn/GRNFormPage";
 import GRNDetailsPage from "./pages/grn/GRNDetailsPage";
-import GRNPrintPage from "./pages/grn/GRNPrintPage";
 import GRNQcPage from "./pages/grn/GRNQcPage";
-import InvoiceEntryPage from "./pages/invoices/InvoiceEntryPage";
-import InvoiceDetailsPage from "./pages/invoices/InvoiceDetailsPage";
 import PickingQueuePage from "./pages/warehouse/PickingQueuePage";
 import PickingScreenPage from "./pages/warehouse/PickingScreenPage";
-import InventoryMovementsPage from "./pages/warehouse/InventoryMovementsPage";
-import ProductImportValidationPage from "./pages/products/ProductImportValidationPage";
+import ProductsPage from "./pages/products/ProductsPage";
 import ReturnQueuePage from "./pages/returns/ReturnQueuePage";
 import ReturnIntakePage from "./pages/returns/ReturnIntakePage";
 import ReturnDetailsPage from "./pages/returns/ReturnDetailsPage";
-import BatchTracePage from "./pages/warehouse/BatchTracePage";
-import FridgeStoragePage from "./pages/warehouse/FridgeStoragePage";
-import NetWeightPage from "./pages/warehouse/NetWeightPage";
-import ProductTracePage from "./pages/products/ProductTracePage";
-import AdminSettingsPage from "./pages/admin/AdminSettingsPage";
-import SyncLogPage from "./pages/admin/SyncLogPage";
-
-import CustomersBySalesman from "./pages/reports/CustomersBySalesman";
-import CustomersWithoutSalesman from "./pages/reports/CustomersWithoutSalesman";
-import StockReport from "./pages/reports/StockReport";
-import SalesPerformanceReport from "./pages/reports/SalesPerformanceReport";
-import ProductPerformanceReport from "./pages/reports/ProductPerformanceReport";
-import CustomerAnalysisReport from "./pages/reports/CustomerAnalysisReport";
-import ExpiryAlertsReport from "./pages/reports/ExpiryAlertsReport";
-import AuditLogPage from "./pages/audit/AuditLogPage";
 
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 import Unauthorized from "./pages/Unauthorized";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
+
+// Lazy-loaded: heavy deps (recharts / jspdf / exceljs) or rarely visited.
+const InvoiceScan = lazy(() => import("./pages/InvoiceScan"));
+const ImportExport = lazy(() => import("./pages/ImportExport"));
+const Reports = lazy(() => import("./pages/Reports"));
+const UsersPage = lazy(() => import("./pages/admin/UsersPage"));
+const PreviewAsPage = lazy(() => import("./pages/admin/PreviewAsPage"));
+const GRNPrintPage = lazy(() => import("./pages/grn/GRNPrintPage"));
+const InventoryMovementsPage = lazy(() => import("./pages/warehouse/InventoryMovementsPage"));
+const ProductImportValidationPage = lazy(() => import("./pages/products/ProductImportValidationPage"));
+const BatchTracePage = lazy(() => import("./pages/warehouse/BatchTracePage"));
+const FridgeStoragePage = lazy(() => import("./pages/warehouse/FridgeStoragePage"));
+const NetWeightPage = lazy(() => import("./pages/warehouse/NetWeightPage"));
+const ProductTracePage = lazy(() => import("./pages/products/ProductTracePage"));
+const AdminSettingsPage = lazy(() => import("./pages/admin/AdminSettingsPage"));
+const SyncLogPage = lazy(() => import("./pages/admin/SyncLogPage"));
+const TelemetryPage = lazy(() => import("./pages/admin/TelemetryPage"));
+const CustomersBySalesman = lazy(() => import("./pages/reports/CustomersBySalesman"));
+const CustomersWithoutSalesman = lazy(() => import("./pages/reports/CustomersWithoutSalesman"));
+const StockReport = lazy(() => import("./pages/reports/StockReport"));
+const SalesPerformanceReport = lazy(() => import("./pages/reports/SalesPerformanceReport"));
+const ProductPerformanceReport = lazy(() => import("./pages/reports/ProductPerformanceReport"));
+const CustomerAnalysisReport = lazy(() => import("./pages/reports/CustomerAnalysisReport"));
+const ExpiryAlertsReport = lazy(() => import("./pages/reports/ExpiryAlertsReport"));
+const AuditLogPage = lazy(() => import("./pages/audit/AuditLogPage"));
 
 import { Loader2 } from "lucide-react";
 
@@ -86,6 +90,7 @@ function ProtectedRoutes() {
   const { dir } = useLang();
   const isDesktop = useDesktopLayout();
   useSyncWorker();
+  useBootstrapCache();
 
   if (loading) return <FullScreenLoader />;
   if (!user) return <Navigate to="/auth" replace />;
@@ -654,6 +659,15 @@ function ProtectedRoutes() {
             }
           />
 
+          <Route
+            path="/admin/telemetry"
+            element={
+              <RoleGuard allowedRoles={["admin", "ops_manager"]}>
+                <TelemetryPage />
+              </RoleGuard>
+            }
+          />
+
           {/* ── Fallbacks ─────────────────────────────────────── */}
           <Route path="/unauthorized" element={<Unauthorized />} />
           <Route path="*" element={<NotFound />} />
@@ -669,11 +683,13 @@ function ProtectedRoutes() {
 function RoutesWithBoundary() {
   return (
     <ErrorBoundary scope="app-routes">
-      <Routes>
-        <Route path="/auth" element={<AuthRoute />} />
-        <Route path="/reset-password" element={<ResetPasswordPage />} />
-        <Route path="/*" element={<ProtectedRoutes />} />
-      </Routes>
+      <Suspense fallback={<FullScreenLoader />}>
+        <Routes>
+          <Route path="/auth" element={<AuthRoute />} />
+          <Route path="/reset-password" element={<ResetPasswordPage />} />
+          <Route path="/*" element={<ProtectedRoutes />} />
+        </Routes>
+      </Suspense>
     </ErrorBoundary>
   );
 }

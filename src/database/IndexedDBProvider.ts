@@ -5,18 +5,22 @@ import type {
   QueryFilter,
   TableName,
 } from "./types";
-import { SCHEMA_VERSION, TABLES } from "./schema";
+import { SCHEMA_VERSIONS } from "./schema";
 
 class FoodChoiceDexie extends Dexie {
   constructor() {
     super("food-choice-erp");
 
-    const stores: Record<string, string> = {};
-    for (const spec of TABLES) {
-      const primary = `&${spec.primaryKey}`;
-      stores[spec.name] = [primary, ...spec.indexes].join(",");
+    // Declare every schema version in order so Dexie can perform the
+    // structural upgrade chain for users on older installs.
+    for (const sv of SCHEMA_VERSIONS) {
+      const stores: Record<string, string> = {};
+      for (const spec of sv.tables) {
+        const primary = `&${spec.primaryKey}`;
+        stores[spec.name] = [primary, ...spec.indexes].join(",");
+      }
+      this.version(sv.version).stores(stores);
     }
-    this.version(SCHEMA_VERSION).stores(stores);
   }
 }
 
@@ -113,8 +117,11 @@ export class IndexedDBProvider implements DatabaseAdapter {
 
   async transaction<T>(tables: TableName[], fn: () => Promise<T>): Promise<T> {
     if (!this.db) throw new Error("IndexedDBProvider not initialised");
+    const dexieAny = this.db as unknown as {
+      transaction: (mode: "rw", stores: unknown, cb: () => Promise<T>) => Promise<T>;
+    };
     const stores = tables.map((t) => this.db!.table(t));
-    return this.db.transaction("rw", stores, fn);
+    return dexieAny.transaction("rw", stores, fn);
   }
 
   async close(): Promise<void> {
