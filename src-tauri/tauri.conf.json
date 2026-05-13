@@ -1,7 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "Food Choice ERP",
-  "version": "1.0.0",
+  "version": "0.0.1",
   "identifier": "com.foodchoice.erp",
   "build": {
     "beforeDevCommand": "npm run dev -- --host 0.0.0.0 --port 1420",
@@ -28,7 +28,9 @@
     ],
     "security": {
       "csp": null,
-      "capabilities": ["main-capability"]
+      "capabilities": [
+        "main-capability"
+      ]
     }
   },
   "bundle": {
@@ -56,7 +58,9 @@
         "language": "en-US"
       },
       "nsis": {
-        "languages": ["English"],
+        "languages": [
+          "English"
+        ],
         "displayLanguageSelector": false,
         "installMode": "perMachine"
       }
