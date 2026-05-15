@@ -1,7 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "Food Choice ERP",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "identifier": "com.foodchoice.erp",
   "build": {
     "beforeDevCommand": "npm run dev -- --host 0.0.0.0 --port 1420",
