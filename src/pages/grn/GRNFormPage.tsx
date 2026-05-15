@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/features/reports/hooks/useAuth";
 import { ArrowLeft, Loader2, Plus, Save, Trash2, AlertTriangle } from "lucide-react";
+import { useLang } from "@/contexts/LanguageContext";
 
 type GRNStatus = "draft" | "completed" | "cancelled";
 
@@ -38,6 +39,7 @@ const EMPTY_LINE: GRNLineForm = {
 export default function GRNFormPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { t } = useLang();
 
   const [grnNo, setGrnNo] = useState("");
   const [supplierId, setSupplierId] = useState("");
@@ -106,7 +108,7 @@ export default function GRNFormPage() {
 
   const handleSave = async () => {
     if (!grnNo.trim()) {
-      setError("GRN number is required.");
+      setError(t("grnNumberRequired", "GRN number is required."));
       return;
     }
 
@@ -115,7 +117,7 @@ export default function GRNFormPage() {
     );
 
     if (validLines.length === 0) {
-      setError("At least one line is required.");
+      setError(t("atLeastOneLineRequired", "At least one line is required."));
       return;
     }
 
@@ -138,7 +140,7 @@ export default function GRNFormPage() {
 
     if (headerError || !header) {
       setSaving(false);
-      setError(headerError?.message ?? "Failed to create GRN.");
+      setError(headerError?.message ?? t("failedToCreateGrn", "Failed to create GRN."));
       return;
     }
 
@@ -177,14 +179,16 @@ export default function GRNFormPage() {
           >
             <ArrowLeft className="w-5 h-5 text-foreground" />
           </button>
-          <h1 className="text-lg font-bold text-foreground tracking-tight">New GRN</h1>
+          <h1 className="text-lg font-bold text-foreground tracking-tight">
+            {t("newGrn", "New GRN")}
+          </h1>
           <button
             onClick={handleSave}
             disabled={saving}
             className="ml-auto flex items-center gap-1.5 bg-primary text-primary-foreground text-sm px-4 py-2 rounded-md hover:opacity-90 transition-opacity disabled:opacity-50"
           >
             {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-            Save
+            {t("save", "Save")}
           </button>
         </div>
       </header>
@@ -199,12 +203,14 @@ export default function GRNFormPage() {
 
         <section className="space-y-4">
           <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-            Header
+            {t("grnHeader", "Header")}
           </h2>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs text-muted-foreground mb-1">GRN No</label>
+              <label className="block text-xs text-muted-foreground mb-1">
+                {t("grnNo", "GRN No")}
+              </label>
               <input
                 value={grnNo}
                 onChange={(e) => setGrnNo(e.target.value)}
@@ -214,26 +220,32 @@ export default function GRNFormPage() {
             </div>
 
             <div>
-              <label className="block text-xs text-muted-foreground mb-1">Status</label>
+              <label className="block text-xs text-muted-foreground mb-1">
+                {t("status", "Status")}
+              </label>
               <select
                 value={status}
                 onChange={(e) => setStatus(e.target.value as GRNStatus)}
                 className="w-full bg-secondary border border-border rounded-md px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
               >
-                <option value="draft">Draft</option>
-                <option value="completed">Completed</option>
-                <option value="cancelled">Cancelled</option>
+                <option value="draft">{t("draft", "Draft")}</option>
+                <option value="completed">{t("completed", "Completed")}</option>
+                <option value="cancelled">{t("cancelled", "Cancelled")}</option>
               </select>
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs text-muted-foreground mb-1">Supplier</label>
+              <label className="block text-xs text-muted-foreground mb-1">
+                {t("supplier", "Supplier")}
+              </label>
               {suppliersLoading ? (
                 <div className="flex items-center gap-2 bg-secondary border border-border rounded-md px-3 py-2">
                   <Loader2 className="w-3.5 h-3.5 animate-spin text-muted-foreground" />
-                  <span className="text-sm text-muted-foreground">Loading suppliers...</span>
+                  <span className="text-sm text-muted-foreground">
+                    {t("loadingSuppliers", "Loading suppliers...")}
+                  </span>
                 </div>
               ) : (
                 <select
@@ -241,7 +253,7 @@ export default function GRNFormPage() {
                   onChange={(e) => setSupplierId(e.target.value)}
                   className="w-full bg-secondary border border-border rounded-md px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
                 >
-                  <option value="">No supplier</option>
+                  <option value="">{t("noSupplier", "No supplier")}</option>
                   {suppliers.map((supplier) => (
                     <option key={supplier.id} value={supplier.id}>
                       {supplier.name}
@@ -252,7 +264,9 @@ export default function GRNFormPage() {
             </div>
 
             <div>
-              <label className="block text-xs text-muted-foreground mb-1">Received Date</label>
+              <label className="block text-xs text-muted-foreground mb-1">
+                {t("receivedDate", "Received Date")}
+              </label>
               <input
                 type="date"
                 value={receivedDate}
@@ -263,7 +277,9 @@ export default function GRNFormPage() {
           </div>
 
           <div>
-            <label className="block text-xs text-muted-foreground mb-1">Reference No</label>
+            <label className="block text-xs text-muted-foreground mb-1">
+              {t("referenceNo", "Reference No")}
+            </label>
             <input
               value={referenceNo}
               onChange={(e) => setReferenceNo(e.target.value)}
@@ -272,7 +288,9 @@ export default function GRNFormPage() {
           </div>
 
           <div>
-            <label className="block text-xs text-muted-foreground mb-1">Notes</label>
+            <label className="block text-xs text-muted-foreground mb-1">
+              {t("notes", "Notes")}
+            </label>
             <textarea
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
@@ -285,7 +303,7 @@ export default function GRNFormPage() {
         <section className="space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-              Lines
+              {t("grnLines", "Lines")}
             </h2>
             <button
               type="button"
@@ -293,7 +311,7 @@ export default function GRNFormPage() {
               className="flex items-center gap-1 text-xs bg-primary text-primary-foreground px-3 py-1.5 rounded-md hover:opacity-90"
             >
               <Plus className="w-3.5 h-3.5" />
-              Add line
+              {t("addLine", "Add line")}
             </button>
           </div>
 
@@ -301,11 +319,15 @@ export default function GRNFormPage() {
             {lines.map((line, index) => (
               <div key={index} className="bg-secondary rounded-lg border border-border p-4 space-y-3">
                 <div>
-                  <label className="block text-xs text-muted-foreground mb-1">Product</label>
+                  <label className="block text-xs text-muted-foreground mb-1">
+                    {t("product", "Product")}
+                  </label>
                   {productsLoading ? (
                     <div className="flex items-center gap-2 bg-background border border-border rounded-md px-3 py-2">
                       <Loader2 className="w-3.5 h-3.5 animate-spin text-muted-foreground" />
-                      <span className="text-sm text-muted-foreground">Loading products...</span>
+                      <span className="text-sm text-muted-foreground">
+                        {t("loadingProducts", "Loading products...")}
+                      </span>
                     </div>
                   ) : (
                     <select
@@ -313,7 +335,7 @@ export default function GRNFormPage() {
                       onChange={(e) => handleProductChange(index, e.target.value)}
                       className="w-full bg-background border border-border rounded-md px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
                     >
-                      <option value="">Select product</option>
+                      <option value="">{t("selectProduct", "Select product")}</option>
                       {products.map((product) => (
                         <option key={product.id} value={product.id}>
                           {product.code} - {product.name}
@@ -325,7 +347,9 @@ export default function GRNFormPage() {
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs text-muted-foreground mb-1">Product Code</label>
+                    <label className="block text-xs text-muted-foreground mb-1">
+                      {t("productCode", "Product Code")}
+                    </label>
                     <input
                       value={line.product_code}
                       readOnly
@@ -333,7 +357,9 @@ export default function GRNFormPage() {
                     />
                   </div>
                   <div>
-                    <label className="block text-xs text-muted-foreground mb-1">Unit</label>
+                    <label className="block text-xs text-muted-foreground mb-1">
+                      {t("unit", "Unit")}
+                    </label>
                     <input
                       value={line.unit}
                       onChange={(e) => setLine(index, "unit", e.target.value)}
@@ -343,7 +369,9 @@ export default function GRNFormPage() {
                 </div>
 
                 <div>
-                  <label className="block text-xs text-muted-foreground mb-1">Product Name</label>
+                  <label className="block text-xs text-muted-foreground mb-1">
+                    {t("productName", "Product Name")}
+                  </label>
                   <input
                     value={line.product_name}
                     readOnly
@@ -353,7 +381,9 @@ export default function GRNFormPage() {
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs text-muted-foreground mb-1">Qty</label>
+                    <label className="block text-xs text-muted-foreground mb-1">
+                      {t("qty", "Qty")}
+                    </label>
                     <input
                       type="number"
                       min="0"
@@ -370,13 +400,15 @@ export default function GRNFormPage() {
                       className="w-full flex items-center justify-center gap-1.5 rounded-md bg-destructive/10 text-destructive px-3 py-2 text-sm hover:opacity-90"
                     >
                       <Trash2 className="w-4 h-4" />
-                      Remove
+                      {t("remove", "Remove")}
                     </button>
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-xs text-muted-foreground mb-1">Notes</label>
+                  <label className="block text-xs text-muted-foreground mb-1">
+                    {t("notes", "Notes")}
+                  </label>
                   <input
                     value={line.notes}
                     onChange={(e) => setLine(index, "notes", e.target.value)}

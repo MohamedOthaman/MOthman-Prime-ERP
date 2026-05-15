@@ -1,141 +1,76 @@
+import { NavLink, useLocation, matchPath } from "react-router-dom";
 import {
-  LayoutDashboard,
-  FileText,
-  ClipboardList,
-  BarChart3,
-  Package,
-  Settings,
-  FileSpreadsheet,
-  ScanLine,
-  RotateCcw,
-  Activity,
-  Users,
-  UserCog,
-  Snowflake,
-  ListChecks,
-  Shield,
-} from "lucide-react";
-import { NavLink } from "react-router-dom";
+  Sidebar as UiSidebar,
+  SidebarContent,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarGroupLabel,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+} from "@/components/ui/sidebar";
 import { useLang } from "@/contexts/LanguageContext";
 import { usePermissions } from "@/hooks/usePermissions";
+import { getVisibleSections, type SidebarItem } from "@/config/sidebarConfig";
+import { SidebarResizeHandle } from "@/components/layout/SidebarResizeHandle";
 
-interface SidebarLink {
-  to: string;
-  icon: React.ComponentType<{ className?: string }>;
-  label: string;
-  show: boolean;
-}
-
-interface SidebarSection {
-  title: string;
-  links: SidebarLink[];
+function isPathActive(currentPath: string, item: SidebarItem): boolean {
+  if (item.end) {
+    return matchPath({ path: item.path, end: true }, currentPath) !== null;
+  }
+  return matchPath({ path: item.path, end: false }, currentPath) !== null;
 }
 
 export function Sidebar() {
-  const { t } = useLang();
-  const {
-    canManageInvoices,
-    canManageReceiving,
-    canImportExport,
-    canViewReports,
-    canManageStock,
-    canEditUsers,
-    isOwner,
-    isAdmin,
-  } = usePermissions();
+  const { t, dir } = useLang();
+  const permissions = usePermissions();
+  const sections = getVisibleSections(permissions);
+  const { pathname } = useLocation();
 
-  const sections: SidebarSection[] = [
-    {
-      title: "Dashboard",
-      links: [
-        { to: "/", icon: LayoutDashboard, label: "Dashboard", show: true },
-        { to: "/stock", icon: Package, label: "Stock", show: canManageStock || isAdmin },
-      ],
-    },
-    {
-      title: "Sales",
-      links: [
-        { to: "/invoices", icon: FileText, label: t("invoices") ?? "Invoices", show: canManageInvoices },
-        { to: "/invoice-entry", icon: FileText, label: "New Invoice", show: canManageInvoices },
-        { to: "/customers", icon: Users, label: "Customers", show: canManageInvoices || isAdmin },
-        { to: "/salesmen", icon: UserCog, label: "Salesmen", show: isAdmin },
-        { to: "/returns", icon: RotateCcw, label: "Returns", show: canManageInvoices || canManageReceiving },
-      ],
-    },
-    {
-      title: "Warehouse",
-      links: [
-        { to: "/warehouse/picking", icon: ScanLine, label: "Picking", show: canManageStock || isAdmin },
-        { to: "/warehouse/movements", icon: Activity, label: "Movements", show: canManageStock || isAdmin },
-        { to: "/warehouse/fridge", icon: Snowflake, label: "Fridge", show: canManageStock || isAdmin },
-        { to: "/warehouse/batch-trace", icon: ListChecks, label: "Batch Trace", show: canManageStock || isAdmin },
-      ],
-    },
-    {
-      title: "Receiving",
-      links: [
-        { to: "/grn", icon: ClipboardList, label: "GRN", show: canManageReceiving || isAdmin },
-        { to: "/products", icon: Package, label: "Products", show: canManageStock || isAdmin },
-        { to: "/import-export", icon: FileSpreadsheet, label: t("io") ?? "Import / Export", show: canImportExport || isAdmin },
-      ],
-    },
-    {
-      title: "Reports",
-      links: [
-        { to: "/reports", icon: BarChart3, label: t("reports") ?? "Reports", show: canViewReports },
-      ],
-    },
-    {
-      title: "Admin",
-      links: [
-        { to: "/admin/users", icon: UserCog, label: "Users", show: canEditUsers },
-        { to: "/admin/settings", icon: Settings, label: "Settings", show: isAdmin },
-        { to: "/admin/preview-as", icon: Shield, label: "Preview As", show: isAdmin },
-        { to: "/admin/sync-log", icon: Activity, label: "Sync Log", show: isAdmin },
-        { to: "/admin/telemetry", icon: Activity, label: "Telemetry", show: isAdmin },
-        { to: "/audit", icon: Activity, label: "Audit", show: isAdmin || isOwner },
-      ],
-    },
-  ];
+  const translate = (labelKey: string, fallback: string): string =>
+    t(labelKey, fallback);
 
   return (
-    <aside className="hidden lg:flex flex-col w-60 shrink-0 border-r border-border bg-card/40 backdrop-blur-sm overflow-y-auto h-[calc(100vh-2.75rem)] sticky top-11">
-      <nav className="flex-1 p-3 space-y-4">
-        {sections.map((section) => {
-          const visibleLinks = section.links.filter((l) => l.show);
-          if (visibleLinks.length === 0) return null;
-          return (
-            <div key={section.title}>
-              <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/70 px-2 mb-1.5">
-                {section.title}
-              </p>
-              <ul className="space-y-0.5">
-                {visibleLinks.map((link) => {
-                  const Icon = link.icon;
+    <UiSidebar
+      collapsible="icon"
+      side={dir === "rtl" ? "right" : "left"}
+      className="border-r-0 bg-transparent top-11 h-[calc(100svh-2.75rem)]"
+    >
+      <SidebarContent className="gap-0 sidebar-scroll group-data-[collapsible=icon]:overflow-y-auto">
+        {sections.map((section) => (
+          <SidebarGroup key={section.id} className="px-2 py-2">
+            <SidebarGroupLabel className="px-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60">
+              {translate(section.labelKey, section.fallbackLabel)}
+            </SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu className="gap-0.5">
+                {section.items.map((item) => {
+                  const Icon = item.icon;
+                  const label = translate(item.labelKey, item.fallbackLabel);
+                  const active = isPathActive(pathname, item);
                   return (
-                    <li key={link.to}>
-                      <NavLink
-                        to={link.to}
-                        className={({ isActive }) =>
-                          `flex items-center gap-2 px-2 py-1.5 rounded-md text-xs font-medium transition ${
-                            isActive
-                              ? "bg-primary/10 text-primary border border-primary/20"
-                              : "text-muted-foreground hover:text-foreground hover:bg-muted/40"
-                          }`
-                        }
-                        end={link.to === "/"}
+                    <SidebarMenuItem key={item.id}>
+                      <SidebarMenuButton
+                        asChild
+                        isActive={active}
+                        tooltip={{ children: label, className: "z-[100]" }}
+                        size="sm"
+                        className="rounded-md text-muted-foreground hover:bg-muted/50 hover:text-foreground data-[active=true]:bg-muted/60 data-[active=true]:text-foreground data-[active=true]:font-medium transition-colors group-data-[collapsible=icon]:!size-10 group-data-[collapsible=icon]:!p-2 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:mx-auto"
                       >
-                        <Icon className="w-4 h-4 shrink-0" />
-                        <span className="truncate">{link.label}</span>
-                      </NavLink>
-                    </li>
+                        <NavLink to={item.path} end={item.end} className="group-data-[collapsible=icon]:!justify-center">
+                          <Icon className="w-4 h-4 shrink-0 group-data-[collapsible=icon]:!w-5 group-data-[collapsible=icon]:!h-5" />
+                          <span className="truncate group-data-[collapsible=icon]:hidden">{label}</span>
+                        </NavLink>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
                   );
                 })}
-              </ul>
-            </div>
-          );
-        })}
-      </nav>
-    </aside>
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        ))}
+      </SidebarContent>
+      <SidebarResizeHandle />
+    </UiSidebar>
   );
 }

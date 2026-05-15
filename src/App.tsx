@@ -15,6 +15,7 @@ import { PreviewModeProvider } from "@/contexts/PreviewModeContext";
 import { BottomNav } from "@/components/BottomNav";
 import { TopBar } from "@/components/TopBar";
 import { Sidebar } from "@/components/layout/Sidebar";
+import { PersistedSidebarProvider } from "@/components/layout/PersistedSidebarProvider";
 import { useDesktopLayout } from "@/components/layout/useDesktopLayout";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { PreviewModeBanner } from "@/components/PreviewModeBanner";
@@ -97,6 +98,7 @@ function ProtectedRoutes() {
 
   return (
     <StockProvider>
+      <PersistedSidebarProvider>
       <TopBar />
       {/* Preview mode banner — shown below TopBar when an admin is viewing as another role */}
       <PreviewModeBanner />
@@ -676,6 +678,7 @@ function ProtectedRoutes() {
       </div>
 
       {!isDesktop && <BottomNav />}
+      </PersistedSidebarProvider>
     </StockProvider>
   );
 }

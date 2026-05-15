@@ -39,6 +39,7 @@ import {
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/features/reports/hooks/useAuth";
 import { usePermissions } from "@/hooks/usePermissions";
+import { useLang } from "@/contexts/LanguageContext";
 import { supabase } from "@/integrations/supabase/client";
 import { CircularProgress, LegendDot } from "@/components/dashboard/CircularProgress";
 import { StatusPill, EmptyState, LoadingRows } from "@/components/dashboard/DashboardShell";
@@ -62,9 +63,9 @@ function getInitials(fullName?: string, email?: string): string {
   return (email ?? "??").slice(0, 2).toUpperCase();
 }
 
-function getGreeting(): string {
+function getGreeting(t: (key: string, fallback: string) => string): string {
   const h = new Date().getHours();
-  return h < 12 ? "Good Morning" : h < 17 ? "Good Afternoon" : "Good Evening";
+  return h < 12 ? t("goodMorning", "Good Morning") : h < 17 ? t("goodAfternoon", "Good Afternoon") : t("goodEvening", "Good Evening");
 }
 
 function fmtDate(iso: string): string {
@@ -323,7 +324,7 @@ function useExecutiveData() {
 
 // ─── Alert generator ──────────────────────────────────────────────────────────
 
-function deriveAlerts(data: DashboardData) {
+function deriveAlerts(data: DashboardData, t: (key: string, fallback: string, ...args: any[]) => string) {
   const alerts: Array<{
     id: string;
     type: "danger" | "warning" | "info";
@@ -338,8 +339,8 @@ function deriveAlerts(data: DashboardData) {
       id: "expired",
       type: "danger",
       icon: XCircle,
-      title: `${data.expiryStats.expired} SKU${data.expiryStats.expired !== 1 ? "s" : ""} Expired`,
-      desc: "Stock with passed expiry date still recorded in inventory",
+      title: `${data.expiryStats.expired} ${t("skusExpired", "SKU(s) Expired")}`,
+      desc: t("expiredStockDesc", "Stock with passed expiry date still recorded in inventory"),
       path: "/stock",
     });
   }
@@ -349,8 +350,8 @@ function deriveAlerts(data: DashboardData) {
       id: "exp-30",
       type: "warning",
       icon: AlertTriangle,
-      title: `${data.expiryStats.within30} SKU${data.expiryStats.within30 !== 1 ? "s" : ""} Expiring This Month`,
-      desc: "Nearest expiry within 30 days — requires action",
+      title: `${data.expiryStats.within30} ${t("skusExpiringMonth", "SKU(s) Expiring This Month")}`,
+      desc: t("expiringMonthDesc", "Nearest expiry within 30 days — requires action"),
       path: "/stock",
     });
   }
@@ -360,8 +361,8 @@ function deriveAlerts(data: DashboardData) {
       id: "grn-pending",
       type: "warning",
       icon: Clock,
-      title: `${data.grnPending} GRN${data.grnPending !== 1 ? "s" : ""} Pending Inspection`,
-      desc: "Received goods awaiting QC inspection or approval",
+      title: `${data.grnPending} ${t("grnsPendingInspection", "GRN(s) Pending Inspection")}`,
+      desc: t("grnsPendingDesc", "Received goods awaiting QC inspection or approval"),
       path: "/grn",
     });
   }
@@ -372,8 +373,8 @@ function deriveAlerts(data: DashboardData) {
       id: "exp-180",
       type: "info",
       icon: Bell,
-      title: `${sixMonthOnly} SKU${sixMonthOnly !== 1 ? "s" : ""} Expiring in 6 Months`,
-      desc: "Plan stock rotation for these items",
+      title: `${sixMonthOnly} ${t("skusExpiring6Months", "SKU(s) Expiring in 6 Months")}`,
+      desc: t("expiring6MonthsDesc", "Plan stock rotation for these items"),
       path: "/stock",
     });
   }
@@ -383,8 +384,8 @@ function deriveAlerts(data: DashboardData) {
       id: "all-clear",
       type: "info",
       icon: CheckCircle2,
-      title: "All Systems Normal",
-      desc: "No critical alerts at this time",
+      title: t("allSystemsNormal", "All Systems Normal"),
+      desc: t("noCriticalAlerts", "No critical alerts at this time"),
     });
   }
 
@@ -395,15 +396,16 @@ function deriveAlerts(data: DashboardData) {
 
 export default function ExecutiveDashboard() {
   const navigate = useNavigate();
+  const { t } = useLang();
   const { user } = useAuth();
   const { role } = usePermissions();
   const { data, loading } = useExecutiveData();
 
   const fullName = user?.user_metadata?.full_name as string | undefined;
   const initials = getInitials(fullName, user?.email);
-  const roleLabel = role === "ceo" ? "CEO" : role === "gm" ? "General Manager" : role.replace(/_/g, " ");
-  const greeting = getGreeting();
-  const alerts = data ? deriveAlerts(data) : [];
+  const roleLabel = role === "ceo" ? t("roleCeo", "CEO") : role === "gm" ? t("roleGm", "General Manager") : role.replace(/_/g, " ");
+  const greeting = getGreeting(t);
+  const alerts = data ? deriveAlerts(data, t) : [];
 
   // ── SKU capacity rings — top 3 storage types ──
   const capacityRings = (() => {
@@ -436,15 +438,15 @@ export default function ExecutiveDashboard() {
             <Building2 className="w-4 h-4 text-amber-400" />
           </div>
           <div className="flex-1 min-w-0">
-            <h1 className="text-[15px] font-bold text-foreground leading-tight">Executive Dashboard</h1>
-            <p className="text-[11px] text-muted-foreground leading-tight">{roleLabel} · Company Overview</p>
+            <h1 className="text-[15px] font-bold text-foreground leading-tight">{t("executiveDashboard", "Executive Dashboard")}</h1>
+            <p className="text-[11px] text-muted-foreground leading-tight">{roleLabel} · {t("companyOverview", "Company Overview")}</p>
           </div>
           <button
             onClick={() => navigate("/admin/preview-as")}
             className="flex items-center gap-1.5 text-xs border border-amber-500/25 bg-amber-500/10 text-amber-400 px-3 py-1.5 rounded-lg font-medium hover:bg-amber-500/20 transition shrink-0"
           >
             <Eye className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">View As</span>
+            <span className="hidden sm:inline">{t("viewAsUser", "View As")}</span>
           </button>
         </div>
       </header>
@@ -462,7 +464,7 @@ export default function ExecutiveDashboard() {
           <div className="flex-1 min-w-0">
             <p className="text-xs text-amber-400/80 font-medium">{greeting}</p>
             <h2 className="text-lg font-bold text-foreground truncate">
-              {fullName ? `Mr. / Ms. ${fullName}` : "Welcome Back"}
+              {fullName ? `Mr. / Ms. ${fullName}` : t("welcomeBack", "Welcome back")}
             </h2>
             <p className="text-[11px] text-muted-foreground">{fmtToday()}</p>
           </div>
@@ -478,7 +480,7 @@ export default function ExecutiveDashboard() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           {[
             {
-              label: "Active SKUs",
+              label: t("activeSkus", "Active SKUs"),
               value: loading ? "…" : (data?.activeSkus ?? "—"),
               icon: Package,
               color: "text-emerald-400",
@@ -486,7 +488,7 @@ export default function ExecutiveDashboard() {
               border: "border-emerald-500/20",
             },
             {
-              label: "GRN Pending",
+              label: t("grnPending", "GRN Pending"),
               value: loading ? "…" : (data?.grnPending ?? "—"),
               icon: Truck,
               color: "text-amber-400",
@@ -494,7 +496,7 @@ export default function ExecutiveDashboard() {
               border: "border-amber-500/20",
             },
             {
-              label: "Customers",
+              label: t("customersNav", "Customers"),
               value: loading ? "…" : (data?.customerCount ?? "—"),
               icon: Users,
               color: "text-cyan-400",
@@ -502,7 +504,7 @@ export default function ExecutiveDashboard() {
               border: "border-cyan-500/20",
             },
             {
-              label: "Invoices Today",
+              label: t("grnsToday", "Invoices Today"),
               value: loading ? "…" : (data?.invoiceToday ?? "—"),
               icon: FileText,
               color: "text-violet-400",
@@ -530,37 +532,37 @@ export default function ExecutiveDashboard() {
           <div className="rounded-xl border border-border bg-card p-4 flex flex-col gap-1">
             <div className="flex items-center gap-2 mb-2">
               <Package className="w-4 h-4 text-emerald-400" />
-              <h2 className="text-sm font-semibold text-foreground">Stock Reports</h2>
+              <h2 className="text-sm font-semibold text-foreground">{t("stockReport", "Stock Reports")}</h2>
               <span className="ml-auto text-[10px] font-mono text-muted-foreground">
-                {loading ? "…" : `${data?.activeSkus ?? 0} active SKUs`}
+                {loading ? "…" : `${data?.activeSkus ?? 0} ${t("activeSkus", "active SKUs")}`}
               </span>
             </div>
 
             {[
               {
-                label: "6 Months Expiry",
-                sub: "Dry / Frozen / Chilled",
+                label: t("sixMonthsExpiry", "6 Months Expiry"),
+                sub: t("frozenChilledDry", "Dry / Frozen / Chilled"),
                 count: data?.expiryStats.within180,
                 color: data?.expiryStats.within180 ? "text-amber-400" : "text-muted-foreground",
                 path: "/stock",
               },
               {
-                label: "Stock Overview",
-                sub: "Details & Movement",
+                label: t("stockOverview", "Stock Overview"),
+                sub: t("detailsMovement", "Details & Movement"),
                 count: data?.activeSkus,
                 color: "text-emerald-400",
                 path: "/stock",
               },
               {
-                label: "Near Expiry / This Week",
-                sub: "Expiring within 30 days",
+                label: t("nearExpiryThisWeek", "Near Expiry / This Week"),
+                sub: t("within30Days", "Expiring within 30 days"),
                 count: data?.expiryStats.within30,
                 color: data?.expiryStats.within30 ? "text-red-400" : "text-muted-foreground",
                 path: "/stock",
               },
               {
-                label: "Destroys & Damages",
-                sub: "Expired stock in inventory",
+                label: t("destroysDamages", "Destroys & Damages"),
+                sub: t("expiredStockInventory", "Expired stock in inventory"),
                 count: data?.expiryStats.expired,
                 color: data?.expiryStats.expired ? "text-red-500" : "text-muted-foreground",
                 path: "/stock",
@@ -591,7 +593,7 @@ export default function ExecutiveDashboard() {
           <div className="rounded-xl border border-border bg-card p-4">
             <div className="flex items-center gap-2 mb-4">
               <Activity className="w-4 h-4 text-amber-400" />
-              <h2 className="text-sm font-semibold text-foreground">SKU Distribution</h2>
+              <h2 className="text-sm font-semibold text-foreground">{t("skuDistribution", "SKU Distribution")}</h2>
             </div>
 
             {/* Three rings */}
@@ -623,7 +625,7 @@ export default function ExecutiveDashboard() {
             {/* Total */}
             <div className="mt-3 text-center">
               <p className="text-[10px] text-muted-foreground">
-                {loading ? "Loading…" : `${data?.activeSkus ?? 0} total active SKUs in stock`}
+                {loading ? t("loading", "Loading...") : `${data?.activeSkus ?? 0} ${t("totalActiveSkus", "total active SKUs in stock")}`}
               </p>
             </div>
           </div>
@@ -632,19 +634,19 @@ export default function ExecutiveDashboard() {
           <div className="rounded-xl border border-border bg-card p-4 flex flex-col">
             <div className="flex items-center gap-2 mb-3">
               <FileText className="w-4 h-4 text-blue-400" />
-              <h2 className="text-sm font-semibold text-foreground">Latest Invoices</h2>
+              <h2 className="text-sm font-semibold text-foreground">{t("latestInvoices", "Latest Invoices")}</h2>
               <button
                 onClick={() => navigate("/invoice-entry")}
                 className="ml-auto text-[10px] text-primary font-medium hover:underline"
               >
-                View all →
+                {t("viewAll", "View all →")}
               </button>
             </div>
 
             {loading ? (
               <LoadingRows count={4} />
             ) : !data || data.invoices.length === 0 ? (
-              <EmptyState icon={FileText} message="No invoices yet" />
+              <EmptyState icon={FileText} message={t("noInvoicesYet", "No invoices yet")} />
             ) : (
               <div className="space-y-1.5 flex-1">
                 {data.invoices.slice(0, 5).map((inv) => (
@@ -679,7 +681,7 @@ export default function ExecutiveDashboard() {
             {/* Returns placeholder */}
             <div className="mt-3 pt-3 border-t border-border">
               <p className="text-[10px] text-muted-foreground/50 text-center">
-                Returns module connects in next phase
+                {t("returnsModuleNextPhase", "Returns module connects in next phase")}
               </p>
             </div>
           </div>
@@ -694,25 +696,25 @@ export default function ExecutiveDashboard() {
           <div className="rounded-xl border border-border bg-card p-4">
             <div className="flex items-center gap-2 mb-3">
               <Truck className="w-4 h-4 text-blue-400" />
-              <h2 className="text-sm font-semibold text-foreground">Shipment Details</h2>
+              <h2 className="text-sm font-semibold text-foreground">{t("shipmentDetails", "Shipment Details")}</h2>
               <button
                 onClick={() => navigate("/grn")}
                 className="ml-auto text-[10px] text-primary font-medium hover:underline"
               >
-                View all →
+                {t("viewAll", "View all →")}
               </button>
             </div>
 
             {loading ? (
               <LoadingRows count={5} />
             ) : !data || data.grns.length === 0 ? (
-              <EmptyState icon={Truck} message="No shipments recorded" />
+              <EmptyState icon={Truck} message={t("noShipmentsRecorded", "No shipments recorded")} />
             ) : (
               <>
                 {/* Received group */}
                 <div className="mb-2">
                   <p className="text-[10px] font-semibold text-blue-400 uppercase tracking-widest mb-1.5">
-                    Received
+                    {t("received", "Received")}
                   </p>
                   <div className="space-y-1.5">
                     {data.grns
@@ -727,10 +729,10 @@ export default function ExecutiveDashboard() {
                           <div className="w-1.5 h-1.5 rounded-full bg-blue-400 shrink-0" />
                           <div className="flex-1 min-w-0">
                             <p className="text-xs font-semibold text-foreground truncate">
-                              {grn.supplier_name ?? "Unknown Supplier"}
+                              {grn.supplier_name ?? t("unknownSupplier", "Unknown Supplier")}
                             </p>
                             <p className="text-[10px] text-muted-foreground">
-                              {grn.transport_mode ?? "Shipment"} · {grn.grn_no ?? grn.id.slice(0, 8)}
+                              {grn.transport_mode ?? t("shipment", "Shipment")} · {grn.grn_no ?? grn.id.slice(0, 8)}
                             </p>
                           </div>
                           <StatusPill status={grn.status} />
@@ -743,7 +745,7 @@ export default function ExecutiveDashboard() {
                 {data.grns.filter((g) => g.status === "draft" || g.status === "inspected").length > 0 && (
                   <div className="mt-3 pt-2 border-t border-border">
                     <p className="text-[10px] font-semibold text-amber-400 uppercase tracking-widest mb-1.5">
-                      In Progress
+                      {t("inProgress", "In Progress")}
                     </p>
                     <div className="space-y-1.5">
                       {data.grns
@@ -758,7 +760,7 @@ export default function ExecutiveDashboard() {
                             <div className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse shrink-0" />
                             <div className="flex-1 min-w-0">
                               <p className="text-xs font-semibold text-foreground truncate">
-                                {grn.supplier_name ?? "Unknown Supplier"}
+                                {grn.supplier_name ?? t("unknownSupplier", "Unknown Supplier")}
                               </p>
                               <p className="text-[10px] text-muted-foreground">
                                 {grn.grn_no ?? grn.id.slice(0, 8)}
@@ -778,7 +780,7 @@ export default function ExecutiveDashboard() {
           <div className="rounded-xl border border-border bg-card p-4">
             <div className="flex items-center gap-2 mb-3">
               <Bell className="w-4 h-4 text-amber-400" />
-              <h2 className="text-sm font-semibold text-foreground">Alerts</h2>
+              <h2 className="text-sm font-semibold text-foreground">{t("businessAlerts", "Alerts")}</h2>
               {!loading && alerts.filter((a) => a.type !== "info").length > 0 && (
                 <span className="ml-auto inline-flex items-center justify-center w-5 h-5 rounded-full bg-amber-500/20 text-amber-400 text-[10px] font-bold">
                   {alerts.filter((a) => a.type !== "info").length}
@@ -825,13 +827,13 @@ export default function ExecutiveDashboard() {
         <div className="rounded-xl border border-border bg-card p-4">
           <div className="flex items-center gap-2 mb-4">
             <UserSquare2 className="w-4 h-4 text-cyan-400" />
-            <h2 className="text-sm font-semibold text-foreground">Sales Team</h2>
-            <span className="text-[10px] text-muted-foreground ml-1">— Customer coverage</span>
+            <h2 className="text-sm font-semibold text-foreground">{t("topSalesmen", "Sales Team")}</h2>
+            <span className="text-[10px] text-muted-foreground ml-1">— {t("customerCoverage", "Customer coverage")}</span>
             <button
               onClick={() => navigate("/salesmen")}
               className="ml-auto text-[10px] text-primary font-medium hover:underline"
             >
-              Manage →
+              {t("manage", "Manage →")}
             </button>
           </div>
 
@@ -840,8 +842,8 @@ export default function ExecutiveDashboard() {
           ) : !data || data.salesmen.length === 0 ? (
             <EmptyState
               icon={UserSquare2}
-              message="No salesmen configured"
-              sub="Add salesmen to see performance tracking"
+              message={t("noActiveSalesmen", "No salesmen configured")}
+              sub={t("addSalesmenTracking", "Add salesmen to see performance tracking")}
             />
           ) : (
             <div className="grid md:grid-cols-2 gap-x-8 gap-y-3">
@@ -866,7 +868,7 @@ export default function ExecutiveDashboard() {
                   </div>
                   {/* Count */}
                   <span className="text-[11px] font-mono text-muted-foreground shrink-0 w-10 text-right">
-                    {s.customerCount} cust
+                    {s.customerCount} {t("customersShort", "cust")}
                   </span>
                 </div>
               ))}
@@ -879,16 +881,16 @@ export default function ExecutiveDashboard() {
         ═══════════════════════════════════════════════════════════════ */}
         <div>
           <h2 className="text-[11px] font-semibold text-muted-foreground uppercase tracking-widest mb-2.5">
-            Quick Access
+            {t("quickNav", "Quick Access")}
           </h2>
           <div className="grid grid-cols-3 md:grid-cols-6 gap-3">
             {[
-              { label: "Reports",   path: "/reports",        icon: BarChart3,    color: "text-violet-400", bg: "bg-violet-500/10", border: "border-violet-500/20" },
-              { label: "Stock",     path: "/stock",          icon: Package,      color: "text-emerald-400", bg: "bg-emerald-500/10", border: "border-emerald-500/20" },
-              { label: "Invoices",  path: "/invoice-entry",  icon: TrendingUp,   color: "text-blue-400",   bg: "bg-blue-500/10",   border: "border-blue-500/20" },
-              { label: "GRN",       path: "/grn",            icon: ClipboardList, color: "text-amber-400", bg: "bg-amber-500/10",  border: "border-amber-500/20" },
-              { label: "Customers", path: "/customers",      icon: Users,        color: "text-cyan-400",   bg: "bg-cyan-500/10",   border: "border-cyan-500/20" },
-              { label: "Salesmen",  path: "/salesmen",       icon: UserSquare2,  color: "text-pink-400",   bg: "bg-pink-500/10",   border: "border-pink-500/20" },
+              { label: t("reports", "Reports"),        path: "/reports",        icon: BarChart3,    color: "text-violet-400", bg: "bg-violet-500/10", border: "border-violet-500/20" },
+              { label: t("stockOverview", "Stock"),  path: "/stock",          icon: Package,      color: "text-emerald-400", bg: "bg-emerald-500/10", border: "border-emerald-500/20" },
+              { label: t("invoicesNav", "Invoices"), path: "/invoice-entry",  icon: TrendingUp,   color: "text-blue-400",   bg: "bg-blue-500/10",   border: "border-blue-500/20" },
+              { label: t("grnReceiving", "GRN"),     path: "/grn",            icon: ClipboardList, color: "text-amber-400", bg: "bg-amber-500/10",  border: "border-amber-500/20" },
+              { label: t("customersNav", "Customers"), path: "/customers",    icon: Users,        color: "text-cyan-400",   bg: "bg-cyan-500/10",   border: "border-cyan-500/20" },
+              { label: t("salesmenNav", "Salesmen"), path: "/salesmen",       icon: UserSquare2,  color: "text-pink-400",   bg: "bg-pink-500/10",   border: "border-pink-500/20" },
             ].map(({ label, path, icon: Icon, color, bg, border }) => (
               <button
                 key={path}

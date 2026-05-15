@@ -16,8 +16,10 @@ import {
 import { useReport } from "@/features/reports/hooks/useReport";
 import { getCustomersBySalesman } from "@/features/services/reportService";
 import type { CustomersBySalesmanGroup } from "@/features/reports/types";
+import { useLang } from "@/contexts/LanguageContext";
 
 export default function CustomersBySalesman() {
+    const { t } = useLang();
     const { data, loading, error, reload } =
         useReport<CustomersBySalesmanGroup[]>(getCustomersBySalesman);
 
@@ -45,7 +47,7 @@ export default function CustomersBySalesman() {
         return (
             <div className="flex flex-col items-center justify-center py-16 gap-3">
                 <Loader2 className="w-6 h-6 animate-spin text-primary" />
-                <p className="text-sm text-muted-foreground">Loading report...</p>
+                <p className="text-sm text-muted-foreground">{t("loadingReport", "Loading report...")}</p>
             </div>
         );
     }
@@ -60,7 +62,7 @@ export default function CustomersBySalesman() {
                     className="text-xs text-muted-foreground flex items-center gap-1.5 hover:text-foreground transition-colors"
                 >
                     <RefreshCw className="w-3.5 h-3.5" />
-                    Try again
+                    {t("tryAgain", "Try again")}
                 </button>
             </div>
         );
@@ -71,10 +73,10 @@ export default function CustomersBySalesman() {
             <div className="flex flex-col items-center justify-center py-16 gap-3 text-center px-4">
                 <Users className="w-9 h-9 text-muted-foreground opacity-30" />
                 <p className="text-sm text-muted-foreground">
-                    No customers with assigned salesmen found.
+                    {t("noCustomersWithSalesman", "No customers with assigned salesmen found.")}
                 </p>
                 <p className="text-xs text-muted-foreground">
-                    Assign salesmen to customers to see this report.
+                    {t("assignSalesmenHint", "Assign salesmen to customers to see this report.")}
                 </p>
             </div>
         );
@@ -85,9 +87,9 @@ export default function CustomersBySalesman() {
             <div className="flex items-center justify-between px-1">
                 <p className="text-xs text-muted-foreground">
                     <span className="text-foreground font-semibold">{data.length}</span>{" "}
-                    salesmen ·{" "}
+                    {t("salesmen", "salesmen")} ·{" "}
                     <span className="text-foreground font-semibold">{totalCustomers}</span>{" "}
-                    customers
+                    {t("customers", "customers")}
                 </p>
 
                 <div className="flex items-center gap-2">
@@ -95,19 +97,19 @@ export default function CustomersBySalesman() {
                         onClick={expandAll}
                         className="text-xs text-muted-foreground hover:text-foreground transition-colors"
                     >
-                        Expand all
+                        {t("expandAll", "Expand all")}
                     </button>
                     <span className="text-muted-foreground text-xs">·</span>
                     <button
                         onClick={collapseAll}
                         className="text-xs text-muted-foreground hover:text-foreground transition-colors"
                     >
-                        Collapse all
+                        {t("collapseAll", "Collapse all")}
                     </button>
                     <button
                         onClick={reload}
                         className="ml-1 p-1.5 rounded-md hover:bg-secondary transition-colors"
-                        title="Refresh"
+                        title={t("refresh", "Refresh")}
                     >
                         <RefreshCw className="w-3.5 h-3.5 text-muted-foreground" />
                     </button>
@@ -141,7 +143,7 @@ export default function CustomersBySalesman() {
                             </div>
                             <span className="text-xs text-muted-foreground font-mono">
                                 {group.customers.length}{" "}
-                                {group.customers.length === 1 ? "customer" : "customers"}
+                                {group.customers.length === 1 ? t("customer", "customer") : t("customers", "customers")}
                             </span>
                         </button>
 

@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { usePermissions } from "@/hooks/usePermissions";
+import { useLang } from "@/contexts/LanguageContext";
 import {
   fetchGrnStatusCounts,
   fetchQcLineCounts,
@@ -62,68 +63,33 @@ function usePurchasingData() {
   return { data, loading };
 }
 
-// ─── Role labels ──────────────────────────────────────────────────────────────
-
-const ROLE_LABELS: Record<string, string> = {
-  purchase_manager: "Purchase Manager",
-  purchase:         "Purchase Staff",
-};
-
-// ─── Actions ─────────────────────────────────────────────────────────────────
-
-const ACTIONS: ActionItem[] = [
-  {
-    label: "New GRN",
-    path: "/grn/new",
-    icon: ClipboardList,
-    color: "text-amber-400",
-    bg: "bg-amber-500/10",
-    border: "border-amber-500/20",
-    description: "Record new delivery",
-  },
-  {
-    label: "GRN List",
-    path: "/grn",
-    icon: Truck,
-    color: "text-blue-400",
-    bg: "bg-blue-500/10",
-    border: "border-blue-500/20",
-    description: "All receiving notes",
-  },
-  {
-    label: "Products",
-    path: "/products",
-    icon: Package,
-    color: "text-emerald-400",
-    bg: "bg-emerald-500/10",
-    border: "border-emerald-500/20",
-    description: "Product catalogue",
-  },
-  {
-    label: "Import / Export",
-    path: "/import-export",
-    icon: FileSpreadsheet,
-    color: "text-orange-400",
-    bg: "bg-orange-500/10",
-    border: "border-orange-500/20",
-    description: "Bulk data tools",
-  },
-];
-
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function PurchasingDashboard() {
   const navigate = useNavigate();
+  const { t }    = useLang();
   const { role } = usePermissions();
   const { data, loading } = usePurchasingData();
 
+  const ROLE_LABELS: Record<string, string> = {
+    purchase_manager: t("rolePurchaseManager", "Purchase Manager"),
+    purchase:         t("rolePurchaseStaff", "Purchase Staff"),
+  };
+
   const roleLabel = ROLE_LABELS[role] ?? role.replace(/_/g, " ");
+
+  const actions: ActionItem[] = [
+    { label: t("newGRN", "New GRN"),         path: "/grn/new",        icon: ClipboardList, color: "text-amber-400",  bg: "bg-amber-500/10",  border: "border-amber-500/20",  description: t("recordNewDelivery", "Record new delivery") },
+    { label: t("grnList", "GRN List"),       path: "/grn",            icon: Truck,         color: "text-blue-400",   bg: "bg-blue-500/10",   border: "border-blue-500/20",   description: t("allReceivingNotes", "All receiving notes") },
+    { label: t("manageProducts", "Products"),path: "/products",       icon: Package,       color: "text-emerald-400",bg: "bg-emerald-500/10",border: "border-emerald-500/20",description: t("productCatalogue", "Product catalogue") },
+    { label: t("importExportTitle", "Import / Export"), path: "/import-export", icon: FileSpreadsheet, color: "text-orange-400", bg: "bg-orange-500/10", border: "border-orange-500/20", description: t("bulkDataTools", "Bulk data tools") },
+  ];
 
   const kpis: KpiItem[] = [
     {
-      label: "Today's Deliveries",
+      label: t("todaysDeliveries", "Today's Deliveries"),
       value: data?.grns.todayCount ?? "—",
-      sub: "GRNs received today",
+      sub: t("grnsReceivedToday", "GRNs received today"),
       icon: Truck,
       color: "text-blue-500",
       bg: "bg-blue-500/10",
@@ -132,9 +98,9 @@ export default function PurchasingDashboard() {
       trend: data?.grns.todayCount ? "up" : "neutral",
     },
     {
-      label: "Pending Inspection",
+      label: t("pendingInspection", "Pending Inspection"),
       value: data?.grns.received ?? "—",
-      sub: "Awaiting QC",
+      sub: t("awaitingQc", "Awaiting QC"),
       icon: ClipboardList,
       color: "text-amber-500",
       bg: "bg-amber-500/10",
@@ -142,9 +108,9 @@ export default function PurchasingDashboard() {
       loading,
     },
     {
-      label: "Awaiting Posting",
+      label: t("awaitingPosting", "Awaiting Posting"),
       value: data?.qc.awaitingPosting ?? "—",
-      sub: "Approved, post to stock",
+      sub: t("approvedPostToStock", "Approved, post to stock"),
       icon: UploadCloud,
       color: data?.qc.awaitingPosting ? "text-violet-500" : "text-muted-foreground",
       bg: data?.qc.awaitingPosting ? "bg-violet-500/10" : "bg-muted/20",
@@ -152,9 +118,9 @@ export default function PurchasingDashboard() {
       loading,
     },
     {
-      label: "Completed GRNs",
+      label: t("completedGrns", "Completed GRNs"),
       value: data?.grns.completed ?? "—",
-      sub: "Posted to inventory",
+      sub: t("postedToInventory", "Posted to inventory"),
       icon: CheckCircle2,
       color: "text-emerald-500",
       bg: "bg-emerald-500/10",
@@ -166,8 +132,8 @@ export default function PurchasingDashboard() {
   return (
     <DashboardShell
       icon={ShoppingBag}
-      title="Purchasing Dashboard"
-      subtitle={`${roleLabel} · Procurement & Receiving`}
+      title={t("purchasingDashboardTitle", "Purchasing Dashboard")}
+      subtitle={`${roleLabel} · ${t("procurementReceivingSubtitle", "Procurement & Receiving")}`}
       accent="orange"
       headerAction={
         <button
@@ -175,16 +141,15 @@ export default function PurchasingDashboard() {
           className="flex items-center gap-1.5 text-xs bg-primary text-primary-foreground px-3 py-1.5 rounded-lg font-medium hover:opacity-90 transition shrink-0"
         >
           <ClipboardList className="w-3.5 h-3.5" />
-          New GRN
+          {t("newGRN", "New GRN")}
         </button>
       }
     >
       <KpiGrid items={kpis} />
 
       <div className="grid md:grid-cols-2 gap-4">
-        {/* Recent GRNs */}
         <SectionCard
-          title="Recent Deliveries"
+          title={t("recentDeliveries", "Recent Deliveries")}
           icon={Truck}
           iconClass="text-blue-400"
           action={
@@ -192,14 +157,14 @@ export default function PurchasingDashboard() {
               onClick={() => navigate("/grn")}
               className="text-[10px] text-primary font-medium hover:underline"
             >
-              View all →
+              {t("viewAll", "View all →")}
             </button>
           }
         >
           {loading ? (
             <LoadingRows count={5} />
           ) : !data || data.grns.recent.length === 0 ? (
-            <EmptyState icon={Truck} message="No GRNs recorded yet" sub="Create your first GRN to get started" />
+            <EmptyState icon={Truck} message={t("noGrnsYet", "No GRNs recorded yet")} sub={t("createFirstGrn", "Create your first GRN to get started")} />
           ) : (
             <div className="space-y-1.5">
               {data.grns.recent.map((grn) => (
@@ -213,7 +178,7 @@ export default function PurchasingDashboard() {
                       {grn.grn_no ?? `GRN #${grn.id?.slice(0, 8)}`}
                     </p>
                     <p className="text-[10px] text-muted-foreground truncate">
-                      {grn.supplier_name ?? "Unknown supplier"} · {new Date(grn.created_at).toLocaleDateString()}
+                      {grn.supplier_name ?? t("unknownSupplier", "Unknown supplier")} · {new Date(grn.created_at).toLocaleDateString()}
                     </p>
                   </div>
                   <StatusPill status={grn.status ?? "draft"} />
@@ -223,20 +188,19 @@ export default function PurchasingDashboard() {
           )}
         </SectionCard>
 
-        {/* GRN pipeline breakdown */}
-        <SectionCard title="Receiving Pipeline" icon={TrendingDown} iconClass="text-orange-400">
+        <SectionCard title={t("receivingPipeline", "Receiving Pipeline")} icon={TrendingDown} iconClass="text-orange-400">
           {loading ? (
             <LoadingRows count={6} />
           ) : !data ? null : (
             <>
               <PipelineBar
                 rows={[
-                  { label: "Draft",     count: data.grns.draft,     bar: "bg-muted-foreground/30", text: "text-muted-foreground" },
-                  { label: "Received",  count: data.grns.received,  bar: "bg-amber-500",           text: "text-amber-400" },
-                  { label: "Inspected", count: data.grns.inspected, bar: "bg-violet-500",           text: "text-violet-400" },
-                  { label: "Approved",  count: data.grns.approved,  bar: "bg-blue-500",            text: "text-blue-400" },
-                  { label: "Completed", count: data.grns.completed, bar: "bg-emerald-500",         text: "text-emerald-400" },
-                  { label: "Rejected",  count: data.grns.rejected,  bar: "bg-red-500",             text: "text-red-400" },
+                  { label: t("draft", "Draft"),         count: data.grns.draft,     bar: "bg-muted-foreground/30", text: "text-muted-foreground" },
+                  { label: t("received", "Received"),   count: data.grns.received,  bar: "bg-amber-500",           text: "text-amber-400" },
+                  { label: t("inspected", "Inspected"), count: data.grns.inspected, bar: "bg-violet-500",          text: "text-violet-400" },
+                  { label: t("approved", "Approved"),   count: data.grns.approved,  bar: "bg-blue-500",            text: "text-blue-400" },
+                  { label: t("completed", "Completed"), count: data.grns.completed, bar: "bg-emerald-500",         text: "text-emerald-400" },
+                  { label: t("rejected", "Rejected"),   count: data.grns.rejected,  bar: "bg-red-500",             text: "text-red-400" },
                 ] satisfies PipelineRow[]}
                 total={data.grns.total}
                 loading={loading}
@@ -245,15 +209,15 @@ export default function PurchasingDashboard() {
               <div className="pt-3 mt-2 border-t border-border grid grid-cols-3 gap-2 text-center">
                 <div>
                   <p className="text-lg font-bold text-foreground">{data.grns.total}</p>
-                  <p className="text-[10px] text-muted-foreground">Total GRNs</p>
+                  <p className="text-[10px] text-muted-foreground">{t("totalGrns", "Total GRNs")}</p>
                 </div>
                 <div>
                   <p className="text-lg font-bold text-emerald-400">{data.grns.completed}</p>
-                  <p className="text-[10px] text-muted-foreground">In Stock</p>
+                  <p className="text-[10px] text-muted-foreground">{t("inStock", "In Stock")}</p>
                 </div>
                 <div>
                   <p className="text-lg font-bold text-violet-400">{data.qc.awaitingPosting}</p>
-                  <p className="text-[10px] text-muted-foreground">Post Ready</p>
+                  <p className="text-[10px] text-muted-foreground">{t("postReady", "Post Ready")}</p>
                 </div>
               </div>
 
@@ -272,7 +236,7 @@ export default function PurchasingDashboard() {
         </SectionCard>
       </div>
 
-      <ActionGrid actions={ACTIONS} onNavigate={navigate} cols={4} />
+      <ActionGrid actions={actions} onNavigate={navigate} cols={4} />
     </DashboardShell>
   );
 }

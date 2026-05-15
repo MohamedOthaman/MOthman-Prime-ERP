@@ -1,0 +1,33 @@
+{
+  "section": {
+    "dashboard": "Dashboard",
+    "sales": "Sales",
+    "warehouse": "Warehouse",
+    "receiving": "Receiving",
+    "reports": "Reports",
+    "admin": "Admin"
+  },
+  "item": {
+    "dashboard": "Dashboard",
+    "stock": "Stock",
+    "invoices": "Invoices",
+    "newInvoice": "New Invoice",
+    "customers": "Customers",
+    "salesmen": "Salesmen",
+    "returns": "Returns",
+    "picking": "Picking",
+    "movements": "Movements",
+    "fridge": "Fridge",
+    "batchTrace": "Batch Trace",
+    "grn": "GRN",
+    "products": "Products",
+    "importExport": "Import / Export",
+    "reports": "Reports",
+    "users": "Users",
+    "settings": "Settings",
+    "previewAs": "Preview As",
+    "syncLog": "Sync Log",
+    "telemetry": "Telemetry",
+    "audit": "Audit"
+  }
+}

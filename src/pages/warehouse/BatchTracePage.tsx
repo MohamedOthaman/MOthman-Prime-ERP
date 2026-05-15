@@ -9,7 +9,7 @@
  *   - Quick links back to GRN and related invoice if available
  */
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
   Package,
@@ -26,6 +26,7 @@ import {
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { LoadingRows, EmptyState, StatusPill } from "@/components/dashboard/DashboardShell";
+import { useLang } from "@/contexts/LanguageContext";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -57,22 +58,6 @@ interface MovementRow {
   performed_by: string | null;
 }
 
-// ─── Movement type config ─────────────────────────────────────────────────────
-
-const MOVEMENT_CONFIG: Record<string, {
-  label: string;
-  icon: React.ComponentType<{ className?: string }>;
-  color: string;
-  bg: string;
-  border: string;
-  sign: "+" | "-";
-}> = {
-  INBOUND:    { label: "Inbound",    icon: ArrowUpRight,   color: "text-emerald-400", bg: "bg-emerald-500/10", border: "border-emerald-500/20", sign: "+" },
-  OUTBOUND:   { label: "Outbound",   icon: ArrowDownLeft,  color: "text-blue-400",    bg: "bg-blue-500/10",    border: "border-blue-500/20",    sign: "-" },
-  RETURN:     { label: "Return",     icon: RotateCcw,      color: "text-violet-400",  bg: "bg-violet-500/10",  border: "border-violet-500/20",  sign: "+" },
-  ADJUSTMENT: { label: "Adjustment", icon: Settings2,      color: "text-amber-400",   bg: "bg-amber-500/10",   border: "border-amber-500/20",   sign: "±" },
-};
-
 function fmtDate(iso: string | null | undefined) {
   if (!iso) return "—";
   return new Date(iso).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
@@ -102,11 +87,20 @@ function daysUntilExpiry(expiry: string | null | undefined): number | null {
 export default function BatchTracePage() {
   const { batchId } = useParams<{ batchId: string }>();
   const navigate = useNavigate();
+  const { t } = useLang();
 
   const [batch, setBatch]         = useState<BatchInfo | null>(null);
   const [movements, setMovements] = useState<MovementRow[]>([]);
   const [loading, setLoading]     = useState(true);
   const [error, setError]         = useState<string | null>(null);
+
+  // ─── Movement type config (inside component for i18n) ───────────────────────
+  const MOVEMENT_CONFIG = useMemo(() => ({
+    INBOUND:    { label: t("movementInbound", "Inbound"),       icon: ArrowUpRight,   color: "text-emerald-400", bg: "bg-emerald-500/10", border: "border-emerald-500/20", sign: "+" as const },
+    OUTBOUND:   { label: t("movementOutbound", "Outbound"),     icon: ArrowDownLeft,  color: "text-blue-400",    bg: "bg-blue-500/10",    border: "border-blue-500/20",    sign: "-" as const },
+    RETURN:     { label: t("movementReturn", "Return"),         icon: RotateCcw,      color: "text-violet-400",  bg: "bg-violet-500/10",  border: "border-violet-500/20",  sign: "+" as const },
+    ADJUSTMENT: { label: t("movementAdjustment", "Adjustment"), icon: Settings2,      color: "text-amber-400",   bg: "bg-amber-500/10",   border: "border-amber-500/20",   sign: "±" as const },
+  }), [t]);
 
   async function load() {
     if (!batchId) return;
@@ -153,7 +147,7 @@ export default function BatchTracePage() {
         status:           raw.status ?? "active",
       });
     } else if (batchRes.status === "rejected") {
-      setError("Batch not found or access denied");
+      setError(t("batchNotFound", "Batch not found or access denied"));
     }
 
     if (movRes.status === "fulfilled") {
@@ -181,6 +175,22 @@ export default function BatchTracePage() {
   const days = daysUntilExpiry(batch?.expiry_date);
   const expired = isExpired(batch?.expiry_date);
 
+  // Metadata rows built inside render for translation
+  const metaRows = batch ? [
+    { label: t("batchMetaProduct", "Product"),   value: batch.product_name ?? "—" },
+    { label: t("batchMetaCode", "Code"),          value: batch.product_code ?? "—" },
+    { label: t("batchMetaBatchNo", "Batch No."),  value: batch.batch_number ?? "—" },
+    { label: t("batchMetaStorage", "Storage"),    value: batch.storage_type ?? "—" },
+    { label: t("batchMetaLocation", "Location"),  value: batch.putaway_location ?? "—" },
+    { label: t("batchMetaStatus", "Status"),      value: <StatusPill status={batch.status} /> },
+    { label: t("batchMetaReceived", "Received"),  value: fmtDate(batch.received_date) },
+    { label: t("batchMetaExpiry", "Expiry"),      value: (
+      <span className={expired ? "text-red-400 font-medium" : days !== null && days <= 30 ? "text-amber-400 font-medium" : ""}>
+        {fmtDate(batch.expiry_date)}
+      </span>
+    )},
+  ] : [];
+
   return (
     <div className="min-h-screen bg-background pb-24">
       {/* Header */}
@@ -198,10 +208,12 @@ export default function BatchTracePage() {
           </div>
           <div className="flex-1 min-w-0">
             <h1 className="text-[15px] font-bold tracking-tight text-foreground leading-tight">
-              {loading ? "Loading…" : (batch?.product_name ?? "Batch Trace")}
+              {loading ? t("loading", "Loading…") : (batch?.product_name ?? t("pageTitleBatchTrace", "Batch Trace"))}
             </h1>
             <p className="text-[11px] text-muted-foreground leading-tight">
-              {batch?.batch_number ? `Batch ${batch.batch_number}` : "Batch Traceability"}
+              {batch?.batch_number
+                ? `${t("batchLabel", "Batch")} ${batch.batch_number}`
+                : t("batchTraceability", "Batch Traceability")}
               {batch?.product_code ? ` · ${batch.product_code}` : ""}
             </p>
           </div>
@@ -220,7 +232,7 @@ export default function BatchTracePage() {
             <AlertTriangle className="w-8 h-8 text-red-400/40" />
             <p className="text-sm font-medium text-muted-foreground">{error}</p>
             <button onClick={() => navigate(-1)} className="text-xs text-primary hover:underline">
-              ← Go back
+              ← {t("goBack", "Go back")}
             </button>
           </div>
         ) : loading ? (
@@ -237,7 +249,7 @@ export default function BatchTracePage() {
                 <div className="flex items-center gap-2 rounded-lg bg-red-500/8 border border-red-500/20 px-3 py-2.5">
                   <AlertTriangle className="w-3.5 h-3.5 text-red-400 shrink-0" />
                   <p className="text-xs text-red-400 font-medium">
-                    Expired {Math.abs(days!)} day{Math.abs(days!) !== 1 ? "s" : ""} ago
+                    {t("expiredDaysAgo", "Expired")} {Math.abs(days!)} {Math.abs(days!) !== 1 ? t("days", "days") : t("day", "day")} {t("ago", "ago")}
                   </p>
                 </div>
               )}
@@ -245,7 +257,7 @@ export default function BatchTracePage() {
                 <div className="flex items-center gap-2 rounded-lg bg-amber-500/8 border border-amber-500/20 px-3 py-2.5">
                   <AlertTriangle className="w-3.5 h-3.5 text-amber-400 shrink-0" />
                   <p className="text-xs text-amber-400 font-medium">
-                    Expires in {days} day{days !== 1 ? "s" : ""}
+                    {t("expiresIn", "Expires in")} {days} {days !== 1 ? t("days", "days") : t("day", "day")}
                   </p>
                 </div>
               )}
@@ -254,34 +266,21 @@ export default function BatchTracePage() {
               <div className="grid grid-cols-3 gap-3 text-center">
                 <div className="rounded-lg bg-muted/30 px-3 py-2.5">
                   <p className="text-xl font-bold text-foreground">{batch.qty_received}</p>
-                  <p className="text-[10px] text-muted-foreground">Received</p>
+                  <p className="text-[10px] text-muted-foreground">{t("qtyReceived", "Received")}</p>
                 </div>
                 <div className="rounded-lg bg-emerald-500/10 border border-emerald-500/20 px-3 py-2.5">
                   <p className="text-xl font-bold text-emerald-400">{batch.qty_available}</p>
-                  <p className="text-[10px] text-muted-foreground">Available</p>
+                  <p className="text-[10px] text-muted-foreground">{t("qtyAvailable", "Available")}</p>
                 </div>
                 <div className="rounded-lg bg-muted/30 px-3 py-2.5">
                   <p className="text-xl font-bold text-foreground">{batch.qty_received - batch.qty_available}</p>
-                  <p className="text-[10px] text-muted-foreground">Consumed</p>
+                  <p className="text-[10px] text-muted-foreground">{t("qtyConsumed", "Consumed")}</p>
                 </div>
               </div>
 
               {/* Metadata grid */}
               <div className="grid grid-cols-2 gap-x-4 gap-y-2.5 text-xs">
-                {[
-                  { label: "Product",   value: batch.product_name ?? "—" },
-                  { label: "Code",      value: batch.product_code ?? "—" },
-                  { label: "Batch No.", value: batch.batch_number ?? "—" },
-                  { label: "Storage",   value: batch.storage_type ?? "—" },
-                  { label: "Location",  value: batch.putaway_location ?? "—" },
-                  { label: "Status",    value: <StatusPill status={batch.status} /> },
-                  { label: "Received",  value: fmtDate(batch.received_date) },
-                  { label: "Expiry",    value: (
-                    <span className={expired ? "text-red-400 font-medium" : days !== null && days <= 30 ? "text-amber-400 font-medium" : ""}>
-                      {fmtDate(batch.expiry_date)}
-                    </span>
-                  )},
-                ].map(({ label, value }) => (
+                {metaRows.map(({ label, value }) => (
                   <div key={label} className="flex items-start gap-1.5">
                     <span className="text-muted-foreground shrink-0 w-20">{label}</span>
                     <span className="font-medium text-foreground">{value}</span>
@@ -297,7 +296,7 @@ export default function BatchTracePage() {
                 >
                   <ClipboardList className="w-3.5 h-3.5 text-blue-400 shrink-0" />
                   <span className="text-xs font-medium text-foreground flex-1">
-                    GRN: {batch.grn_no ?? batch.grn_id.slice(0, 8)}
+                    {t("grnLabel", "GRN")}: {batch.grn_no ?? batch.grn_id.slice(0, 8)}
                   </span>
                   <ArrowUpRight className="w-3.5 h-3.5 text-muted-foreground" />
                 </button>
@@ -308,18 +307,22 @@ export default function BatchTracePage() {
             <div className="rounded-xl border border-border bg-card p-4">
               <div className="flex items-center gap-2 mb-3">
                 <Warehouse className="w-4 h-4 text-cyan-400" />
-                <h2 className="text-sm font-semibold text-foreground">Movement History</h2>
+                <h2 className="text-sm font-semibold text-foreground">{t("movementHistory", "Movement History")}</h2>
                 <span className="ml-auto text-[10px] font-mono text-muted-foreground">
-                  {movements.length} event{movements.length !== 1 ? "s" : ""}
+                  {movements.length} {movements.length !== 1 ? t("events", "events") : t("event", "event")}
                 </span>
               </div>
 
               {movements.length === 0 ? (
-                <EmptyState icon={Warehouse} message="No movements recorded" sub="Movement events will appear here as stock is received, picked, or returned" />
+                <EmptyState
+                  icon={Warehouse}
+                  message={t("noMovementsRecorded", "No movements recorded")}
+                  sub={t("noMovementsSub", "Movement events will appear here as stock is received, picked, or returned")}
+                />
               ) : (
                 <div className="space-y-1.5">
                   {movements.map((mov) => {
-                    const cfg = MOVEMENT_CONFIG[mov.movement_type] ?? {
+                    const cfg = (MOVEMENT_CONFIG as any)[mov.movement_type] ?? {
                       label: mov.movement_type,
                       icon: Settings2,
                       color: "text-muted-foreground",

@@ -27,21 +27,7 @@ import {
   type ReceivingPostResult,
 } from "@/features/services/grnQcService";
 import type { GRNWorkflowStatus } from "@/config/workflowConfig";
-
-const statusOptions: Array<{ value: QcLineStatus; label: string }> = [
-  { value: "pending", label: "Pending" },
-  { value: "pass", label: "Pass" },
-  { value: "reject", label: "Reject" },
-  { value: "hold", label: "Hold" },
-];
-
-const POST_ERROR_MESSAGES: Record<string, string> = {
-  RECEIVING_NOT_READY: "GRN must be in APPROVED status before posting to inventory.",
-  RECEIVING_ALREADY_POSTED: "This GRN has already been posted to inventory.",
-  BATCH_DATA_REQUIRED: "All QC-passed lines require a batch number before posting.",
-  EXPIRY_REQUIRED: "All QC-passed lines require an expiry date before posting.",
-  QC_DATA_MISSING: "No QC-passed lines with positive received quantity found.",
-};
+import { useLang } from "@/contexts/LanguageContext";
 
 function toNumber(value: string | number | null | undefined) {
   const parsed = Number(value ?? 0);
@@ -59,6 +45,8 @@ export default function GRNQcPage() {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
   const { user } = useAuth();
+  const { t } = useLang();
+
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [posting, setPosting] = useState(false);
@@ -82,6 +70,44 @@ export default function GRNQcPage() {
   const [municipalityNotes, setMunicipalityNotes] = useState("");
   const [expandedDiscrepancy, setExpandedDiscrepancy] = useState<Set<string>>(new Set());
 
+  // Translated status options — reactive to language changes
+  const statusOptions = useMemo<Array<{ value: QcLineStatus; label: string }>>(
+    () => [
+      { value: "pending", label: t("pending", "Pending") },
+      { value: "pass", label: t("qcPass", "Pass") },
+      { value: "reject", label: t("reject", "Reject") },
+      { value: "hold", label: t("hold", "Hold") },
+    ],
+    [t]
+  );
+
+  // Translated post-error messages — reactive to language changes
+  const postErrorMessages = useMemo<Record<string, string>>(
+    () => ({
+      RECEIVING_NOT_READY: t(
+        "errReceivingNotReady",
+        "GRN must be in APPROVED status before posting to inventory."
+      ),
+      RECEIVING_ALREADY_POSTED: t(
+        "errReceivingAlreadyPosted",
+        "This GRN has already been posted to inventory."
+      ),
+      BATCH_DATA_REQUIRED: t(
+        "errBatchDataRequired",
+        "All QC-passed lines require a batch number before posting."
+      ),
+      EXPIRY_REQUIRED: t(
+        "errExpiryRequired",
+        "All QC-passed lines require an expiry date before posting."
+      ),
+      QC_DATA_MISSING: t(
+        "errQcDataMissing",
+        "No QC-passed lines with positive received quantity found."
+      ),
+    }),
+    [t]
+  );
+
   useEffect(() => {
     if (!id) return;
 
@@ -104,7 +130,7 @@ export default function GRNQcPage() {
         setError(
           loadError instanceof Error
             ? loadError.message
-            : "Failed to load GRN QC record."
+            : t("failedToLoadGrnQc", "Failed to load GRN QC record.")
         );
       } finally {
         setLoading(false);
@@ -169,7 +195,7 @@ export default function GRNQcPage() {
     const activeLines = lines.filter((line) => line.received_quantity > 0);
 
     if (activeLines.length === 0) {
-      return "No active receiving lines are available for QC.";
+      return t("noActiveQcLines", "No active receiving lines are available for QC.");
     }
 
     for (const line of activeLines) {
@@ -187,21 +213,21 @@ export default function GRNQcPage() {
 
     if (targetStatus === "inspected") {
       if (activeLines.some((line) => line.qc_status === "pending")) {
-        return "All active lines must be reviewed before completing QC.";
+        return t("allLinesMustBeReviewed", "All active lines must be reviewed before completing QC.");
       }
     }
 
     if (targetStatus === "municipality_pending" || targetStatus === "approved") {
       if (activeLines.some((line) => line.qc_status === "pending")) {
-        return "Pending QC lines must be resolved before municipality submission or approval.";
+        return t("pendingLinesBlockMunicipality", "Pending QC lines must be resolved before municipality submission or approval.");
       }
 
       if (activeLines.some((line) => line.qc_status === "hold")) {
-        return "Held QC lines must be resolved before municipality submission or approval.";
+        return t("holdLinesBlockMunicipality", "Held QC lines must be resolved before municipality submission or approval.");
       }
 
       if (!activeLines.some((line) => line.qc_status === "pass")) {
-        return "At least one QC-passed line is required before municipality submission or approval.";
+        return t("noPassedLinesForMunicipality", "At least one QC-passed line is required before municipality submission or approval.");
       }
 
       for (const line of activeLines.filter((entry) => entry.qc_status === "pass")) {
@@ -216,7 +242,7 @@ export default function GRNQcPage() {
     }
 
     if (targetStatus === "approved" && !municipalityReferenceNo.trim()) {
-      return "Municipality reference no is required before approval.";
+      return t("municipalityRefRequired", "Municipality reference no is required before approval.");
     }
 
     return null;
@@ -282,7 +308,7 @@ export default function GRNQcPage() {
       setError(
         persistError instanceof Error
           ? persistError.message
-          : "Failed to save GRN QC record."
+          : t("failedToSaveGrnQc", "Failed to save GRN QC record.")
       );
     } finally {
       setSaving(false);
@@ -308,14 +334,14 @@ export default function GRNQcPage() {
         const summary = await fetchReceivingPostingSummary(id);
         setPostSummary(summary);
       } else {
-        const knownMessage = result.code ? POST_ERROR_MESSAGES[result.code] : null;
-        setError(knownMessage ?? result.error ?? "Failed to post to inventory.");
+        const knownMessage = result.code ? postErrorMessages[result.code] : null;
+        setError(knownMessage ?? result.error ?? t("failedToPostInventory", "Failed to post to inventory."));
       }
     } catch (postError) {
       setError(
         postError instanceof Error
           ? postError.message
-          : "Failed to post receiving to inventory."
+          : t("failedToPostReceiving", "Failed to post receiving to inventory.")
       );
     } finally {
       setPosting(false);
@@ -334,7 +360,7 @@ export default function GRNQcPage() {
     return (
       <div className="min-h-screen bg-background p-4">
         <div className="mx-auto max-w-6xl rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-          {error ?? "GRN QC record not found."}
+          {error ?? t("grnQcNotFound", "GRN QC record not found.")}
         </div>
       </div>
     );
@@ -356,13 +382,13 @@ export default function GRNQcPage() {
             <div className="flex flex-wrap items-center gap-2">
               <ClipboardCheck className="h-5 w-5 text-primary" />
               <h1 className="text-lg font-semibold text-foreground">
-                QC Inspection
+                {t("qcInspection", "QC Inspection")}
               </h1>
               <StatusBadge status={header.status} />
             </div>
             <p className="text-xs text-muted-foreground">
-              {header.grn_no} | {header.supplier_name || "No supplier"} | PO{" "}
-              {header.po_no || "-"}
+              {header.grn_no} | {header.supplier_name || t("noSupplier", "No supplier")} |{" "}
+              {t("poNo", "PO")} {header.po_no || "-"}
             </p>
           </div>
 
@@ -374,7 +400,7 @@ export default function GRNQcPage() {
               className="inline-flex h-9 items-center gap-2 rounded-md border border-border bg-secondary px-3 text-sm font-medium text-foreground disabled:opacity-50"
             >
               {saving && <Loader2 className="h-4 w-4 animate-spin" />}
-              Save QC
+              {t("saveQc", "Save QC")}
             </button>
           )}
         </div>
@@ -394,7 +420,7 @@ export default function GRNQcPage() {
             <div className="mb-3 flex items-center gap-2">
               <PackageCheck className="h-5 w-5 text-teal-500" />
               <h2 className="text-sm font-semibold text-teal-500">
-                Posted to Inventory
+                {t("postedToInventory", "Posted to Inventory")}
               </h2>
               <span className="ml-auto text-xs text-muted-foreground">
                 Completed {formatDate(header.completed_at)}
@@ -402,19 +428,25 @@ export default function GRNQcPage() {
             </div>
             <div className="grid gap-3 md:grid-cols-3">
               <div className="rounded-md border border-border bg-background px-3 py-2">
-                <p className="text-xs text-muted-foreground">Batches Created</p>
+                <p className="text-xs text-muted-foreground">
+                  {t("batchesCreated", "Batches Created")}
+                </p>
                 <p className="text-lg font-semibold text-teal-500">
                   {postSummary.batchCount}
                 </p>
               </div>
               <div className="rounded-md border border-border bg-background px-3 py-2">
-                <p className="text-xs text-muted-foreground">Total Qty In</p>
+                <p className="text-xs text-muted-foreground">
+                  {t("totalQtyIn", "Total Qty In")}
+                </p>
                 <p className="text-lg font-semibold text-foreground">
                   {postSummary.totalQty.toFixed(3)}
                 </p>
               </div>
               <div className="rounded-md border border-border bg-background px-3 py-2">
-                <p className="text-xs text-muted-foreground">QC Lines</p>
+                <p className="text-xs text-muted-foreground">
+                  {t("qcLines", "QC Lines")}
+                </p>
                 <p className="text-lg font-semibold text-foreground">
                   {qcSummary.total}
                 </p>
@@ -425,10 +457,10 @@ export default function GRNQcPage() {
                 <table className="w-full text-left text-xs">
                   <thead className="bg-secondary/50 text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
                     <tr>
-                      <th className="px-3 py-2">Batch ID</th>
-                      <th className="px-3 py-2">Batch No</th>
-                      <th className="px-3 py-2">Expiry</th>
-                      <th className="px-3 py-2">Qty In</th>
+                      <th className="px-3 py-2">{t("batchId", "Batch ID")}</th>
+                      <th className="px-3 py-2">{t("batchNo", "Batch No")}</th>
+                      <th className="px-3 py-2">{t("expiry", "Expiry")}</th>
+                      <th className="px-3 py-2">{t("qtyIn", "Qty In")}</th>
                       <th className="px-3 py-2">Location</th>
                     </tr>
                   </thead>
@@ -467,7 +499,7 @@ export default function GRNQcPage() {
                 <div className="flex items-center gap-2">
                   <PackageCheck className="h-5 w-5 text-emerald-500" />
                   <h2 className="text-sm font-semibold text-emerald-500">
-                    Ready to Post to Inventory
+                    {t("readyToPostInventory", "Ready to Post to Inventory")}
                   </h2>
                 </div>
                 <p className="mt-1 text-xs text-muted-foreground">
@@ -496,7 +528,7 @@ export default function GRNQcPage() {
                 ) : (
                   <PackageCheck className="h-4 w-4" />
                 )}
-                {posting ? "Posting…" : "Post to Inventory"}
+                {posting ? t("posting", "Posting…") : t("postToInventory", "Post to Inventory")}
               </button>
             </div>
           </section>
@@ -506,7 +538,7 @@ export default function GRNQcPage() {
           <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
             <div className="space-y-2">
               <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
-                Workflow
+                {t("workflow", "Workflow")}
               </div>
               <WorkflowStepper currentStatus={header.status} />
             </div>
@@ -514,7 +546,7 @@ export default function GRNQcPage() {
             {!isTerminalStatus && (
               <div className="space-y-2">
                 <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
-                  Actions
+                  {t("actions", "Actions")}
                 </div>
                 <WorkflowActions
                   currentStatus={header.status}
@@ -529,7 +561,7 @@ export default function GRNQcPage() {
         <section className="grid gap-3 md:grid-cols-4">
           <div className="rounded-lg border border-border bg-card p-4">
             <div className="text-xs uppercase tracking-[0.14em] text-muted-foreground">
-              Pending
+              {t("pending", "Pending")}
             </div>
             <div className="mt-2 text-2xl font-semibold text-foreground">
               {qcSummary.pending}
@@ -537,7 +569,7 @@ export default function GRNQcPage() {
           </div>
           <div className="rounded-lg border border-border bg-card p-4">
             <div className="text-xs uppercase tracking-[0.14em] text-muted-foreground">
-              Passed
+              {t("passed", "Passed")}
             </div>
             <div className="mt-2 text-2xl font-semibold text-emerald-500">
               {qcSummary.pass}
@@ -545,7 +577,7 @@ export default function GRNQcPage() {
           </div>
           <div className="rounded-lg border border-border bg-card p-4">
             <div className="text-xs uppercase tracking-[0.14em] text-muted-foreground">
-              Rejected
+              {t("rejected", "Rejected")}
             </div>
             <div className="mt-2 text-2xl font-semibold text-destructive">
               {qcSummary.reject}
@@ -553,7 +585,7 @@ export default function GRNQcPage() {
           </div>
           <div className="rounded-lg border border-border bg-card p-4">
             <div className="text-xs uppercase tracking-[0.14em] text-muted-foreground">
-              Hold
+              {t("hold", "Hold")}
             </div>
             <div className="mt-2 text-2xl font-semibold text-amber-500">
               {qcSummary.hold}
@@ -565,13 +597,13 @@ export default function GRNQcPage() {
           <div className="mb-3 flex items-center gap-2">
             <ShieldAlert className="h-4 w-4 text-primary" />
             <h2 className="text-sm font-semibold text-foreground">
-              Municipality Tracking
+              {t("municipalityTracking", "Municipality Tracking")}
             </h2>
           </div>
 
           <div className="grid gap-3 md:grid-cols-2">
             <label className="text-xs text-muted-foreground">
-              Municipality Reference No
+              {t("municipalityReferenceNo", "Municipality Reference No")}
               <input
                 value={municipalityReferenceNo}
                 onChange={(event) => setMunicipalityReferenceNo(event.target.value)}
@@ -580,7 +612,7 @@ export default function GRNQcPage() {
               />
             </label>
             <label className="text-xs text-muted-foreground">
-              Municipality Notes
+              {t("municipalityNotes", "Municipality Notes")}
               <textarea
                 value={municipalityNotes}
                 onChange={(event) => setMunicipalityNotes(event.target.value)}
@@ -592,8 +624,8 @@ export default function GRNQcPage() {
           </div>
 
           <div className="mt-3 grid gap-2 text-xs text-muted-foreground md:grid-cols-4">
-            <div>GRN Date: {formatDate(header.arrival_date)}</div>
-            <div>Transaction Date: {formatDate(header.transaction_date)}</div>
+            <div>{t("grnDate", "GRN Date")}: {formatDate(header.arrival_date)}</div>
+            <div>{t("transactionDate", "Transaction Date")}: {formatDate(header.transaction_date)}</div>
             <div>Inspected At: {formatDate(header.inspected_at)}</div>
             <div>Approved At: {formatDate(header.approved_at)}</div>
           </div>
@@ -603,7 +635,7 @@ export default function GRNQcPage() {
           <div className="border-b border-border bg-muted/30 px-4 py-3">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <h2 className="text-sm font-semibold text-foreground">
-                Line-Level QC
+                {t("lineLevelQc", "Line-Level QC")}
               </h2>
               <div className="text-xs text-muted-foreground">
                 Only QC-passed lines can move into stock after final approval.
@@ -615,16 +647,16 @@ export default function GRNQcPage() {
             <table className="min-w-[1200px] w-full text-left text-sm">
               <thead className="bg-secondary/50 text-[11px] uppercase tracking-[0.12em] text-muted-foreground">
                 <tr>
-                  <th className="px-3 py-2">Line</th>
-                  <th className="px-3 py-2">Product</th>
-                  <th className="px-3 py-2">Received</th>
-                  <th className="px-3 py-2">Batch</th>
-                  <th className="px-3 py-2">Expiry</th>
-                  <th className="px-3 py-2">QC Status</th>
-                  <th className="px-3 py-2">Checked Qty</th>
-                  <th className="px-3 py-2">Reason</th>
-                  <th className="px-3 py-2">Notes</th>
-                  <th className="px-3 py-2">Discrepancy</th>
+                  <th className="px-3 py-2">{t("line", "Line")}</th>
+                  <th className="px-3 py-2">{t("product", "Product")}</th>
+                  <th className="px-3 py-2">{t("received", "Received")}</th>
+                  <th className="px-3 py-2">{t("batchNo", "Batch")}</th>
+                  <th className="px-3 py-2">{t("expiry", "Expiry")}</th>
+                  <th className="px-3 py-2">{t("qcStatus", "QC Status")}</th>
+                  <th className="px-3 py-2">{t("checkedQty", "Checked Qty")}</th>
+                  <th className="px-3 py-2">{t("reason", "Reason")}</th>
+                  <th className="px-3 py-2">{t("notes", "Notes")}</th>
+                  <th className="px-3 py-2">{t("discrepancy", "Discrepancy")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -735,7 +767,7 @@ export default function GRNQcPage() {
                             ) : (
                               <ChevronDown className="h-3 w-3" />
                             )}
-                            {hasDiscrepancy ? "Has data" : "Add"}
+                            {hasDiscrepancy ? t("hasData", "Has data") : t("add", "Add")}
                           </button>
                         </td>
                       </tr>
@@ -855,7 +887,7 @@ export default function GRNQcPage() {
             className="inline-flex h-9 items-center gap-2 rounded-md border border-border bg-background px-3 text-sm font-medium text-foreground"
           >
             <CheckCircle2 className="h-4 w-4" />
-            Open GRN Details
+            {t("openGrnDetails", "Open GRN Details")}
           </button>
         </section>
       </main>

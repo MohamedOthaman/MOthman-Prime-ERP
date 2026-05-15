@@ -20,7 +20,9 @@ import { usePermissions } from "@/hooks/usePermissions";
 
 // ─── Role & Department Config ────────────────────────────────────────────────
 
-const ALL_ROLES = [
+type RoleDefinition = { value: string; label: string; tier: string; dept: string };
+
+const ALL_ROLES_DATA: RoleDefinition[] = [
   { value: "admin", label: "Admin", tier: "admin", dept: "operations" },
   { value: "ceo", label: "CEO", tier: "executive", dept: "executive" },
   { value: "gm", label: "GM", tier: "executive", dept: "executive" },
@@ -39,10 +41,10 @@ const ALL_ROLES = [
   { value: "secretary", label: "Secretary", tier: "user", dept: "general" },
   { value: "qc", label: "QC", tier: "user", dept: "warehouse" },
   { value: "read_only", label: "Read Only", tier: "user", dept: "general" },
-] as const;
+];
 
-function getRoleInfo(role: string) {
-  const found = ALL_ROLES.find((r) => r.value === role);
+function getRoleInfo(role: string, roles: RoleDefinition[]) {
+  const found = roles.find((r) => r.value === role);
   return {
     label: found?.label ?? role,
     tier: found?.tier ?? "user",
@@ -101,6 +103,12 @@ export default function UsersPage() {
   const [roleFilter, setRoleFilter] = useState("all");
   const [deptFilter, setDeptFilter] = useState("all");
 
+  // ── Translated role list ─────────────────────────────────────────────────
+  const ALL_ROLES = useMemo<RoleDefinition[]>(() => ALL_ROLES_DATA.map((r) => ({
+    ...r,
+    label: t(`role_${r.value}`, r.label),
+  })), [t]);
+
   // ── Load profiles ────────────────────────────────────────────────────────
 
   useEffect(() => {
@@ -114,7 +122,7 @@ export default function UsersPage() {
 
       if (error) {
         console.error("Failed to load profiles:", error);
-        toast.error("Failed to load users");
+        toast.error(t("failedToLoadUsers", "Failed to load users"));
         setProfiles([]);
         setLoading(false);
         return;
@@ -148,13 +156,13 @@ export default function UsersPage() {
     const byDept: Record<string, number> = {};
 
     profiles.forEach((p) => {
-      const info = getRoleInfo(p.role);
+      const info = getRoleInfo(p.role, ALL_ROLES);
       byTier[info.tier] = (byTier[info.tier] ?? 0) + 1;
       byDept[info.dept] = (byDept[info.dept] ?? 0) + 1;
     });
 
     return { total, active, inactive, byTier, byDept };
-  }, [profiles]);
+  }, [profiles, ALL_ROLES]);
 
   // ── Value helpers ────────────────────────────────────────────────────────
 
@@ -257,11 +265,11 @@ export default function UsersPage() {
 
     if (errorCount === 0) {
       setEditedUsers({});
-      toast.success(`${successCount} user(s) saved successfully`);
+      toast.success(t("usersSavedSuccess", `${successCount} user(s) saved successfully`).replace("{{count}}", String(successCount)));
     } else {
-      toast.error(`${errorCount} user(s) failed to save`);
+      toast.error(t("usersFailedToSave", `${errorCount} user(s) failed to save`).replace("{{count}}", String(errorCount)));
       if (successCount > 0) {
-        toast.success(`${successCount} user(s) saved`);
+        toast.success(t("usersSaved", `${successCount} user(s) saved`).replace("{{count}}", String(successCount)));
       }
     }
 
@@ -273,7 +281,7 @@ export default function UsersPage() {
   const handleResetPassword = async (profile: ProfileRow) => {
     const email = profile.email?.trim();
     if (!email) {
-      toast.error("No email address for this user");
+      toast.error(t("noEmailAddress", "No email address for this user"));
       return;
     }
 
@@ -287,7 +295,7 @@ export default function UsersPage() {
       console.error("Failed to send reset email:", error);
       toast.error(`Reset failed: ${error.message}`);
     } else {
-      toast.success(`Reset email sent to ${email}`);
+      toast.success(`${t("resetEmailSent", "Reset email sent to")} ${email}`);
       void logAudit({
         entityType: "user",
         entityId: profile.id,
@@ -304,7 +312,7 @@ export default function UsersPage() {
   const filteredProfiles = useMemo(() => {
     return profiles.filter((profile) => {
       const value = search.toLowerCase().trim();
-      const info = getRoleInfo(profile.role);
+      const info = getRoleInfo(profile.role, ALL_ROLES);
 
       const matchesSearch =
         value === "" ||
@@ -320,7 +328,7 @@ export default function UsersPage() {
 
       return matchesSearch && matchesRole && matchesDept;
     });
-  }, [profiles, search, roleFilter, deptFilter]);
+  }, [profiles, search, roleFilter, deptFilter, ALL_ROLES]);
 
   // ── Format ───────────────────────────────────────────────────────────────
 
@@ -382,24 +390,24 @@ export default function UsersPage() {
           <div className="rounded-xl border border-blue-500/20 bg-blue-500/10 p-3.5">
             <Users className="w-5 h-5 text-blue-400 mb-1" />
             <p className="text-xl font-bold text-foreground">{stats.total}</p>
-            <p className="text-xs text-muted-foreground">Total Users</p>
+            <p className="text-xs text-muted-foreground">{t("totalUsers", "Total Users")}</p>
           </div>
           <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/10 p-3.5">
             <Users className="w-5 h-5 text-emerald-400 mb-1" />
             <p className="text-xl font-bold text-foreground">{stats.active}</p>
-            <p className="text-xs text-muted-foreground">Active</p>
+            <p className="text-xs text-muted-foreground">{t("active", "Active")}</p>
           </div>
           <div className="rounded-xl border border-red-500/20 bg-red-500/10 p-3.5">
             <Users className="w-5 h-5 text-red-400 mb-1" />
             <p className="text-xl font-bold text-foreground">{stats.inactive}</p>
-            <p className="text-xs text-muted-foreground">Inactive</p>
+            <p className="text-xs text-muted-foreground">{t("inactive", "Inactive")}</p>
           </div>
           <div className="rounded-xl border border-violet-500/20 bg-violet-500/10 p-3.5">
             <Shield className="w-5 h-5 text-violet-400 mb-1" />
             <p className="text-xl font-bold text-foreground">
               {Object.keys(stats.byTier).length}
             </p>
-            <p className="text-xs text-muted-foreground">Role Tiers</p>
+            <p className="text-xs text-muted-foreground">{t("roleTiers", "Role Tiers")}</p>
           </div>
         </div>
 
@@ -424,7 +432,7 @@ export default function UsersPage() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <input
               type="text"
-              placeholder="Search by name, email, or role..."
+              placeholder={t("searchByNameEmailRole", "Search by name, email, or role...")}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="w-full bg-background border border-border rounded-md pl-9 pr-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
@@ -449,10 +457,10 @@ export default function UsersPage() {
             onChange={(e) => setDeptFilter(e.target.value)}
             className="w-full md:w-[160px] bg-background border border-border rounded-md px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
           >
-            <option value="all">All Departments</option>
-            {[...new Set(ALL_ROLES.map((r) => r.dept))].sort().map((dept) => (
+            <option value="all">{t("allDepartments", "All Departments")}</option>
+            {[...new Set(ALL_ROLES_DATA.map((r) => r.dept))].sort().map((dept) => (
               <option key={dept} value={dept}>
-                {dept.charAt(0).toUpperCase() + dept.slice(1)}
+                {t(`dept_${dept}`, dept.charAt(0).toUpperCase() + dept.slice(1))}
               </option>
             ))}
           </select>
@@ -464,20 +472,20 @@ export default function UsersPage() {
             <button
               disabled
               className="inline-flex items-center gap-1.5 rounded-md border border-border bg-muted/30 px-3 py-1.5 text-xs text-muted-foreground cursor-not-allowed"
-              title="Coming in a future release"
+              title={t("comingInFutureRelease", "Coming in a future release")}
             >
               <Eye className="w-3.5 h-3.5" />
-              View as User
-              <span className="text-[9px] bg-muted rounded px-1 py-0.5 ml-1">Soon</span>
+              {t("viewAsUser", "View as User")}
+              <span className="text-[9px] bg-muted rounded px-1 py-0.5 ml-1">{t("comingSoon", "Soon")}</span>
             </button>
             <button
               disabled
               className="inline-flex items-center gap-1.5 rounded-md border border-border bg-muted/30 px-3 py-1.5 text-xs text-muted-foreground cursor-not-allowed"
-              title="Coming in a future release"
+              title={t("comingInFutureRelease", "Coming in a future release")}
             >
               <LayoutDashboard className="w-3.5 h-3.5" />
-              Visual Builder
-              <span className="text-[9px] bg-muted rounded px-1 py-0.5 ml-1">Soon</span>
+              {t("visualBuilder", "Visual Builder")}
+              <span className="text-[9px] bg-muted rounded px-1 py-0.5 ml-1">{t("comingSoon", "Soon")}</span>
             </button>
           </div>
         )}
@@ -497,8 +505,8 @@ export default function UsersPage() {
                   <th className="text-left px-3 py-2 font-semibold whitespace-nowrap text-xs">{t("tableName")}</th>
                   <th className="text-left px-3 py-2 font-semibold whitespace-nowrap text-xs">{t("tableEmail")}</th>
                   <th className="text-left px-3 py-2 font-semibold whitespace-nowrap text-xs">{t("tableRole")}</th>
-                  <th className="text-left px-3 py-2 font-semibold whitespace-nowrap text-xs">Tier</th>
-                  <th className="text-left px-3 py-2 font-semibold whitespace-nowrap text-xs">Dept</th>
+                  <th className="text-left px-3 py-2 font-semibold whitespace-nowrap text-xs">{t("tierCol", "Tier")}</th>
+                  <th className="text-left px-3 py-2 font-semibold whitespace-nowrap text-xs">{t("deptCol", "Dept")}</th>
                   <th className="text-left px-3 py-2 font-semibold whitespace-nowrap text-xs">{t("tableStatus")}</th>
                   <th className="text-left px-3 py-2 font-semibold whitespace-nowrap text-xs">{t("tableReset")}</th>
                   <th className="text-left px-3 py-2 font-semibold whitespace-nowrap text-xs">{t("tableJoined")}</th>
@@ -511,7 +519,7 @@ export default function UsersPage() {
                   const isActive = getVal(profile, "is_active") as boolean;
                   const isEdited = profile.id in editedUsers;
                   const effectiveRole = (getVal(profile, "role") as string) ?? profile.role;
-                  const roleInfo = getRoleInfo(effectiveRole);
+                  const roleInfo = getRoleInfo(effectiveRole, ALL_ROLES);
 
                   return (
                     <tr

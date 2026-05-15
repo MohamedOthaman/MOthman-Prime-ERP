@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   RotateCcw, Search, RefreshCw, Plus, ChevronRight,
@@ -10,14 +10,7 @@ import {
   type ReturnStatus,
 } from "@/features/invoices/returnsService";
 import { toast } from "sonner";
-
-const STATUS_TABS: { key: ReturnStatus | "all"; label: string }[] = [
-  { key: "all",      label: "All"      },
-  { key: "draft",    label: "Draft"    },
-  { key: "received", label: "Received" },
-  { key: "posted",   label: "Posted"   },
-  { key: "cancelled", label: "Cancelled" },
-];
+import { useLang } from "@/contexts/LanguageContext";
 
 const STATUS_CLS: Record<string, string> = {
   draft:     "text-muted-foreground bg-muted/20 border-border",
@@ -39,10 +32,27 @@ function fmtAED(n: number | null | undefined) {
 
 export default function ReturnQueuePage() {
   const navigate = useNavigate();
+  const { t } = useLang();
   const [returns, setReturns]       = useState<SalesReturn[]>([]);
   const [loading, setLoading]       = useState(true);
   const [tab, setTab]               = useState<ReturnStatus | "all">("all");
   const [search, setSearch]         = useState("");
+
+  const RETURN_STATUS_LABELS = useMemo<Record<ReturnStatus | "all", string>>(() => ({
+    all:       t("all",               "All"),
+    draft:     t("draft",             "Draft"),
+    received:  t("received",          "Received"),
+    posted:    t("posted",            "Posted"),
+    cancelled: t("cancelled",         "Cancelled"),
+  }), [t]);
+
+  const STATUS_TABS = useMemo<{ key: ReturnStatus | "all"; label: string }[]>(() => [
+    { key: "all",       label: RETURN_STATUS_LABELS.all       },
+    { key: "draft",     label: RETURN_STATUS_LABELS.draft     },
+    { key: "received",  label: RETURN_STATUS_LABELS.received  },
+    { key: "posted",    label: RETURN_STATUS_LABELS.posted    },
+    { key: "cancelled", label: RETURN_STATUS_LABELS.cancelled },
+  ], [RETURN_STATUS_LABELS]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -83,9 +93,11 @@ export default function ReturnQueuePage() {
             <RotateCcw className="w-4 h-4 text-violet-400" />
           </div>
           <div className="flex-1">
-            <h1 className="text-[15px] font-bold text-foreground">Returns</h1>
+            <h1 className="text-[15px] font-bold text-foreground">{t("pageTitleReturns", "Returns")}</h1>
             <p className="text-[10px] text-muted-foreground">
-              {loading ? "Loading…" : `${filtered.length} document${filtered.length !== 1 ? "s" : ""}`}
+              {loading
+                ? t("loading", "Loading…")
+                : `${filtered.length} ${filtered.length !== 1 ? t("documents", "documents") : t("document", "document")}`}
             </p>
           </div>
           <button
@@ -93,7 +105,7 @@ export default function ReturnQueuePage() {
             className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg bg-primary text-primary-foreground font-medium hover:opacity-90 transition"
           >
             <Plus className="w-3.5 h-3.5" />
-            New Return
+            {t("newReturn", "New Return")}
           </button>
           <button
             onClick={load}
@@ -110,7 +122,7 @@ export default function ReturnQueuePage() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
             <input
               type="text"
-              placeholder="Search return #, invoice #, customer..."
+              placeholder={t("returnSearch", "Search return #, invoice #, customer...")}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="w-full bg-background border border-border rounded-lg pl-9 pr-3 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
@@ -120,20 +132,20 @@ export default function ReturnQueuePage() {
 
         {/* Status tabs with counts */}
         <div className="max-w-3xl mx-auto px-4 pb-2 flex gap-1 overflow-x-auto">
-          {STATUS_TABS.map((t) => {
-            const count = counts[t.key] ?? 0;
-            const isActive = tab === t.key;
+          {STATUS_TABS.map((tab_item) => {
+            const count = counts[tab_item.key] ?? 0;
+            const isActive = tab === tab_item.key;
             return (
               <button
-                key={t.key}
-                onClick={() => setTab(t.key)}
+                key={tab_item.key}
+                onClick={() => setTab(tab_item.key)}
                 className={`shrink-0 flex items-center gap-1 text-[10px] font-semibold px-2.5 py-1 rounded-full border transition ${
                   isActive
                     ? "bg-primary text-primary-foreground border-primary"
                     : "bg-transparent text-muted-foreground border-border hover:bg-muted/30"
                 }`}
               >
-                {t.label}
+                {tab_item.label}
                 {count > 0 && (
                   <span className={`text-[9px] rounded-full px-1 min-w-[14px] text-center ${
                     isActive ? "bg-white/20" : "bg-muted/40"
@@ -155,7 +167,7 @@ export default function ReturnQueuePage() {
         ) : filtered.length === 0 ? (
           <div className="text-center py-20 text-muted-foreground">
             <Package className="w-12 h-12 mx-auto mb-3 opacity-15" />
-            <p className="text-sm font-medium">No returns found</p>
+            <p className="text-sm font-medium">{t("noReturnsFound", "No returns found")}</p>
           </div>
         ) : (
           filtered.map((ret) => (
@@ -170,18 +182,18 @@ export default function ReturnQueuePage() {
                     {ret.return_no ?? ret.id.slice(0, 8)}
                   </span>
                   <span className={`text-[9px] font-semibold px-1.5 py-0.5 rounded border ${STATUS_CLS[ret.status] ?? STATUS_CLS.draft}`}>
-                    {ret.status.toUpperCase()}
+                    {(RETURN_STATUS_LABELS[ret.status as ReturnStatus] ?? ret.status).toUpperCase()}
                   </span>
                 </div>
                 <p className="text-[11px] text-foreground">{ret.customer_name ?? "—"}</p>
                 <p className="text-[10px] text-muted-foreground">
-                  Invoice #{ret.invoice_number ?? "—"} · {fmtDate(ret.created_at)}
+                  {t("invoiceHash", "Invoice #")}{ret.invoice_number ?? "—"} · {fmtDate(ret.created_at)}
                 </p>
               </div>
               <div className="text-right shrink-0 space-y-0.5">
                 <p className="text-xs font-semibold text-foreground">{fmtAED(ret.total_amount)}</p>
                 {ret.posted_at && (
-                  <p className="text-[10px] text-emerald-400">Posted {fmtDate(ret.posted_at)}</p>
+                  <p className="text-[10px] text-emerald-400">{t("posted", "Posted")} {fmtDate(ret.posted_at)}</p>
                 )}
               </div>
               <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />

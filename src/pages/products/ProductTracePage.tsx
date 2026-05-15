@@ -11,6 +11,7 @@
  */
 
 import { useEffect, useMemo, useState } from "react";
+import { useLang } from "@/contexts/LanguageContext";
 import { useNavigate, useParams } from "react-router-dom";
 import {
   Package,
@@ -69,6 +70,7 @@ function expiryClass(days: number | null): string {
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function ProductTracePage() {
+  const { t } = useLang();
   const { productId } = useParams<{ productId: string }>();
   const navigate = useNavigate();
 
@@ -159,11 +161,11 @@ export default function ProductTracePage() {
           </div>
           <div className="flex-1 min-w-0">
             <h1 className="text-[15px] font-bold tracking-tight text-foreground leading-tight">
-              {loading ? "Loading…" : (product?.name ?? "Product Trace")}
+              {loading ? t("loading", "Loading…") : (product?.name ?? t("productTrace", "Product Trace"))}
             </h1>
             <p className="text-[11px] text-muted-foreground leading-tight">
               {product?.code ? `${product.code} · ` : ""}
-              {loading ? "Loading…" : `${batches.length} batch${batches.length !== 1 ? "es" : ""} · FEFO order`}
+              {loading ? t("loading", "Loading…") : `${batches.length} ${t("batch", "batch")}${batches.length !== 1 ? t("batchPlural", "es") : ""} · ${t("fefoOrder", "FEFO order")}`}
             </p>
           </div>
           <button
@@ -180,7 +182,7 @@ export default function ProductTracePage() {
           <div className="flex flex-col items-center justify-center py-16 gap-3">
             <AlertTriangle className="w-8 h-8 text-red-400/40" />
             <p className="text-sm font-medium text-muted-foreground">{error}</p>
-            <button onClick={() => navigate(-1)} className="text-xs text-primary hover:underline">← Go back</button>
+            <button onClick={() => navigate(-1)} className="text-xs text-primary hover:underline">← {t("goBack", "Go back")}</button>
           </div>
         ) : loading ? (
           <div className="space-y-3">
@@ -210,10 +212,10 @@ export default function ProductTracePage() {
             {/* Summary strip */}
             <div className="grid grid-cols-4 gap-3">
               {[
-                { label: "Available",       value: summary.totalAvailable.toLocaleString(), color: "text-emerald-400", bg: "bg-emerald-500/10 border-emerald-500/20" },
-                { label: "Total Received",  value: summary.totalReceived.toLocaleString(),  color: "text-foreground",  bg: "bg-muted/30 border-border" },
-                { label: "Active Batches",  value: summary.activeBatches,                   color: "text-violet-400",  bg: "bg-violet-500/10 border-violet-500/20" },
-                { label: "Total Batches",   value: batches.length,                          color: "text-muted-foreground", bg: "bg-muted/30 border-border" },
+                { label: t("available", "Available"),       value: summary.totalAvailable.toLocaleString(), color: "text-emerald-400", bg: "bg-emerald-500/10 border-emerald-500/20" },
+                { label: t("totalReceived", "Total Received"),  value: summary.totalReceived.toLocaleString(),  color: "text-foreground",  bg: "bg-muted/30 border-border" },
+                { label: t("activeBatches", "Active Batches"),  value: summary.activeBatches,                   color: "text-violet-400",  bg: "bg-violet-500/10 border-violet-500/20" },
+                { label: t("totalBatchesLabel", "Total Batches"),   value: batches.length,                          color: "text-muted-foreground", bg: "bg-muted/30 border-border" },
               ].map(({ label, value, color, bg }) => (
                 <div key={label} className={`rounded-xl border px-3 py-3 text-center ${bg}`}>
                   <p className={`text-xl font-bold ${color}`}>{value}</p>
@@ -240,7 +242,7 @@ export default function ProductTracePage() {
                   onClick={() => navigate(`/products`)}
                   className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 transition"
                 >
-                  Products
+                  {t("products", "Products")}
                   <ArrowUpRight className="w-3 h-3" />
                 </button>
               </div>
@@ -248,24 +250,24 @@ export default function ProductTracePage() {
 
             {/* Batch table */}
             {batches.length === 0 ? (
-              <EmptyState icon={BarChart3} message="No batches found" sub="Batches will appear here once stock is received via GRN" />
+              <EmptyState icon={BarChart3} message={t("noBatchesFound", "No batches found")} sub={t("noBatchesSub", "Batches will appear here once stock is received via GRN")} />
             ) : (
               <div className="rounded-xl border border-border bg-card overflow-hidden">
                 <div className="flex items-center gap-2 px-4 py-3 border-b border-border/60">
                   <Layers className="w-3.5 h-3.5 text-violet-400" />
-                  <h2 className="text-sm font-semibold text-foreground">Batch Inventory</h2>
-                  <span className="ml-auto text-[10px] font-mono text-muted-foreground">FEFO order</span>
+                  <h2 className="text-sm font-semibold text-foreground">{t("batchInventory", "Batch Inventory")}</h2>
+                  <span className="ml-auto text-[10px] font-mono text-muted-foreground">{t("fefoOrder", "FEFO order")}</span>
                 </div>
                 <div className="overflow-x-auto">
                   <table className="w-full text-xs">
                     <thead>
                       <tr className="border-b border-border/60 text-muted-foreground">
-                        <th className="px-4 py-2 text-left font-medium">Batch</th>
-                        <th className="px-3 py-2 text-left font-medium">Storage / Location</th>
-                        <th className="px-3 py-2 text-right font-medium">Received</th>
-                        <th className="px-3 py-2 text-right font-medium">Available</th>
-                        <th className="px-3 py-2 text-center font-medium">Expiry</th>
-                        <th className="px-3 py-2 text-center font-medium">Status</th>
+                        <th className="px-4 py-2 text-left font-medium">{t("batchNo", "Batch")}</th>
+                        <th className="px-3 py-2 text-left font-medium">{t("storageLocation", "Storage / Location")}</th>
+                        <th className="px-3 py-2 text-right font-medium">{t("received", "Received")}</th>
+                        <th className="px-3 py-2 text-right font-medium">{t("available", "Available")}</th>
+                        <th className="px-3 py-2 text-center font-medium">{t("expiryDate", "Expiry")}</th>
+                        <th className="px-3 py-2 text-center font-medium">{t("status", "Status")}</th>
                         <th className="px-3 py-2 w-8"></th>
                       </tr>
                     </thead>
@@ -318,7 +320,7 @@ export default function ProductTracePage() {
                     <tfoot>
                       <tr className="border-t border-border/60 bg-muted/20">
                         <td colSpan={2} className="px-4 py-2 text-xs font-medium text-muted-foreground">
-                          Total
+                          {t("total", "Total")}
                         </td>
                         <td className="px-3 py-2 text-right text-xs font-bold text-foreground tabular-nums">
                           {summary.totalReceived.toLocaleString()}

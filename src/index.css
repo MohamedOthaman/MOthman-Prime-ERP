@@ -443,66 +443,12 @@
 
 @layer base {
   /* ────────────────────────────────────────
-     Glass Light Theme
+     Glass Light Theme — overrides only.
+     Variables live in the earlier `.glass-light` block (lines ~382).
+     Duplicate variable definitions were removed: the second block set
+     `--border: 0 0% 100%` which caused a hard white line under sticky
+     page headers in glass-light.
      ──────────────────────────────────────── */
-  .glass-light {
-    --background: 215 90% 95%;
-    --foreground: 220 30% 15%;
-
-    --card: 0 0% 100%;
-    --card-foreground: 220 30% 15%;
-
-    --popover: 0 0% 100%;
-    --popover-foreground: 220 30% 15%;
-
-    --primary: 217 91% 60%;
-    --primary-foreground: 0 0% 100%;
-
-    --secondary: 215 50% 90%;
-    --secondary-foreground: 220 30% 20%;
-
-    --muted: 215 40% 92%;
-    --muted-foreground: 220 15% 40%;
-
-    --accent: 217 91% 88%;
-    --accent-foreground: 217 91% 30%;
-
-    --destructive: 0 70% 50%;
-    --destructive-foreground: 0 0% 98%;
-
-    --border: 0 0% 100%;
-    --input: 215 40% 88%;
-    --ring: 217 91% 60%;
-
-    --storage-frozen: 210 90% 50%;
-    --storage-frozen-bg: 210 90% 90%;
-    --storage-chilled: 170 70% 40%;
-    --storage-chilled-bg: 170 70% 90%;
-    --storage-dry: 35 85% 50%;
-    --storage-dry-bg: 35 85% 90%;
-
-    --brand-header: 215 60% 92%;
-    --brand-border: 217 91% 60%;
-    --row-hover: 215 60% 94%;
-
-    --success: 145 65% 42%;
-    --success-bg: 145 65% 90%;
-    --warning: 35 85% 50%;
-    --warning-bg: 35 85% 90%;
-
-    --sidebar-background: 215 80% 96%;
-    --sidebar-foreground: 220 30% 15%;
-    --sidebar-primary: 217 91% 60%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 215 50% 90%;
-    --sidebar-accent-foreground: 220 30% 15%;
-    --sidebar-border: 0 0% 100%;
-    --sidebar-ring: 217 91% 60%;
-
-    --nav-bg: 0 0% 100%;
-    --nav-active: 217 91% 60%;
-    --nav-inactive: 220 15% 50%;
-  }
 
   .glass-light body {
     background: radial-gradient(circle at top left, hsl(217 91% 88%), hsl(215 90% 97%)) fixed;
@@ -520,66 +466,12 @@
   }
 
   /* ────────────────────────────────────────
-     Glass Dark Theme
+     Glass Dark Theme — overrides only.
+     Variables live in the earlier `.glass-dark` block (lines ~258).
+     Duplicate variable definitions were removed: the second block set
+     `--border: 0 0% 100%` and `--sidebar-border: 0 0% 100%` which caused
+     a hard white line under sticky page headers in glass-dark.
      ──────────────────────────────────────── */
-  .glass-dark {
-    --background: 222 47% 8%;
-    --foreground: 210 30% 95%;
-
-    --card: 222 47% 14%;
-    --card-foreground: 210 30% 95%;
-
-    --popover: 222 47% 14%;
-    --popover-foreground: 210 30% 95%;
-
-    --primary: 217 91% 65%;
-    --primary-foreground: 222 47% 8%;
-
-    --secondary: 222 40% 18%;
-    --secondary-foreground: 210 30% 90%;
-
-    --muted: 222 40% 16%;
-    --muted-foreground: 215 20% 65%;
-
-    --accent: 217 91% 25%;
-    --accent-foreground: 217 91% 80%;
-
-    --destructive: 0 70% 55%;
-    --destructive-foreground: 0 0% 98%;
-
-    --border: 0 0% 100%;
-    --input: 222 40% 22%;
-    --ring: 217 91% 65%;
-
-    --storage-frozen: 210 90% 60%;
-    --storage-frozen-bg: 210 90% 18%;
-    --storage-chilled: 170 70% 50%;
-    --storage-chilled-bg: 170 70% 15%;
-    --storage-dry: 35 85% 60%;
-    --storage-dry-bg: 35 85% 18%;
-
-    --brand-header: 222 47% 12%;
-    --brand-border: 217 91% 50%;
-    --row-hover: 222 47% 16%;
-
-    --success: 145 65% 50%;
-    --success-bg: 145 65% 15%;
-    --warning: 35 85% 60%;
-    --warning-bg: 35 85% 18%;
-
-    --sidebar-background: 222 47% 6%;
-    --sidebar-foreground: 210 30% 95%;
-    --sidebar-primary: 217 91% 65%;
-    --sidebar-primary-foreground: 222 47% 8%;
-    --sidebar-accent: 222 40% 18%;
-    --sidebar-accent-foreground: 210 30% 95%;
-    --sidebar-border: 0 0% 100%;
-    --sidebar-ring: 217 91% 65%;
-
-    --nav-bg: 222 47% 10%;
-    --nav-active: 217 91% 65%;
-    --nav-inactive: 215 20% 55%;
-  }
 
   .glass-dark body {
     background: radial-gradient(circle at top left, hsl(224 76% 25%), hsl(222 47% 5%)) fixed;
@@ -616,6 +508,80 @@
   .font-mono {
     font-family: var(--font-mono);
   }
+}
+
+/* ══════════════════════════════════════════════════════════
+   SCROLLBAR — theme-aware, hidden by default, subtle on hover.
+   Applies to every scrollable surface unless `.scrollbar-system`
+   is used to opt out.
+   ══════════════════════════════════════════════════════════ */
+
+/* Firefox */
+html {
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+}
+html:hover {
+  scrollbar-color: hsl(var(--muted-foreground) / 0.35) transparent;
+}
+
+/* WebKit / Blink */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+  background: transparent;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background-color: transparent;
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+  transition: background-color 180ms ease;
+}
+:hover::-webkit-scrollbar-thumb,
+*:hover > ::-webkit-scrollbar-thumb {
+  background-color: hsl(var(--muted-foreground) / 0.30);
+}
+::-webkit-scrollbar-thumb:hover {
+  background-color: hsl(var(--muted-foreground) / 0.55);
+}
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* Sidebar gets an even quieter scrollbar so the rail feels seamless. */
+.sidebar-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+}
+.sidebar-scroll:hover {
+  scrollbar-color: hsl(var(--muted-foreground) / 0.25) transparent;
+}
+.sidebar-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+.sidebar-scroll::-webkit-scrollbar-thumb {
+  background-color: transparent;
+}
+.sidebar-scroll:hover::-webkit-scrollbar-thumb {
+  background-color: hsl(var(--muted-foreground) / 0.25);
+}
+.sidebar-scroll::-webkit-scrollbar-thumb:hover {
+  background-color: hsl(var(--muted-foreground) / 0.45);
+}
+/* Collapsed (icon-only) sidebar: scroll silently — no visible scrollbar. */
+[data-collapsible="icon"] .sidebar-scroll,
+[data-collapsible="icon"] .sidebar-scroll:hover {
+  scrollbar-width: none;
+  scrollbar-color: transparent transparent;
+}
+[data-collapsible="icon"] .sidebar-scroll::-webkit-scrollbar,
+[data-collapsible="icon"] .sidebar-scroll:hover::-webkit-scrollbar {
+  width: 0;
+  display: none;
 }
 
 /* ══════════════════════════════════════════════════════════

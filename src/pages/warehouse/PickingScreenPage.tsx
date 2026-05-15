@@ -4,6 +4,7 @@ import {
   ArrowLeft, QrCode, CheckCheck, Loader2, AlertCircle,
   ChevronRight, CheckCircle2,
 } from "lucide-react";
+import { useLang } from "@/contexts/LanguageContext";
 import {
   fetchInvoiceDetail,
 } from "@/features/invoices/salesInvoiceService";
@@ -29,6 +30,7 @@ type ScanFeedback = { type: "success" | "error"; message: string };
 export default function PickingScreenPage() {
   const { invoiceId } = useParams<{ invoiceId: string }>();
   const navigate = useNavigate();
+  const { t } = useLang();
 
   const [invoiceDetail, setInvoiceDetail] = useState<InvoiceDetail | null>(null);
   const [execLines, setExecLines]         = useState<EnrichedLine[]>([]);
@@ -211,9 +213,9 @@ export default function PickingScreenPage() {
           <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-4 flex items-center gap-3">
             <CheckCircle2 className="w-8 h-8 text-emerald-400 shrink-0" />
             <div>
-              <p className="text-sm font-bold text-emerald-400">Picking Complete</p>
+              <p className="text-sm font-bold text-emerald-400">{t("pickingComplete", "Picking Complete")}</p>
               <p className="text-[11px] text-muted-foreground">
-                Invoice marked DONE. All items confirmed and logged.
+                {t("invoiceMarkedDone", "Invoice marked DONE. All items confirmed and logged.")}
               </p>
             </div>
           </div>
@@ -224,7 +226,7 @@ export default function PickingScreenPage() {
           <div className="rounded-xl border border-border bg-card p-4 space-y-3">
             <div className="flex items-center gap-2 mb-1">
               <QrCode className="w-4 h-4 text-muted-foreground" />
-              <span className="text-xs font-semibold text-foreground">Scan Product Barcode</span>
+              <span className="text-xs font-semibold text-foreground">{t("scanProductBarcode", "Scan Product Barcode")}</span>
             </div>
             <div className="flex gap-2">
               <input
@@ -235,7 +237,7 @@ export default function PickingScreenPage() {
                 onKeyDown={(e) => {
                   if (e.key === "Enter") void handleScan(scanInput);
                 }}
-                placeholder="Scan or type barcode, then Enter..."
+                placeholder={t("scanOrType", "Scan or type barcode, then Enter...")}
                 autoComplete="off"
                 autoCapitalize="off"
                 className="flex-1 bg-background border border-border rounded-xl px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary font-mono"
@@ -245,7 +247,7 @@ export default function PickingScreenPage() {
                 disabled={!scanInput.trim() || scanning}
                 className="px-5 py-3 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 transition disabled:opacity-40 active:scale-95"
               >
-                {scanning ? <Loader2 className="w-4 h-4 animate-spin" /> : "Go"}
+                {scanning ? <Loader2 className="w-4 h-4 animate-spin" /> : t("go", "Go")}
               </button>
             </div>
 
@@ -272,7 +274,7 @@ export default function PickingScreenPage() {
         <div className="rounded-xl border border-border bg-card overflow-hidden">
           <div className="px-4 py-3 border-b border-border flex items-center justify-between">
             <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
-              Required Items
+              {t("requiredItems", "Required Items")}
             </p>
             <p className="text-[10px] text-muted-foreground">
               {completedLines}/{execLines.length} complete
@@ -344,7 +346,7 @@ export default function PickingScreenPage() {
             {confirming ? (
               <Loader2 className="w-5 h-5 animate-spin mx-auto" />
             ) : allComplete ? (
-              "Confirm Picking Done →"
+              t("confirmPickingDone", "Confirm Picking Done →")
             ) : (
               `${execLines.length - completedLines} line${execLines.length - completedLines !== 1 ? "s" : ""} remaining`
             )}
@@ -356,7 +358,7 @@ export default function PickingScreenPage() {
             onClick={() => navigate(`/invoices/${invoiceId}`)}
             className="w-full py-4 rounded-2xl bg-primary text-primary-foreground font-bold text-sm hover:opacity-90 active:scale-[0.98] transition"
           >
-            View Invoice Details →
+            {t("viewInvoiceDetails", "View Invoice Details →")}
           </button>
         )}
       </main>

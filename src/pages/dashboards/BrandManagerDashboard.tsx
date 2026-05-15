@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/features/reports/hooks/useAuth";
+import { useLang } from "@/contexts/LanguageContext";
 import { supabase } from "@/integrations/supabase/client";
 import {
   DashboardShell,
@@ -119,50 +120,25 @@ const STORAGE_COLOR: Record<string, string> = {
   Dry:     "text-amber-400",
 };
 
-// ─── Quick actions ────────────────────────────────────────────────────────────
-
-const ACTIONS: ActionItem[] = [
-  {
-    label: "Products",
-    path: "/products",
-    icon: Package,
-    color: "text-emerald-400",
-    bg: "bg-emerald-500/10",
-    border: "border-emerald-500/20",
-    description: "Full product catalog",
-  },
-  {
-    label: "Stock",
-    path: "/stock",
-    icon: Eye,
-    color: "text-cyan-400",
-    bg: "bg-cyan-500/10",
-    border: "border-cyan-500/20",
-    description: "Inventory overview",
-  },
-  {
-    label: "Reports",
-    path: "/reports",
-    icon: BarChart3,
-    color: "text-violet-400",
-    bg: "bg-violet-500/10",
-    border: "border-violet-500/20",
-    description: "Business reports",
-  },
-];
-
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function BrandManagerDashboard() {
   const navigate  = useNavigate();
+  const { t }     = useLang();
   const { user }  = useAuth();
   const { data, loading } = useBrandData();
 
   const fullName = user?.user_metadata?.full_name as string | undefined;
 
+  const actions: ActionItem[] = [
+    { label: t("manageProducts", "Products"), path: "/products", icon: Package, color: "text-emerald-400", bg: "bg-emerald-500/10", border: "border-emerald-500/20", description: t("fullProductCatalog", "Full product catalog") },
+    { label: t("stockOverview", "Stock"),     path: "/stock",    icon: Eye,     color: "text-cyan-400",   bg: "bg-cyan-500/10",   border: "border-cyan-500/20",   description: t("inventoryOverview", "Inventory overview") },
+    { label: t("reports", "Reports"),         path: "/reports",  icon: BarChart3, color: "text-violet-400", bg: "bg-violet-500/10", border: "border-violet-500/20", description: t("businessReports", "Business reports") },
+  ];
+
   const kpiItems: KpiItem[] = [
     {
-      label: "Total SKUs",
+      label: t("totalSkus", "Total SKUs"),
       value: loading ? "—" : (data?.totalSkus ?? 0),
       icon: Package,
       color: "text-emerald-400",
@@ -171,7 +147,7 @@ export default function BrandManagerDashboard() {
       loading,
     },
     {
-      label: "Out of Stock",
+      label: t("outOfStock", "Out of Stock"),
       value: loading ? "—" : (data?.zeroStock ?? 0),
       icon: AlertTriangle,
       color: "text-red-400",
@@ -181,7 +157,7 @@ export default function BrandManagerDashboard() {
       trend: (data?.zeroStock ?? 0) > 0 ? "down" : "neutral",
     },
     {
-      label: "Near Expiry (30d)",
+      label: t("nearExpiry30d", "Near Expiry (30d)"),
       value: loading ? "—" : (data?.nearExpiry ?? 0),
       icon: AlertTriangle,
       color: "text-amber-400",
@@ -191,7 +167,7 @@ export default function BrandManagerDashboard() {
       trend: (data?.nearExpiry ?? 0) > 0 ? "down" : "neutral",
     },
     {
-      label: "Brands Active",
+      label: t("brandsActive", "Brands Active"),
       value: loading ? "—" : (data?.brandBreakdown.length ?? 0),
       icon: Tag,
       color: "text-rose-400",
@@ -204,16 +180,15 @@ export default function BrandManagerDashboard() {
   return (
     <DashboardShell
       icon={Tag}
-      title="Brand Manager"
-      subtitle="SKU portfolio & stock health"
+      title={t("brandManagerDashboardTitle", "Brand Manager")}
+      subtitle={t("brandManagerSubtitle", "SKU portfolio & stock health")}
       accent="rose"
     >
-      <WelcomeBar name={fullName} roleLabel="Brand Manager" accent="rose" />
+      <WelcomeBar name={fullName} roleLabel={t("roleBrandManager", "Brand Manager")} accent="rose" />
 
       <KpiGrid items={kpiItems} />
 
-      {/* Storage type breakdown */}
-      <SectionCard title="Storage Type Distribution" icon={ThermometerSnowflake} iconClass="text-cyan-400">
+      <SectionCard title={t("storageTypeDistribution", "Storage Type Distribution")} icon={ThermometerSnowflake} iconClass="text-cyan-400">
         {loading ? <LoadingRows rows={3} /> : (
           <div className="grid grid-cols-3 gap-3">
             {(data?.storageBreakdown ?? []).map(({ type, count }) => {
@@ -231,9 +206,8 @@ export default function BrandManagerDashboard() {
         )}
       </SectionCard>
 
-      {/* Brand breakdown */}
       <SectionCard
-        title="SKU Count by Brand"
+        title={t("skuCountByBrand", "SKU Count by Brand")}
         icon={Tag}
         iconClass="text-rose-400"
         action={
@@ -241,13 +215,13 @@ export default function BrandManagerDashboard() {
             onClick={() => navigate("/products")}
             className="text-[10px] text-primary font-medium hover:underline"
           >
-            View all →
+            {t("viewAll", "View all →")}
           </button>
         }
       >
         {loading ? <LoadingRows rows={5} /> : (
           data?.brandBreakdown.length === 0
-            ? <EmptyState icon={Package} message="No product data" sub="Import products to see brand breakdown" />
+            ? <EmptyState icon={Package} message={t("noProductData", "No product data")} sub={t("importProductsBrand", "Import products to see brand breakdown")} />
             : (
               <div className="space-y-1">
                 {data!.brandBreakdown.map((b) => (
@@ -259,7 +233,7 @@ export default function BrandManagerDashboard() {
                         <span className="text-sm font-medium text-foreground flex-1 truncate">{b.brand}</span>
                         {b.nearExpiry > 0 && (
                           <span className="text-[9px] font-semibold rounded px-1.5 py-0.5 bg-amber-500/15 text-amber-400 border border-amber-500/20 shrink-0">
-                            {b.nearExpiry} near expiry
+                            {b.nearExpiry} {t("nearExpiry", "near expiry")}
                           </span>
                         )}
                       </div>
@@ -277,9 +251,8 @@ export default function BrandManagerDashboard() {
         )}
       </SectionCard>
 
-      {/* Quick actions */}
-      <SectionCard title="Quick Actions" icon={BarChart3} iconClass="text-muted-foreground">
-        <ActionGrid actions={ACTIONS} onNavigate={navigate} cols={3} title="" />
+      <SectionCard title={t("quickActions", "Quick Actions")} icon={BarChart3} iconClass="text-muted-foreground">
+        <ActionGrid actions={actions} onNavigate={navigate} cols={3} title="" />
       </SectionCard>
     </DashboardShell>
   );

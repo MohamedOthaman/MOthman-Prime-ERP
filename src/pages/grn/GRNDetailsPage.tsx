@@ -26,6 +26,7 @@ import { WorkflowActions } from "@/components/workflow/WorkflowActions";
 import { logAudit } from "@/services/auditService";
 import { useAuth } from "@/features/reports/hooks/useAuth";
 import { ActivityTimeline } from "@/components/audit/ActivityTimeline";
+import { useLang } from "@/contexts/LanguageContext";
 
 type GRNStatus = GRNWorkflowStatus;
 
@@ -332,6 +333,7 @@ function OperationalHeaderSection({
   suppliers,
   onFieldChange,
   onApplySupplier,
+  labels,
 }: {
   header: HeaderFormState;
   isReadOnly: boolean;
@@ -340,24 +342,58 @@ function OperationalHeaderSection({
   suppliers: SupplierOption[];
   onFieldChange: (field: keyof HeaderFormState, value: string) => void;
   onApplySupplier: (supplierId: string) => void;
+  labels: {
+    operationalHeader: string;
+    lines: string;
+    po: string;
+    shipped: string;
+    received: string;
+    grnNo: string;
+    grvNo: string;
+    grnDate: string;
+    transactionDate: string;
+    poNo: string;
+    lpo: string;
+    supplier: string;
+    selectSupplier: string;
+    supplierCode: string;
+    supplierName: string;
+    airwayBillNo: string;
+    manualRefNo: string;
+    manualInvoiceNo: string;
+    shipmentCondition: string;
+    shipmentBy: string;
+    blNo: string;
+    containerNo: string;
+    size: string;
+    nos: string;
+    grossWeight: string;
+    netWeight: string;
+    totalCtn: string;
+    totalPallet: string;
+    tempType: string;
+    temperature: string;
+    branch: string;
+    remarks: string;
+  };
 }) {
   return (
     <section className="overflow-hidden rounded-md border border-border bg-card">
       <div className="border-b border-border bg-muted/30 px-3 py-1.5">
         <div className="flex items-center justify-between gap-3">
           <h2 className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-            Operational Header
+            {labels.operationalHeader}
           </h2>
           <div className="text-[11px] text-muted-foreground">
-            {lineCount} line{lineCount === 1 ? "" : "s"} | PO{" "}
-            {totals.po.toFixed(3)} | Shipped {totals.shipped.toFixed(3)} |
-            Received {totals.received.toFixed(3)}
+            {lineCount} {labels.lines} | {labels.po}{" "}
+            {totals.po.toFixed(3)} | {labels.shipped} {totals.shipped.toFixed(3)} |{" "}
+            {labels.received} {totals.received.toFixed(3)}
           </div>
         </div>
       </div>
 
       <div className="grid gap-1.5 p-2 md:grid-cols-5 xl:grid-cols-10">
-        <HeaderField label="GRN No">
+        <HeaderField label={labels.grnNo}>
           <input
             value={header.grn_no}
             onChange={(event) =>
@@ -367,7 +403,7 @@ function OperationalHeaderSection({
             className={headerInputClass}
           />
         </HeaderField>
-        <HeaderField label="GRV No">
+        <HeaderField label={labels.grvNo}>
           <input
             value={header.grv_no}
             onChange={(event) =>
@@ -377,7 +413,7 @@ function OperationalHeaderSection({
             className={headerInputClass}
           />
         </HeaderField>
-        <HeaderField label="GRN Date">
+        <HeaderField label={labels.grnDate}>
           <input
             type="date"
             value={header.grn_date}
@@ -386,7 +422,7 @@ function OperationalHeaderSection({
             className={headerInputClass}
           />
         </HeaderField>
-        <HeaderField label="Transaction Date">
+        <HeaderField label={labels.transactionDate}>
           <input
             type="date"
             value={header.transaction_date}
@@ -397,7 +433,7 @@ function OperationalHeaderSection({
             className={headerInputClass}
           />
         </HeaderField>
-        <HeaderField label="PO No">
+        <HeaderField label={labels.poNo}>
           <input
             value={header.po_no}
             onChange={(event) => onFieldChange("po_no", event.target.value)}
@@ -405,7 +441,7 @@ function OperationalHeaderSection({
             className={headerInputClass}
           />
         </HeaderField>
-        <HeaderField label="LPO">
+        <HeaderField label={labels.lpo}>
           <input
             value={header.lpo_no}
             onChange={(event) => onFieldChange("lpo_no", event.target.value)}
@@ -413,14 +449,14 @@ function OperationalHeaderSection({
             className={headerInputClass}
           />
         </HeaderField>
-        <HeaderField label="Supplier">
+        <HeaderField label={labels.supplier}>
           <select
             value={header.supplier_id}
             onChange={(event) => onApplySupplier(event.target.value)}
             disabled={isReadOnly}
             className={headerInputClass}
           >
-            <option value="">Select supplier</option>
+            <option value="">{labels.selectSupplier}</option>
             {suppliers.map((supplier) => (
               <option key={supplier.id} value={supplier.id}>
                 {supplier.name}
@@ -428,7 +464,7 @@ function OperationalHeaderSection({
             ))}
           </select>
         </HeaderField>
-        <HeaderField label="Supplier Code">
+        <HeaderField label={labels.supplierCode}>
           <input
             value={header.supplier_code}
             onChange={(event) =>
@@ -438,7 +474,7 @@ function OperationalHeaderSection({
             className={headerInputClass}
           />
         </HeaderField>
-        <HeaderField label="Supplier Name" className="md:col-span-2 xl:col-span-2">
+        <HeaderField label={labels.supplierName} className="md:col-span-2 xl:col-span-2">
           <input
             value={header.supplier_name}
             onChange={(event) =>
@@ -448,7 +484,7 @@ function OperationalHeaderSection({
             className={headerInputClass}
           />
         </HeaderField>
-        <HeaderField label="Airway Bill No">
+        <HeaderField label={labels.airwayBillNo}>
           <input
             value={header.airway_bill_no}
             onChange={(event) =>
@@ -458,7 +494,7 @@ function OperationalHeaderSection({
             className={headerInputClass}
           />
         </HeaderField>
-        <HeaderField label="Manual Ref No">
+        <HeaderField label={labels.manualRefNo}>
           <input
             value={header.manual_ref_no}
             onChange={(event) =>
@@ -468,7 +504,7 @@ function OperationalHeaderSection({
             className={headerInputClass}
           />
         </HeaderField>
-        <HeaderField label="Manual Invoice No">
+        <HeaderField label={labels.manualInvoiceNo}>
           <input
             value={header.manual_invoice_no}
             onChange={(event) =>
@@ -478,7 +514,7 @@ function OperationalHeaderSection({
             className={headerInputClass}
           />
         </HeaderField>
-        <HeaderField label="Shipment Condition">
+        <HeaderField label={labels.shipmentCondition}>
           <input
             value={header.shipment_condition}
             onChange={(event) =>
@@ -488,7 +524,7 @@ function OperationalHeaderSection({
             className={headerInputClass}
           />
         </HeaderField>
-        <HeaderField label="Shipment By">
+        <HeaderField label={labels.shipmentBy}>
           <input
             value={header.shipment_by}
             onChange={(event) =>
@@ -498,7 +534,7 @@ function OperationalHeaderSection({
             className={headerInputClass}
           />
         </HeaderField>
-        <HeaderField label="BL No">
+        <HeaderField label={labels.blNo}>
           <input
             value={header.bl_no}
             onChange={(event) => onFieldChange("bl_no", event.target.value)}
@@ -506,7 +542,7 @@ function OperationalHeaderSection({
             className={headerInputClass}
           />
         </HeaderField>
-        <HeaderField label="Container No">
+        <HeaderField label={labels.containerNo}>
           <input
             value={header.container_no}
             onChange={(event) =>
@@ -516,7 +552,7 @@ function OperationalHeaderSection({
             className={headerInputClass}
           />
         </HeaderField>
-        <HeaderField label="Size">
+        <HeaderField label={labels.size}>
           <input
             value={header.size}
             onChange={(event) => onFieldChange("size", event.target.value)}
@@ -524,7 +560,7 @@ function OperationalHeaderSection({
             className={headerInputClass}
           />
         </HeaderField>
-        <HeaderField label="Nos">
+        <HeaderField label={labels.nos}>
           <input
             value={header.nos}
             onChange={(event) => onFieldChange("nos", event.target.value)}
@@ -532,7 +568,7 @@ function OperationalHeaderSection({
             className={headerInputClass}
           />
         </HeaderField>
-        <HeaderField label="Gross Weight">
+        <HeaderField label={labels.grossWeight}>
           <input
             value={header.gross_weight}
             onChange={(event) =>
@@ -542,7 +578,7 @@ function OperationalHeaderSection({
             className={headerInputClass}
           />
         </HeaderField>
-        <HeaderField label="Net Weight">
+        <HeaderField label={labels.netWeight}>
           <input
             value={header.net_weight}
             onChange={(event) =>
@@ -552,7 +588,7 @@ function OperationalHeaderSection({
             className={headerInputClass}
           />
         </HeaderField>
-        <HeaderField label="Total CTN">
+        <HeaderField label={labels.totalCtn}>
           <input
             value={header.total_ctn}
             onChange={(event) =>
@@ -562,7 +598,7 @@ function OperationalHeaderSection({
             className={headerInputClass}
           />
         </HeaderField>
-        <HeaderField label="Total Pallet">
+        <HeaderField label={labels.totalPallet}>
           <input
             value={header.total_pallet}
             onChange={(event) =>
@@ -572,7 +608,7 @@ function OperationalHeaderSection({
             className={headerInputClass}
           />
         </HeaderField>
-        <HeaderField label="Temp Type">
+        <HeaderField label={labels.tempType}>
           <input
             value={header.temp_type}
             onChange={(event) =>
@@ -582,7 +618,7 @@ function OperationalHeaderSection({
             className={headerInputClass}
           />
         </HeaderField>
-        <HeaderField label="Temperature">
+        <HeaderField label={labels.temperature}>
           <input
             value={header.temperature}
             onChange={(event) =>
@@ -592,7 +628,7 @@ function OperationalHeaderSection({
             className={headerInputClass}
           />
         </HeaderField>
-        <HeaderField label="Branch">
+        <HeaderField label={labels.branch}>
           <input
             value={header.branch}
             onChange={(event) => onFieldChange("branch", event.target.value)}
@@ -600,7 +636,7 @@ function OperationalHeaderSection({
             className={headerInputClass}
           />
         </HeaderField>
-        <HeaderField label="Remarks" className="md:col-span-5 xl:col-span-5">
+        <HeaderField label={labels.remarks} className="md:col-span-5 xl:col-span-5">
           <textarea
             value={header.remarks}
             onChange={(event) => onFieldChange("remarks", event.target.value)}
@@ -622,6 +658,7 @@ function TransactionGridSection({
   onRemoveLine,
   onSetLineValue,
   onHandleProductLookup,
+  labels,
 }: {
   lines: GRNLineForm[];
   isReadOnly: boolean;
@@ -634,12 +671,31 @@ function TransactionGridSection({
     value: string
   ) => void;
   onHandleProductLookup: (index: number, rawValue: string) => void;
+  labels: {
+    transactionGrid: string;
+    addRow: string;
+    itemCodeBarcode: string;
+    itemName: string;
+    store: string;
+    uom: string;
+    poQty: string;
+    shipped: string;
+    shortExcess: string;
+    received: string;
+    reason: string;
+    expiry: string;
+    production: string;
+    batchNo: string;
+    poNo: string;
+    arabicLabel: string;
+    remove: string;
+  };
 }) {
   return (
     <section className="overflow-hidden rounded-md border border-border bg-card">
       <div className="flex items-center justify-between border-b border-border bg-muted/30 px-3 py-1.5">
         <h2 className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-          Transaction Grid
+          {labels.transactionGrid}
         </h2>
         <button
           type="button"
@@ -648,7 +704,7 @@ function TransactionGridSection({
           className="inline-flex h-7 items-center gap-1 rounded-md border border-border bg-secondary px-2.5 text-[11px] font-semibold text-foreground disabled:opacity-50"
         >
           <Plus className="h-3.5 w-3.5" />
-          Add Row
+          {labels.addRow}
         </button>
       </div>
 
@@ -657,21 +713,21 @@ function TransactionGridSection({
           <thead className="bg-secondary/50 text-[9px] uppercase tracking-[0.1em] text-muted-foreground">
             <tr>
               <th className="px-1.5 py-1.5">#</th>
-              <th className="px-1.5 py-1.5">Item Code / Barcode</th>
-              <th className="px-1.5 py-1.5">Item Name</th>
-              <th className="px-1.5 py-1.5">Store</th>
-              <th className="px-1.5 py-1.5">UOM</th>
-              <th className="px-1.5 py-1.5">PO Qty</th>
-              <th className="px-1.5 py-1.5">Shipped</th>
-              <th className="px-1.5 py-1.5">Short/Excess</th>
-              <th className="px-1.5 py-1.5">Received</th>
-              <th className="px-1.5 py-1.5">Reason</th>
-              <th className="px-1.5 py-1.5">Expiry</th>
-              <th className="px-1.5 py-1.5">Production</th>
-              <th className="px-1.5 py-1.5">Batch No</th>
-              <th className="px-1.5 py-1.5">PO No</th>
-              <th className="px-1.5 py-1.5">Arabic Label</th>
-              <th className="px-1.5 py-1.5">Remove</th>
+              <th className="px-1.5 py-1.5">{labels.itemCodeBarcode}</th>
+              <th className="px-1.5 py-1.5">{labels.itemName}</th>
+              <th className="px-1.5 py-1.5">{labels.store}</th>
+              <th className="px-1.5 py-1.5">{labels.uom}</th>
+              <th className="px-1.5 py-1.5">{labels.poQty}</th>
+              <th className="px-1.5 py-1.5">{labels.shipped}</th>
+              <th className="px-1.5 py-1.5">{labels.shortExcess}</th>
+              <th className="px-1.5 py-1.5">{labels.received}</th>
+              <th className="px-1.5 py-1.5">{labels.reason}</th>
+              <th className="px-1.5 py-1.5">{labels.expiry}</th>
+              <th className="px-1.5 py-1.5">{labels.production}</th>
+              <th className="px-1.5 py-1.5">{labels.batchNo}</th>
+              <th className="px-1.5 py-1.5">{labels.poNo}</th>
+              <th className="px-1.5 py-1.5">{labels.arabicLabel}</th>
+              <th className="px-1.5 py-1.5">{labels.remove}</th>
             </tr>
           </thead>
           <tbody>
@@ -921,9 +977,11 @@ function TransactionGridSection({
 function ActivitySection({
   headerId,
   activityRefreshKey,
+  label,
 }: {
   headerId: string | null;
   activityRefreshKey: number;
+  label: string;
 }) {
   if (!headerId) return null;
 
@@ -932,7 +990,7 @@ function ActivitySection({
       <div className="flex items-center gap-2 border-b border-border bg-muted/30 px-3 py-1.5">
         <History className="h-3.5 w-3.5 text-muted-foreground" />
         <h2 className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-          Activity / History
+          {label}
         </h2>
       </div>
       <div className="px-3 py-2">
@@ -967,6 +1025,7 @@ export default function GRNDetailsPage() {
   const { id } = useParams<{ id: string }>();
   const isNew = !id;
   const { user } = useAuth();
+  const { t } = useLang();
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -982,6 +1041,62 @@ export default function GRNDetailsPage() {
   const [activityRefreshKey, setActivityRefreshKey] = useState(0);
 
   const isReadOnly = !workflowIsEditable(header.status);
+
+  // Translated label objects for sub-components (stable per language change)
+  const headerLabels = useMemo(() => ({
+    operationalHeader: t("operationalHeader", "Operational Header"),
+    lines: t("grnLines", "Lines"),
+    po: t("poNo", "PO"),
+    shipped: t("shipped", "Shipped"),
+    received: t("received", "Received"),
+    grnNo: t("grnNo", "GRN No"),
+    grvNo: t("grvNo", "GRV No"),
+    grnDate: t("grnDate", "GRN Date"),
+    transactionDate: t("transactionDate", "Transaction Date"),
+    poNo: t("poNo", "PO No"),
+    lpo: t("lpo", "LPO"),
+    supplier: t("supplier", "Supplier"),
+    selectSupplier: t("selectSupplier", "Select supplier"),
+    supplierCode: t("supplierCode", "Supplier Code"),
+    supplierName: t("supplierName", "Supplier Name"),
+    airwayBillNo: t("airwayBillNo", "Airway Bill No"),
+    manualRefNo: t("manualRefNo", "Manual Ref No"),
+    manualInvoiceNo: t("manualInvoiceNo", "Manual Invoice No"),
+    shipmentCondition: t("shipmentCondition", "Shipment Condition"),
+    shipmentBy: t("shipmentBy", "Shipment By"),
+    blNo: t("blNo", "BL No"),
+    containerNo: t("containerNo", "Container No"),
+    size: t("size", "Size"),
+    nos: t("nos", "Nos"),
+    grossWeight: t("grossWeight", "Gross Weight"),
+    netWeight: t("netWeight", "Net Weight"),
+    totalCtn: t("totalCtn", "Total CTN"),
+    totalPallet: t("totalPallet", "Total Pallet"),
+    tempType: t("tempType", "Temp Type"),
+    temperature: t("temperature", "Temperature"),
+    branch: t("branch", "Branch"),
+    remarks: t("remarks", "Remarks"),
+  }), [t]);
+
+  const gridLabels = useMemo(() => ({
+    transactionGrid: t("transactionGrid", "Transaction Grid"),
+    addRow: t("addRow", "Add Row"),
+    itemCodeBarcode: t("itemCodeBarcode", "Item Code / Barcode"),
+    itemName: t("itemName", "Item Name"),
+    store: t("store", "Store"),
+    uom: t("uom", "UOM"),
+    poQty: t("poQty", "PO Qty"),
+    shipped: t("shipped", "Shipped"),
+    shortExcess: t("shortExcess", "Short/Excess"),
+    received: t("received", "Received"),
+    reason: t("reason", "Reason"),
+    expiry: t("expiry", "Expiry"),
+    production: t("production", "Production"),
+    batchNo: t("batchNo", "Batch No"),
+    poNo: t("poNo", "PO No"),
+    arabicLabel: t("arabicLabel", "Arabic Label"),
+    remove: t("remove", "Remove"),
+  }), [t]);
 
   useEffect(() => {
     async function loadPage() {
@@ -1050,7 +1165,7 @@ export default function GRNDetailsPage() {
 
         if (headerResult.error || !headerResult.data) {
           setNotFound(true);
-          setError("GRN not found.");
+          setError(t("grnNotFound", "GRN not found."));
           setLoading(false);
           return;
         }
@@ -1149,7 +1264,7 @@ export default function GRNDetailsPage() {
         setError(
           loadError instanceof Error
             ? loadError.message
-            : "Failed to load GRN page."
+            : t("failedToLoadGrnPage", "Failed to load GRN page.")
         );
       } finally {
         setLoading(false);
@@ -1282,14 +1397,14 @@ export default function GRNDetailsPage() {
   };
 
   const validateBeforeSave = (targetStatus: GRNStatus) => {
-    if (!header.grn_no.trim()) return "GRN No is required.";
-    if (!header.grn_date) return "GRN date is required.";
-    if (!header.transaction_date) return "Transaction date is required.";
+    if (!header.grn_no.trim()) return t("grnNoRequired", "GRN No is required.");
+    if (!header.grn_date) return t("grnDateRequired", "GRN date is required.");
+    if (!header.transaction_date) return t("transactionDateRequired", "Transaction date is required.");
 
     const activeLines = lines.filter((line) => !isLineEmpty(line));
 
     if (targetStatus !== "draft" && activeLines.length === 0) {
-      return "At least one receiving line is required.";
+      return t("atLeastOneLineRequired", "At least one receiving line is required.");
     }
 
     for (let index = 0; index < activeLines.length; index += 1) {
@@ -1322,7 +1437,7 @@ export default function GRNDetailsPage() {
       header.temp_type.trim() &&
       !header.temperature.trim()
     ) {
-      return "Temperature is required when temp type is entered.";
+      return t("temperatureRequired", "Temperature is required when temp type is entered.");
     }
 
     return null;
@@ -1330,7 +1445,7 @@ export default function GRNDetailsPage() {
 
   const persistGRN = async (targetStatus: GRNStatus) => {
     if (isReadOnly) {
-      setError("Approved or rejected GRNs are read-only.");
+      setError(t("grnReadOnly", "Approved or rejected GRNs are read-only."));
       return;
     }
 
@@ -1391,7 +1506,7 @@ export default function GRNDetailsPage() {
           .single();
 
         if (insertHeader.error || !insertHeader.data) {
-          throw new Error(insertHeader.error?.message ?? "Failed to create GRN.");
+          throw new Error(insertHeader.error?.message ?? t("failedToCreateGrn", "Failed to create GRN."));
         }
 
         currentHeaderId = insertHeader.data.id as string;
@@ -1481,7 +1596,7 @@ export default function GRNDetailsPage() {
       setError(
         persistError instanceof Error
           ? persistError.message
-          : "Failed to save GRN."
+          : t("failedToSaveGrn", "Failed to save GRN.")
       );
     } finally {
       setSaving(false);
@@ -1508,7 +1623,7 @@ export default function GRNDetailsPage() {
               <ArrowLeft className="h-5 w-5 text-foreground" />
             </button>
             <h1 className="text-lg font-bold tracking-tight text-foreground">
-              GRN Details
+              {t("grnDetails", "GRN Details")}
             </h1>
           </div>
         </header>
@@ -1516,7 +1631,7 @@ export default function GRNDetailsPage() {
           <div className="flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3">
             <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
             <p className="text-sm text-destructive">
-              {error ?? "GRN not found."}
+              {error ?? t("grnNotFound", "GRN not found.")}
             </p>
           </div>
         </main>
@@ -1538,7 +1653,9 @@ export default function GRNDetailsPage() {
           <div className="min-w-0">
             <div className="flex items-center gap-2">
               <h1 className="text-lg font-bold tracking-tight text-foreground">
-                {isNew ? "New GRN / GRV" : header.grn_no || "GRN Details"}
+                {isNew
+                  ? t("newGrnGrv", "New GRN / GRV")
+                  : header.grn_no || t("grnDetails", "GRN Details")}
               </h1>
               <StatusBadge status={header.status} />
             </div>
@@ -1553,7 +1670,7 @@ export default function GRNDetailsPage() {
                 className="inline-flex h-7 items-center gap-1 rounded-md border border-border bg-secondary px-2.5 text-[11px] font-semibold text-foreground"
               >
                 <Printer className="h-3.5 w-3.5" />
-                Print
+                {t("print", "Print")}
               </button>
             ) : null}
 
@@ -1575,7 +1692,7 @@ export default function GRNDetailsPage() {
                 ) : (
                   <Save className="h-3.5 w-3.5" />
                 )}
-                Save
+                {t("save", "Save")}
               </button>
             ) : null}
 
@@ -1615,6 +1732,7 @@ export default function GRNDetailsPage() {
           suppliers={suppliers}
           onFieldChange={setHeaderValue}
           onApplySupplier={applySupplier}
+          labels={headerLabels}
         />
 
         <TransactionGridSection
@@ -1625,11 +1743,13 @@ export default function GRNDetailsPage() {
           onRemoveLine={removeLine}
           onSetLineValue={setLineValue}
           onHandleProductLookup={handleProductLookup}
+          labels={gridLabels}
         />
 
         <ActivitySection
           headerId={headerId}
           activityRefreshKey={activityRefreshKey}
+          label={t("activityHistory", "Activity / History")}
         />
 
         <InfoStrip />

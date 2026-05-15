@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { useLang } from "@/contexts/LanguageContext";
 import { useNavigate, useParams } from "react-router-dom";
 import {
   ArrowLeft, RotateCcw, Loader2, FileText, Trash2,
@@ -68,6 +69,7 @@ function LineAllocations({
   allocations: SalesReturnAllocation[];
   isPosted: boolean;
 }) {
+  const { t } = useLang();
   const [open, setOpen] = useState(false);
   const lineAllocs = allocations.filter((a) => a.return_line_id === line.id);
 
@@ -83,12 +85,12 @@ function LineAllocations({
       >
         {open ? <ChevronUp className="w-3 h-3 shrink-0" /> : <ChevronDown className="w-3 h-3 shrink-0" />}
         {hasTrace
-          ? `${lineAllocs.length} allocation slice${lineAllocs.length !== 1 ? "s" : ""}`
+          ? `${lineAllocs.length} ${lineAllocs.length !== 1 ? t("allocationSlices", "allocation slices") : t("allocationSlice", "allocation slice")}`
           : isPosted
-          ? "No outbound allocation link"
+          ? t("noOutboundAllocationLink", "No outbound allocation link")
           : null}
         {line.return_movement_id && !hasTrace && (
-          <span className="ml-1 text-emerald-400">· Movement recorded</span>
+          <span className="ml-1 text-emerald-400">· {t("movementRecorded", "Movement recorded")}</span>
         )}
       </button>
 
@@ -99,20 +101,20 @@ function LineAllocations({
               <div key={alloc.id} className="space-y-0.5">
                 <div className="flex items-center gap-2 flex-wrap">
                   <span className="text-[10px] font-semibold text-foreground">
-                    Slice {i + 1}: {alloc.qty_returned} units
+                    {t("slice", "Slice")} {i + 1}: {alloc.qty_returned} {t("units", "units")}
                   </span>
                   <ConditionPill condition={alloc.condition} />
                   {alloc.condition === "OK" ? (
-                    <span className="text-[9px] text-emerald-400 font-medium">Restocked</span>
+                    <span className="text-[9px] text-emerald-400 font-medium">{t("restocked", "Restocked")}</span>
                   ) : (
-                    <span className="text-[9px] text-amber-400 font-medium">No restock</span>
+                    <span className="text-[9px] text-amber-400 font-medium">{t("noRestock", "No restock")}</span>
                   )}
                 </div>
                 {(alloc.batch_no || alloc.expiry_date) && (
                   <p className="text-[10px] text-muted-foreground">
-                    {alloc.batch_no ? `Batch: ${alloc.batch_no}` : ""}
+                    {alloc.batch_no ? `${t("batch", "Batch")}: ${alloc.batch_no}` : ""}
                     {alloc.batch_no && alloc.expiry_date ? " · " : ""}
-                    {alloc.expiry_date ? `Exp: ${alloc.expiry_date}` : ""}
+                    {alloc.expiry_date ? `${t("exp", "Exp")}: ${alloc.expiry_date}` : ""}
                   </p>
                 )}
                 {alloc.return_movement_id && (
@@ -124,8 +126,8 @@ function LineAllocations({
             ))
           ) : (
             <p className="text-[10px] text-muted-foreground">
-              Movement recorded without outbound allocation link.
-              {line.batch_no ? ` Batch: ${line.batch_no}` : ""}
+              {t("movementWithoutAlloc", "Movement recorded without outbound allocation link.")}
+              {line.batch_no ? ` ${t("batch", "Batch")}: ${line.batch_no}` : ""}
             </p>
           )}
         </div>
@@ -139,6 +141,7 @@ function LineAllocations({
 export default function ReturnDetailsPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { t } = useLang();
   const { isAdmin, isManager } = usePermissions();
 
   const [data, setData]       = useState<ReturnDetail | null>(null);
@@ -161,7 +164,7 @@ export default function ReturnDetailsPage() {
   const handleReceive = async () => {
     if (!id) return;
     setActing(true);
-    try { await receiveReturn(id); toast.success("Return marked RECEIVED"); void load(); }
+    try { await receiveReturn(id); toast.success(t("returnMarkedReceived", "Return marked Received")); void load(); }
     catch (e: any) { toast.error(e.message); }
     setActing(false);
   };
@@ -171,13 +174,13 @@ export default function ReturnDetailsPage() {
     setActing(true);
     try {
       await postReturn(id);
-      toast.success("Return POSTED — inventory updated");
+      toast.success(t("returnPostedMsg", "Return posted — inventory updated"));
       void load();
     } catch (e: any) {
       const code = (e as any).code as string | undefined;
-      if (code === "RETURN_QTY_EXCEEDS_OUTBOUND")    toast.error("Return qty exceeds outbound allocated qty", { duration: 5000 });
-      else if (code === "INVALID_RETURN_STATUS")      toast.error("Invalid status for posting");
-      else if (code === "INVALID_RETURN_BATCH_TARGET") toast.error("Original inventory batch not available for restock", { duration: 5000 });
+      if (code === "RETURN_QTY_EXCEEDS_OUTBOUND")    toast.error(t("returnQtyExceedsOutbound", "Return qty exceeds outbound allocated qty"), { duration: 5000 });
+      else if (code === "INVALID_RETURN_STATUS")      toast.error(t("invalidStatusPosting", "Invalid status for posting"));
+      else if (code === "INVALID_RETURN_BATCH_TARGET") toast.error(t("inventoryBatchNotAvailable", "Original inventory batch not available for restock"), { duration: 5000 });
       else toast.error(e.message);
     }
     setActing(false);
@@ -186,13 +189,13 @@ export default function ReturnDetailsPage() {
   const handleCancel = async () => {
     if (!id) return;
     setActing(true);
-    try { await cancelReturn(id); toast.success("Return cancelled"); void load(); }
+    try { await cancelReturn(id); toast.success(t("returnCancelled", "Return cancelled")); void load(); }
     catch (e: any) { toast.error(e.message); }
     setActing(false);
   };
 
   const handleDeleteLine = async (lineId: string) => {
-    try { await deleteReturnLine(lineId); toast.success("Line removed"); void load(); }
+    try { await deleteReturnLine(lineId); toast.success(t("lineRemoved", "Line removed")); void load(); }
     catch (e: any) { toast.error(e.message); }
   };
 
@@ -208,8 +211,8 @@ export default function ReturnDetailsPage() {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center gap-3">
         <FileText className="w-10 h-10 text-muted-foreground opacity-20" />
-        <p className="text-sm text-muted-foreground">Return not found</p>
-        <button onClick={() => navigate(-1)} className="text-xs text-primary hover:underline">← Back</button>
+        <p className="text-sm text-muted-foreground">{t("returnNotFound", "Return not found")}</p>
+        <button onClick={() => navigate(-1)} className="text-xs text-primary hover:underline">← {t("back", "Back")}</button>
       </div>
     );
   }
@@ -244,7 +247,7 @@ export default function ReturnDetailsPage() {
               <RotateCcw className="w-3.5 h-3.5 text-violet-400" />
               <span className="text-[15px] font-bold text-foreground">{returnDoc.return_no ?? id?.slice(0, 8)}</span>
               <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded border ${statusCls}`}>
-                {returnDoc.status.toUpperCase()}
+                {t(returnDoc.status, returnDoc.status.toUpperCase())}
               </span>
             </div>
             <p className="text-[10px] text-muted-foreground">{fmtDate(returnDoc.created_at)}</p>
@@ -257,12 +260,12 @@ export default function ReturnDetailsPage() {
         {/* Invoice info */}
         <div className="rounded-xl border border-border bg-card p-4 space-y-2">
           <div className="flex items-center justify-between">
-            <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Original Invoice</p>
+            <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">{t("originalInvoice", "Original Invoice")}</p>
             <button
               onClick={() => navigate(`/invoices/${returnDoc.invoice_id}`)}
               className="text-[10px] text-primary hover:underline"
             >
-              View Invoice
+              {t("viewInvoice", "View Invoice")}
             </button>
           </div>
           <p className="text-xs font-semibold text-foreground">
@@ -280,15 +283,15 @@ export default function ReturnDetailsPage() {
         <div className="grid grid-cols-3 gap-2">
           <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-3 text-center">
             <p className="text-lg font-bold text-emerald-400">{okQty}</p>
-            <p className="text-[10px] text-muted-foreground">OK / Restock</p>
+            <p className="text-[10px] text-muted-foreground">{t("okRestock", "OK / Restock")}</p>
           </div>
           <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-3 text-center">
             <p className="text-lg font-bold text-amber-400">{dmgQty}</p>
-            <p className="text-[10px] text-muted-foreground">Damaged</p>
+            <p className="text-[10px] text-muted-foreground">{t("damaged", "Damaged")}</p>
           </div>
           <div className="rounded-xl border border-red-500/20 bg-red-500/5 p-3 text-center">
             <p className="text-lg font-bold text-red-400">{expQty}</p>
-            <p className="text-[10px] text-muted-foreground">Expired</p>
+            <p className="text-[10px] text-muted-foreground">{t("expiredLabel", "Expired")}</p>
           </div>
         </div>
 
@@ -297,7 +300,7 @@ export default function ReturnDetailsPage() {
           <div className="rounded-xl border border-violet-500/20 bg-violet-500/5 p-3 flex items-center gap-3">
             <Package className="w-4 h-4 text-violet-400 shrink-0" />
             <div className="flex-1 min-w-0 space-y-0.5">
-              <p className="text-[11px] font-semibold text-violet-400">Allocation Trace</p>
+              <p className="text-[11px] font-semibold text-violet-400">{t("allocationTrace", "Allocation Trace")}</p>
               <p className="text-[10px] text-muted-foreground">
                 {totalAllocSlices} allocation slice{totalAllocSlices !== 1 ? "s" : ""}
                 {uniqueBatches > 0 ? ` across ${uniqueBatches} batch${uniqueBatches !== 1 ? "es" : ""}` : ""}
@@ -309,16 +312,16 @@ export default function ReturnDetailsPage() {
 
         {/* Timeline */}
         <div className="rounded-xl border border-border bg-card p-4">
-          <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-3">Timeline</p>
+          <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-3">{t("timeline", "Timeline")}</p>
           <div className="space-y-1.5">
-            <TimelineRow label="Created"  at={returnDoc.created_at}  active />
-            <TimelineRow label="Received" at={returnDoc.received_at} active={!!returnDoc.received_at} />
-            <TimelineRow label="Posted"   at={returnDoc.posted_at}   active={!!returnDoc.posted_at}
+            <TimelineRow label={t("created", "Created")}  at={returnDoc.created_at}  active />
+            <TimelineRow label={t("received", "Received")} at={returnDoc.received_at} active={!!returnDoc.received_at} />
+            <TimelineRow label={t("posted", "Posted")}   at={returnDoc.posted_at}   active={!!returnDoc.posted_at}
               color={returnDoc.status === "posted" ? "text-emerald-400" : undefined} />
             {returnDoc.status === "cancelled" && (
               <div className="flex items-center gap-2 text-[11px]">
                 <XCircle className="w-3.5 h-3.5 text-red-400 shrink-0" />
-                <span className="text-red-400 font-medium">Cancelled</span>
+                <span className="text-red-400 font-medium">{t("cancelled", "Cancelled")}</span>
               </div>
             )}
           </div>

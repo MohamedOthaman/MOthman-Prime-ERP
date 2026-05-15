@@ -45,6 +45,7 @@ import {
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/features/reports/hooks/useAuth";
+import { useLang } from "@/contexts/LanguageContext";
 import { supabase } from "@/integrations/supabase/client";
 import { logAudit } from "@/services/auditService";
 import { getAppUrl } from "@/config/appUrl";
@@ -512,6 +513,7 @@ function Toggle({ checked, onChange }: { checked: boolean; onChange: () => void 
 
 export default function OwnerDashboard() {
   const navigate = useNavigate();
+  const { t } = useLang();
   const { user } = useAuth();
   const { data, loading, refresh } = useOwnerData();
   const { flags, toggle, enabledCount } = useModuleFlags();
@@ -590,6 +592,17 @@ export default function OwnerDashboard() {
     setResetState(prev => ({ ...prev, [profile.id]: "idle" }));
   };
 
+  const MODULE_I18N = useMemo(() => ({
+    invoices:      { label: t("moduleInvoices", "Invoice Management"),  desc: t("moduleInvoicesDesc", "Invoice entry, printing, allocation") },
+    grn:           { label: t("grnReceiving", "GRN / Receiving"),       desc: t("moduleGrnDesc", "Goods receipt & supplier management") },
+    reports:       { label: t("reports", "Reports"),                    desc: t("moduleReportsDesc", "Analytics, exports, customer reports") },
+    import_export: { label: t("importExportTitle", "Import / Export"),  desc: t("moduleImportExportDesc", "Bulk data import & CSV export tools") },
+    products:      { label: t("manageProducts", "Product Management"),  desc: t("moduleProductsDesc", "Product catalogue & master data") },
+    qc:            { label: t("qcInspection", "QC Inspection"),         desc: t("moduleQcDesc", "Quality control & GRN approval flow") },
+    customers:     { label: t("customersNav", "Customer Management"),   desc: t("moduleCustomersDesc", "Customer accounts & salesman assignments") },
+    salesmen:      { label: t("salesmenManagement", "Salesman Management"), desc: t("moduleSalesmenDesc", "Sales team & territory management") },
+  }), [t]);
+
   const filteredUsers = useMemo(() => {
     const q = userSearch.toLowerCase().trim();
     if (!q || !data?.users) return data?.users ?? [];
@@ -613,16 +626,16 @@ export default function OwnerDashboard() {
             <Crown className="w-4.5 h-4.5 text-amber-400" style={{ width: 18, height: 18 }} />
           </div>
           <div className="flex-1 min-w-0">
-            <h1 className="text-[15px] font-bold tracking-tight text-foreground leading-tight">Owner Control Panel</h1>
+            <h1 className="text-[15px] font-bold tracking-tight text-foreground leading-tight">{t("ownerControlPanel", "Owner Control Panel")}</h1>
             <p className="text-[11px] text-muted-foreground leading-tight">
-              {user?.email ?? "System Owner"} · {new Date().toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "long" })}
+              {user?.email ?? t("systemOwner", "System Owner")} · {new Date().toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "long" })}
             </p>
           </div>
 
           {/* Unsaved indicator */}
           {changedCount > 0 && (
             <span className="text-[11px] text-amber-500 font-semibold bg-amber-500/10 border border-amber-500/20 rounded-full px-3 py-1 shrink-0">
-              {changedCount} unsaved
+              {changedCount} {t("unsaved", "unsaved")}
             </span>
           )}
 
@@ -635,7 +648,7 @@ export default function OwnerDashboard() {
                 className="flex items-center gap-1.5 text-xs bg-primary text-primary-foreground px-3 py-1.5 rounded-lg font-medium hover:opacity-90 transition disabled:opacity-50"
               >
                 {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
-                Save Changes
+                {t("saveChanges", "Save Changes")}
               </button>
             )}
             <button
@@ -644,7 +657,7 @@ export default function OwnerDashboard() {
               className="flex items-center gap-1.5 text-xs border border-border bg-muted/30 text-foreground px-3 py-1.5 rounded-lg font-medium hover:bg-muted/50 transition disabled:opacity-50"
             >
               <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} />
-              Refresh
+              {t("refresh", "Refresh")}
             </button>
           </div>
         </div>
@@ -656,33 +669,33 @@ export default function OwnerDashboard() {
             SECTION 1 — System KPIs
             ═════════════════════════════════════════════════════════════════════*/}
         <section>
-          <ControlSectionHeader label="System Overview" icon={Activity} color="bg-blue-500/10 text-blue-400 border border-blue-500/20" />
+          <ControlSectionHeader label={t("systemOverview", "System Overview")} icon={Activity} color="bg-blue-500/10 text-blue-400 border border-blue-500/20" />
 
           <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-3">
-            <KpiMini label="Total Users"    value={data?.kpis.totalUsers    ?? "—"} sub="All accounts"         color="border-blue-500/20  bg-blue-500/8"    loading={loading} />
-            <KpiMini label="Active Users"   value={data?.kpis.activeUsers   ?? "—"} sub="Enabled logins"      color="border-emerald-500/20 bg-emerald-500/8" loading={loading} />
-            <KpiMini label="Products"       value={data?.kpis.totalProducts ?? "—"} sub="In catalogue"        color="border-violet-500/20 bg-violet-500/8"  loading={loading} />
-            <KpiMini label="SKUs In Stock"  value={data?.kpis.activeSkus    ?? "—"} sub="Available batches"   color="border-cyan-500/20   bg-cyan-500/8"    loading={loading} />
-            <KpiMini label="Customers"      value={data?.kpis.customersTotal ?? "—"} sub="Total accounts"     color="border-pink-500/20   bg-pink-500/8"    loading={loading} />
-            <KpiMini label="Active Salesmen" value={data?.kpis.salesmenTotal ?? "—"} sub="Sales team"         color="border-rose-500/20   bg-rose-500/8"    loading={loading} />
+            <KpiMini label={t("totalUsers", "Total Users")}    value={data?.kpis.totalUsers    ?? "—"} sub={t("allAccounts", "All accounts")}       color="border-blue-500/20  bg-blue-500/8"    loading={loading} />
+            <KpiMini label={t("activeUsers", "Active Users")}  value={data?.kpis.activeUsers   ?? "—"} sub={t("enabledLogins", "Enabled logins")}    color="border-emerald-500/20 bg-emerald-500/8" loading={loading} />
+            <KpiMini label={t("manageProducts", "Products")}   value={data?.kpis.totalProducts ?? "—"} sub={t("inCatalogue", "In catalogue")}        color="border-violet-500/20 bg-violet-500/8"  loading={loading} />
+            <KpiMini label={t("skusInStock", "SKUs In Stock")} value={data?.kpis.activeSkus    ?? "—"} sub={t("availableBatches", "Available batches")} color="border-cyan-500/20 bg-cyan-500/8"    loading={loading} />
+            <KpiMini label={t("customersNav", "Customers")}    value={data?.kpis.customersTotal ?? "—"} sub={t("totalAccounts", "Total accounts")}   color="border-pink-500/20   bg-pink-500/8"    loading={loading} />
+            <KpiMini label={t("activeSalesmen", "Active Salesmen")} value={data?.kpis.salesmenTotal ?? "—"} sub={t("salesTeam", "Sales team")}      color="border-rose-500/20   bg-rose-500/8"    loading={loading} />
           </div>
 
           {/* Second KPI row: operational */}
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mt-3">
-            <KpiMini label="GRNs Today"       value={data?.kpis.grnsToday    ?? "—"} sub="Received today"    color="border-amber-500/20 bg-amber-500/8"  loading={loading} />
-            <KpiMini label="Pending Inspect"  value={data?.kpis.grnsPending  ?? "—"} sub="Awaiting QC"       color="border-amber-500/20 bg-amber-500/8"  loading={loading} />
-            <KpiMini label="Invoices Today"   value={data?.kpis.invoicesToday ?? "—"} sub="Processed today"  color="border-blue-500/20  bg-blue-500/8"   loading={loading} />
+            <KpiMini label={t("grnsToday", "GRNs Today")}       value={data?.kpis.grnsToday    ?? "—"} sub={t("receivedToday", "Received today")}  color="border-amber-500/20 bg-amber-500/8"  loading={loading} />
+            <KpiMini label={t("pendingInspect", "Pending Inspect")} value={data?.kpis.grnsPending  ?? "—"} sub={t("awaitingQc", "Awaiting QC")}     color="border-amber-500/20 bg-amber-500/8"  loading={loading} />
+            <KpiMini label={t("invoicesToday", "Invoices Today")} value={data?.kpis.invoicesToday ?? "—"} sub={t("processedToday", "Processed today")} color="border-blue-500/20  bg-blue-500/8"   loading={loading} />
             <KpiMini
-              label="Expired SKUs"
+              label={t("expiredSkus", "Expired Stock")}
               value={data?.kpis.expiredSkus ?? "—"}
-              sub="Past expiry"
+              sub={t("pastExpiry", "Past expiry")}
               color={data?.kpis.expiredSkus ? "border-red-500/20 bg-red-500/8" : "border-border bg-muted/10"}
               loading={loading}
             />
             <KpiMini
-              label="Expiring ≤ 30d"
+              label={t("expiringLe30", "Expiring ≤ 30d")}
               value={data?.kpis.expiring30 ?? "—"}
-              sub="Near expiry"
+              sub={t("nearExpiry", "Near expiry")}
               color={data?.kpis.expiring30 ? "border-orange-500/20 bg-orange-500/8" : "border-border bg-muted/10"}
               loading={loading}
             />
@@ -693,19 +706,19 @@ export default function OwnerDashboard() {
             SECTION 2 — Operations Feed
             ═════════════════════════════════════════════════════════════════════*/}
         <section>
-          <ControlSectionHeader label="Operational Feed" icon={TrendingUp} color="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" />
+          <ControlSectionHeader label={t("operationalFeed", "Operational Feed")} icon={TrendingUp} color="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" />
 
           <div className="grid md:grid-cols-3 gap-4">
 
             {/* Recent GRNs */}
             <SectionCard
-              title="Recent GRNs"
+              title={t("recentGrns", "Recent GRNs")}
               icon={Truck}
               iconClass="text-amber-400"
-              action={<button onClick={() => navigate("/grn")} className="text-[10px] text-primary font-medium hover:underline">View all →</button>}
+              action={<button onClick={() => navigate("/grn")} className="text-[10px] text-primary font-medium hover:underline">{t("viewAll", "View all →")}</button>}
             >
               {loading ? <LoadingRows count={4} /> :
-               !data?.recentGrns.length ? <EmptyState icon={Truck} message="No GRNs yet" /> : (
+               !data?.recentGrns.length ? <EmptyState icon={Truck} message={t("noGrnsYet", "No GRNs yet")} /> : (
                 <div className="space-y-1.5">
                   {data.recentGrns.map(grn => (
                     <button
@@ -726,15 +739,15 @@ export default function OwnerDashboard() {
             </SectionCard>
 
             {/* Expiry Alerts */}
-            <SectionCard title="Expiry Alerts" icon={CalendarX2} iconClass="text-orange-400">
+            <SectionCard title={t("expiryAlerts", "Expiry Alerts")} icon={CalendarX2} iconClass="text-orange-400">
               {loading ? <LoadingRows count={3} /> : (
                 <div className="space-y-2">
                   {(data?.kpis.expiredSkus ?? 0) > 0 && (
                     <div className="flex items-center gap-2.5 rounded-lg bg-red-500/8 border border-red-500/20 px-3 py-2.5">
                       <AlertTriangle className="w-4 h-4 text-red-400 shrink-0" />
                       <div className="flex-1 min-w-0">
-                        <p className="text-xs font-semibold text-red-400">Expired Stock</p>
-                        <p className="text-[10px] text-muted-foreground">Requires immediate removal</p>
+                        <p className="text-xs font-semibold text-red-400">{t("expiredStock", "Expired Stock")}</p>
+                        <p className="text-[10px] text-muted-foreground">{t("requiresImmediateRemoval", "Requires immediate removal")}</p>
                       </div>
                       <span className="text-sm font-bold text-red-400 shrink-0">{data?.kpis.expiredSkus}</span>
                     </div>
@@ -743,8 +756,8 @@ export default function OwnerDashboard() {
                     <div className="flex items-center gap-2.5 rounded-lg bg-orange-500/8 border border-orange-500/20 px-3 py-2.5">
                       <Clock className="w-4 h-4 text-orange-400 shrink-0" />
                       <div className="flex-1 min-w-0">
-                        <p className="text-xs font-semibold text-orange-400">Expiring Soon</p>
-                        <p className="text-[10px] text-muted-foreground">Within 30 days</p>
+                        <p className="text-xs font-semibold text-orange-400">{t("expiringSoon", "Expiring Soon")}</p>
+                        <p className="text-[10px] text-muted-foreground">{t("within30Days", "Within 30 days")}</p>
                       </div>
                       <span className="text-sm font-bold text-orange-400 shrink-0">{data?.kpis.expiring30}</span>
                     </div>
@@ -753,8 +766,8 @@ export default function OwnerDashboard() {
                     <div className="flex items-center gap-2.5 rounded-lg bg-amber-500/8 border border-amber-500/20 px-3 py-2.5">
                       <Eye className="w-4 h-4 text-amber-400 shrink-0" />
                       <div className="flex-1 min-w-0">
-                        <p className="text-xs font-semibold text-amber-400">Pending Inspection</p>
-                        <p className="text-[10px] text-muted-foreground">GRNs awaiting QC</p>
+                        <p className="text-xs font-semibold text-amber-400">{t("pendingInspection", "Pending Inspection")}</p>
+                        <p className="text-[10px] text-muted-foreground">{t("grnsAwaitingQc", "GRNs awaiting QC")}</p>
                       </div>
                       <span className="text-sm font-bold text-amber-400 shrink-0">{data?.kpis.grnsPending}</span>
                     </div>
@@ -762,7 +775,7 @@ export default function OwnerDashboard() {
                   {!loading && !data?.kpis.expiredSkus && !data?.kpis.expiring30 && !data?.kpis.grnsPending && (
                     <div className="flex items-center gap-2 rounded-lg bg-emerald-500/8 border border-emerald-500/15 px-3 py-3">
                       <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-                      <p className="text-xs text-emerald-400 font-medium">No active alerts</p>
+                      <p className="text-xs text-emerald-400 font-medium">{t("noActiveAlerts", "No active alerts")}</p>
                     </div>
                   )}
                 </div>
@@ -771,13 +784,13 @@ export default function OwnerDashboard() {
 
             {/* Recent Invoices */}
             <SectionCard
-              title="Recent Invoices"
+              title={t("recentInvoices", "Recent Invoices")}
               icon={FileText}
               iconClass="text-blue-400"
-              action={<button onClick={() => navigate("/invoice-entry")} className="text-[10px] text-primary font-medium hover:underline">View all →</button>}
+              action={<button onClick={() => navigate("/invoice-entry")} className="text-[10px] text-primary font-medium hover:underline">{t("viewAll", "View all →")}</button>}
             >
               {loading ? <LoadingRows count={4} /> :
-               !data?.recentInvoices.length ? <EmptyState icon={FileText} message="No invoices yet" /> : (
+               !data?.recentInvoices.length ? <EmptyState icon={FileText} message={t("noInvoicesYet", "No invoices yet")} /> : (
                 <div className="space-y-1.5">
                   {data.recentInvoices.map(inv => (
                     <div key={inv.id} className="flex items-center gap-2.5 rounded-lg bg-muted/30 px-3 py-2">
@@ -803,18 +816,18 @@ export default function OwnerDashboard() {
             ═════════════════════════════════════════════════════════════════════*/}
         <section>
           <ControlSectionHeader
-            label="Sales Performance"
+            label={t("salesPerformance", "Sales Performance")}
             icon={BarChart3}
             color="bg-violet-500/10 text-violet-400 border border-violet-500/20"
-            count={`${data?.salesmen.length ?? 0} salesmen`}
-            action={<button onClick={() => navigate("/salesmen")} className="text-[10px] text-primary font-medium hover:underline">Manage →</button>}
+            count={`${data?.salesmen.length ?? 0} ${t("salesmenLabel", "salesmen")}`}
+            action={<button onClick={() => navigate("/salesmen")} className="text-[10px] text-primary font-medium hover:underline">{t("manage", "Manage →")}</button>}
           />
 
           {loading ? (
             <LoadingRows count={3} />
           ) : !data?.salesmen.length ? (
             <div className="rounded-xl border border-border bg-card p-4">
-              <EmptyState icon={UserSquare2} message="No active salesmen" sub="Add salesmen to track performance" />
+              <EmptyState icon={UserSquare2} message={t("noActiveSalesmen", "No active salesmen")} sub={t("addSalesmenSub", "Add salesmen to track performance")} />
             </div>
           ) : (
             <div className="rounded-xl border border-border bg-card p-4">
@@ -829,8 +842,8 @@ export default function OwnerDashboard() {
                         {s.code && (
                           <span className="text-[9px] text-muted-foreground bg-muted/50 px-1.5 py-0.5 rounded shrink-0">{s.code}</span>
                         )}
-                        <span className="text-[10px] text-muted-foreground shrink-0">{s.customerCount} cust</span>
-                        <span className="text-[10px] font-medium text-violet-400 shrink-0">{s.invoiceCount} inv</span>
+                        <span className="text-[10px] text-muted-foreground shrink-0">{s.customerCount} {t("custAbbr", "cust")}</span>
+                        <span className="text-[10px] font-medium text-violet-400 shrink-0">{s.invoiceCount} {t("invAbbr", "inv")}</span>
                       </div>
                       <div className="flex items-center gap-2">
                         <div className="flex-1 h-1.5 rounded-full bg-muted overflow-hidden">
@@ -840,7 +853,7 @@ export default function OwnerDashboard() {
                           />
                         </div>
                         <span className="text-[10px] font-mono text-muted-foreground w-32 text-right shrink-0">
-                          {s.revenue > 0 ? fmtAED(s.revenue) : "No invoices"}
+                          {s.revenue > 0 ? fmtAED(s.revenue) : t("noInvoices", "No invoices")}
                         </span>
                       </div>
                     </div>
@@ -856,14 +869,14 @@ export default function OwnerDashboard() {
             ═════════════════════════════════════════════════════════════════════*/}
         <section>
           <ControlSectionHeader
-            label="User Control"
+            label={t("userControl", "User Control")}
             icon={Users}
             color="bg-blue-500/10 text-blue-400 border border-blue-500/20"
-            count={`${data?.users.length ?? 0} users · ${data?.users.filter(u => u.is_active).length ?? 0} active`}
+            count={`${data?.users.length ?? 0} ${t("usersLabel", "users")} · ${data?.users.filter(u => u.is_active).length ?? 0} ${t("active", "active")}`}
             action={
               <div className="flex items-center gap-2">
                 {changedCount > 0 && (
-                  <span className="text-[11px] text-amber-500 font-medium">{changedCount} pending</span>
+                  <span className="text-[11px] text-amber-500 font-medium">{changedCount} {t("pending", "pending")}</span>
                 )}
                 <button
                   onClick={handleSaveAll}
@@ -871,10 +884,10 @@ export default function OwnerDashboard() {
                   className="flex items-center gap-1 text-[11px] bg-primary text-primary-foreground px-2.5 py-1 rounded-md font-medium hover:opacity-90 transition disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
-                  Save All
+                  {t("saveAll", "Save All")}
                 </button>
                 <button onClick={() => navigate("/admin/users")} className="text-[10px] text-primary font-medium hover:underline">
-                  Full page →
+                  {t("fullPage", "Full page →")}
                 </button>
               </div>
             }
@@ -885,7 +898,7 @@ export default function OwnerDashboard() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
             <input
               type="text"
-              placeholder="Search by name, email, or role..."
+              placeholder={t("searchUserPlaceholder", "Search by name, email, or role...")}
               value={userSearch}
               onChange={e => setUserSearch(e.target.value)}
               className="w-full bg-background border border-border rounded-lg pl-9 pr-3 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
@@ -896,13 +909,13 @@ export default function OwnerDashboard() {
           {loading ? (
             <LoadingRows count={5} />
           ) : filteredUsers.length === 0 ? (
-            <EmptyState icon={Users} message="No users found" />
+            <EmptyState icon={Users} message={t("noUsersFound", "No users found")} />
           ) : (
             <div className="overflow-x-auto rounded-xl border border-border bg-card">
               <table className="w-full">
                 <thead className="bg-muted/50">
                   <tr>
-                    {["#", "User", "Email", "Role", "Tier", "Status", "Last Active", "Reset PW"].map(h => (
+                    {[t("colHash", "#"), t("colUser", "User"), t("colEmail", "Email"), t("colRole", "Role"), t("colTier", "Tier"), t("colStatus", "Status"), t("colLastActive", "Last Active"), t("colResetPw", "Reset PW")].map(h => (
                       <th key={h} className="text-left px-3 py-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap">
                         {h}
                       </th>
@@ -978,7 +991,7 @@ export default function OwnerDashboard() {
                               onChange={() => setField(profile.id, "is_active", !isActive)}
                             />
                             <span className={`text-[10px] font-medium ${isActive ? "text-emerald-400" : "text-red-400"}`}>
-                              {isActive ? "Active" : "Off"}
+                              {isActive ? t("active", "Active") : t("off", "Off")}
                             </span>
                           </div>
                         </td>
@@ -999,7 +1012,7 @@ export default function OwnerDashboard() {
                               ? <Loader2 className="w-2.5 h-2.5 animate-spin" />
                               : <RotateCcw className="w-2.5 h-2.5" />
                             }
-                            Reset
+                            {t("reset", "Reset")}
                           </button>
                         </td>
                       </tr>
@@ -1016,10 +1029,10 @@ export default function OwnerDashboard() {
             ═════════════════════════════════════════════════════════════════════*/}
         <section>
           <ControlSectionHeader
-            label="Module Control"
+            label={t("moduleControl", "Module Control")}
             icon={Power}
             color="bg-rose-500/10 text-rose-400 border border-rose-500/20"
-            count={`${enabledCount} / ${MODULES.length} enabled`}
+            count={`${enabledCount} / ${MODULES.length} ${t("enabledLabel", "enabled")}`}
           />
 
           <div className="rounded-xl border border-border bg-card p-1.5">
@@ -1045,20 +1058,20 @@ export default function OwnerDashboard() {
                       </div>
                       <Toggle checked={enabled} onChange={() => toggle(mod.id)} />
                     </div>
-                    <p className="text-xs font-semibold text-foreground leading-tight">{mod.label}</p>
-                    <p className="text-[10px] text-muted-foreground mt-0.5 leading-snug">{mod.desc}</p>
+                    <p className="text-xs font-semibold text-foreground leading-tight">{MODULE_I18N[mod.id as keyof typeof MODULE_I18N]?.label ?? mod.label}</p>
+                    <p className="text-[10px] text-muted-foreground mt-0.5 leading-snug">{MODULE_I18N[mod.id as keyof typeof MODULE_I18N]?.desc ?? mod.desc}</p>
                     <div className={`mt-2 inline-flex items-center gap-1 text-[9px] font-semibold rounded px-1.5 py-0.5 ${
                       enabled ? "bg-emerald-500/10 text-emerald-400" : "bg-muted text-muted-foreground"
                     }`}>
                       <span className={`w-1.5 h-1.5 rounded-full ${enabled ? "bg-emerald-400" : "bg-muted-foreground/50"}`} />
-                      {enabled ? "ENABLED" : "DISABLED"}
+                      {enabled ? t("moduleEnabled", "ENABLED") : t("moduleDisabled", "DISABLED")}
                     </div>
                   </div>
                 );
               })}
             </div>
             <p className="text-[10px] text-muted-foreground/50 text-center mt-3 pb-2">
-              Module flags stored locally · DB-backed registry coming in a future phase
+              {t("moduleFlagsNote", "Module flags stored locally · DB-backed registry coming in a future phase")}
             </p>
           </div>
         </section>
@@ -1067,17 +1080,17 @@ export default function OwnerDashboard() {
             SECTION 6 — Quick Navigation
             ═════════════════════════════════════════════════════════════════════*/}
         <section>
-          <ControlSectionHeader label="Quick Navigation" icon={Shield} color="bg-muted/50 text-muted-foreground border border-border" />
+          <ControlSectionHeader label={t("quickNavigation", "Quick Navigation")} icon={Shield} color="bg-muted/50 text-muted-foreground border border-border" />
           <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-2">
             {[
-              { label: "GRN List",       path: "/grn",            color: "text-amber-400",  bg: "bg-amber-500/8",  border: "border-amber-500/20",  icon: Truck       },
-              { label: "Invoices",       path: "/invoice-entry",  color: "text-blue-400",   bg: "bg-blue-500/8",   border: "border-blue-500/20",   icon: FileText    },
-              { label: "Products",       path: "/products",       color: "text-emerald-400",bg: "bg-emerald-500/8",border: "border-emerald-500/20",icon: Package     },
-              { label: "Customers",      path: "/customers",      color: "text-pink-400",   bg: "bg-pink-500/8",   border: "border-pink-500/20",   icon: Users       },
-              { label: "Salesmen",       path: "/salesmen",       color: "text-rose-400",   bg: "bg-rose-500/8",   border: "border-rose-500/20",   icon: UserSquare2 },
-              { label: "Reports",        path: "/reports",        color: "text-violet-400", bg: "bg-violet-500/8", border: "border-violet-500/20", icon: BarChart3   },
-              { label: "Import/Export",  path: "/import-export",  color: "text-orange-400", bg: "bg-orange-500/8", border: "border-orange-500/20", icon: FileSpreadsheet },
-              { label: "Users (Admin)",  path: "/admin/users",    color: "text-cyan-400",   bg: "bg-cyan-500/8",   border: "border-cyan-500/20",   icon: Shield      },
+              { label: t("grnList", "GRN List"),           path: "/grn",            color: "text-amber-400",  bg: "bg-amber-500/8",  border: "border-amber-500/20",  icon: Truck       },
+              { label: t("invoicesNav", "Invoices"),        path: "/invoice-entry",  color: "text-blue-400",   bg: "bg-blue-500/8",   border: "border-blue-500/20",   icon: FileText    },
+              { label: t("manageProducts", "Products"),     path: "/products",       color: "text-emerald-400",bg: "bg-emerald-500/8",border: "border-emerald-500/20",icon: Package     },
+              { label: t("customersNav", "Customers"),      path: "/customers",      color: "text-pink-400",   bg: "bg-pink-500/8",   border: "border-pink-500/20",   icon: Users       },
+              { label: t("salesmenNav", "Salesmen"),        path: "/salesmen",       color: "text-rose-400",   bg: "bg-rose-500/8",   border: "border-rose-500/20",   icon: UserSquare2 },
+              { label: t("reports", "Reports"),             path: "/reports",        color: "text-violet-400", bg: "bg-violet-500/8", border: "border-violet-500/20", icon: BarChart3   },
+              { label: t("importExportTitle", "Import/Export"), path: "/import-export", color: "text-orange-400", bg: "bg-orange-500/8", border: "border-orange-500/20", icon: FileSpreadsheet },
+              { label: t("usersAdmin", "Users (Admin)"),    path: "/admin/users",    color: "text-cyan-400",   bg: "bg-cyan-500/8",   border: "border-cyan-500/20",   icon: Shield      },
             ].map(({ label, path, color, bg, border, icon: Icon }) => (
               <button
                 key={path}

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { useLang } from "@/contexts/LanguageContext";
 import {
   ArrowLeft, Clock, CheckCircle2, Truck, XCircle, RotateCcw,
   FileText, User, Loader2, Play, Plus, ChevronRight,
@@ -63,6 +64,7 @@ export default function InvoiceDetailsPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { isAdmin, isManager, canManageInvoices, canManageReceiving } = usePermissions();
+  const { t } = useLang();
 
   const [detail, setDetail]             = useState<InvoiceDetail | null>(null);
   const [execSummary, setExecSummary]   = useState<ExecSummary>(null);
@@ -82,7 +84,7 @@ export default function InvoiceDetailsPage() {
         fetchInvoiceReturnSummary(id),
       ]);
       if (d.status === "fulfilled") setDetail(d.value);
-      else toast.error((d.reason as Error)?.message ?? "Failed to load invoice");
+      else toast.error((d.reason as Error)?.message ?? t("failedToLoadInvoice", "Failed to load invoice"));
       if (exec.status === "fulfilled") setExecSummary(exec.value);
       if (ret.status === "fulfilled") setReturnSummary(ret.value);
     } finally {
@@ -98,7 +100,7 @@ export default function InvoiceDetailsPage() {
   const handlePostToReady = async () => {
     if (!id) return;
     setActing(true);
-    try { await postSalesInvoice(id); toast.success("Posted — invoice is now READY"); void load(); }
+    try { await postSalesInvoice(id); toast.success(t("invoicePostedReady", "Posted — invoice is now READY")); void load(); }
     catch (e: any) { toast.error(e.message); }
     setActing(false);
   };
@@ -106,7 +108,7 @@ export default function InvoiceDetailsPage() {
   const handleMarkDone = async () => {
     if (!id) return;
     setActing(true);
-    try { await markInvoiceDone(id); toast.success("Marked DONE"); void load(); }
+    try { await markInvoiceDone(id); toast.success(t("invoiceMarkedDone", "Marked DONE")); void load(); }
     catch (e: any) { toast.error(e.message); }
     setActing(false);
   };
@@ -114,23 +116,23 @@ export default function InvoiceDetailsPage() {
   const handleMarkReceived = async () => {
     if (!id) return;
     setActing(true);
-    try { await markInvoiceReceived(id); toast.success("Marked RECEIVED"); void load(); }
+    try { await markInvoiceReceived(id); toast.success(t("invoiceMarkedReceived", "Marked RECEIVED")); void load(); }
     catch (e: any) { toast.error(e.message); }
     setActing(false);
   };
 
   const handleCancelSubmit = async () => {
-    if (!id || !cancelReason.trim()) { toast.error("Cancel reason required"); return; }
+    if (!id || !cancelReason.trim()) { toast.error(t("cancelReasonRequired", "Cancel reason required")); return; }
     setActing(true);
     try {
       await cancelInvoice(id, cancelReason);
-      toast.success("Invoice cancelled");
+      toast.success(t("invoiceCancelled", "Invoice cancelled"));
       setCancelModal(false);
       setCancelReason("");
       void load();
     } catch (e: any) {
       if ((e as any).code === "14_DAY_RULE") {
-        toast.error("14-day rule: use Returns workflow instead", { duration: 5000 });
+        toast.error(t("fourteenDayRule", "14-day rule: use Returns workflow instead"), { duration: 5000 });
       } else {
         toast.error(e.message);
       }
@@ -150,8 +152,8 @@ export default function InvoiceDetailsPage() {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center gap-3">
         <FileText className="w-10 h-10 text-muted-foreground opacity-20" />
-        <p className="text-sm text-muted-foreground">Invoice not found</p>
-        <button onClick={() => navigate(-1)} className="text-xs text-primary hover:underline">← Back</button>
+        <p className="text-sm text-muted-foreground">{t("invoiceNotFound", "Invoice not found")}</p>
+        <button onClick={() => navigate(-1)} className="text-xs text-primary hover:underline">← {t("back", "Back")}</button>
       </div>
     );
   }
@@ -197,7 +199,7 @@ export default function InvoiceDetailsPage() {
             <span className="text-xs font-semibold text-foreground">{header.customer_name ?? "—"}</span>
           </div>
           {header.salesman_name && (
-            <p className="text-[11px] text-muted-foreground ml-5">Salesman: {header.salesman_name}</p>
+            <p className="text-[11px] text-muted-foreground ml-5">{t("salesman", "Salesman")}: {header.salesman_name}</p>
           )}
           {header.notes && (
             <p className="text-[11px] text-muted-foreground ml-5 italic">{header.notes}</p>
@@ -206,7 +208,7 @@ export default function InvoiceDetailsPage() {
 
         {/* Lifecycle Timeline */}
         <div className="rounded-xl border border-border bg-card p-4">
-          <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-3">Lifecycle</p>
+          <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-3">{t("lifecycle", "Lifecycle")}</p>
           <InvoiceTimeline header={header} />
         </div>
 
@@ -214,9 +216,9 @@ export default function InvoiceDetailsPage() {
         <div className="rounded-xl border border-border bg-card overflow-hidden">
           <div className="px-4 py-3 border-b border-border flex items-center justify-between">
             <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
-              Lines ({lines.length})
+              {t("lines", "Lines")} ({lines.length})
             </p>
-            <p className="text-[10px] text-muted-foreground">{totalQty} units total</p>
+            <p className="text-[10px] text-muted-foreground">{totalQty} {t("units", "units")}</p>
           </div>
           {lines.map((line, i) => (
             <div
@@ -236,18 +238,18 @@ export default function InvoiceDetailsPage() {
                 <p className="text-xs font-semibold text-foreground">
                   {line.quantity} {line.product?.uom ?? ""}
                 </p>
-                <p className="text-[10px] text-muted-foreground">{fmtAED(line.unit_price)} ea</p>
+                <p className="text-[10px] text-muted-foreground">{fmtAED(line.unit_price)} {t("ea", "ea")}</p>
               </div>
               <div className="text-right shrink-0 w-20">
                 <p className="text-xs font-semibold text-foreground">{fmtAED(line.line_total)}</p>
                 {line.discount > 0 && (
-                  <p className="text-[10px] text-muted-foreground">{line.discount}% off</p>
+                  <p className="text-[10px] text-muted-foreground">{line.discount}% {t("off", "off")}</p>
                 )}
               </div>
             </div>
           ))}
           <div className="px-4 py-3 border-t border-border bg-muted/10 flex items-center justify-between">
-            <span className="text-xs font-semibold text-foreground">Total</span>
+            <span className="text-xs font-semibold text-foreground">{t("total", "Total")}</span>
             <span className="text-sm font-bold text-foreground">{fmtAED(header.total_amount)}</span>
           </div>
         </div>
@@ -257,7 +259,7 @@ export default function InvoiceDetailsPage() {
           <div className="rounded-xl border border-border bg-card overflow-hidden">
             <div className="px-4 py-3 border-b border-border flex items-center justify-between">
               <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
-                Warehouse Execution
+                {t("warehouseExecution", "Warehouse Execution")}
               </p>
               {(header.status === "ready") && (
                 <button
@@ -265,7 +267,7 @@ export default function InvoiceDetailsPage() {
                   className="flex items-center gap-1 text-[10px] px-2.5 py-1 rounded border font-medium border-amber-500/30 bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 transition"
                 >
                   <Play className="w-3 h-3" />
-                  {pickingStarted ? "Resume Picking" : "Start Picking"}
+                  {pickingStarted ? t("resumePicking", "Resume Picking") : t("startPicking", "Start Picking")}
                 </button>
               )}
               {(header.status === "done" || header.status === "received") && pickingStarted && (
@@ -273,7 +275,7 @@ export default function InvoiceDetailsPage() {
                   onClick={() => navigate(`/warehouse/picking/${id}`)}
                   className="text-[10px] px-2.5 py-1 rounded border border-blue-500/30 bg-blue-500/10 text-blue-400 font-medium hover:bg-blue-500/20 transition"
                 >
-                  View Execution
+                  {t("viewExecution", "View Execution")}
                 </button>
               )}
             </div>
@@ -285,8 +287,8 @@ export default function InvoiceDetailsPage() {
                   <div className="space-y-1.5">
                     <div className="flex items-center justify-between text-[11px]">
                       <span className="text-muted-foreground">
-                        {pickingComplete ? `Confirmed ${fmtDateTime(execSummary?.session?.confirmed_at)}` : "In progress"}
-                        {" · "}{totalScanned}/{totalQty} units
+                        {pickingComplete ? `${t("confirmed", "Confirmed")} ${fmtDateTime(execSummary?.session?.confirmed_at)}` : t("inProgress", "In progress")}
+                        {" · "}{totalScanned}/{totalQty} {t("units", "units")}
                       </span>
                       <span className={`font-bold ${pickingComplete ? "text-emerald-400" : "text-amber-400"}`}>
                         {totalQty > 0 ? Math.round((totalScanned / totalQty) * 100) : 0}%
@@ -304,7 +306,7 @@ export default function InvoiceDetailsPage() {
                   {pickingComplete && execLines.length > 0 && (
                     <div className="space-y-1 pt-1 border-t border-border">
                       <p className="text-[9px] font-semibold text-muted-foreground uppercase tracking-wider pt-1">
-                        Picked Items
+                        {t("pickedItems", "Picked Items")}
                       </p>
                       {execLines.map((el) => {
                         const invLine = lines.find((l) => l.id === el.invoice_line_id);
@@ -316,9 +318,9 @@ export default function InvoiceDetailsPage() {
                               <p className="text-[11px] font-medium text-foreground truncate">{pName}</p>
                               {hasBatch && (
                                 <p className="text-[10px] text-muted-foreground">
-                                  {el.batch_no ? `Batch: ${el.batch_no}` : ""}
+                                  {el.batch_no ? `${t("batch", "Batch")}: ${el.batch_no}` : ""}
                                   {el.batch_no && el.expiry_date ? " · " : ""}
-                                  {el.expiry_date ? `Exp: ${el.expiry_date}` : ""}
+                                  {el.expiry_date ? `${t("exp", "Exp")}: ${el.expiry_date}` : ""}
                                 </p>
                               )}
                             </div>
@@ -327,7 +329,7 @@ export default function InvoiceDetailsPage() {
                                 {el.qty_confirmed ?? el.qty_scanned} {invLine?.product?.uom ?? ""}
                               </span>
                               {el.returned_qty > 0 && (
-                                <p className="text-[10px] text-amber-400">-{el.returned_qty} returned</p>
+                                <p className="text-[10px] text-amber-400">-{el.returned_qty} {t("returned", "returned")}</p>
                               )}
                             </div>
                           </div>
@@ -337,7 +339,7 @@ export default function InvoiceDetailsPage() {
                   )}
                 </>
               ) : (
-                <p className="text-[11px] text-muted-foreground">No picking session started yet.</p>
+                <p className="text-[11px] text-muted-foreground">{t("noPickingSession", "No picking session started yet.")}</p>
               )}
             </div>
           </div>
@@ -358,21 +360,21 @@ export default function InvoiceDetailsPage() {
                 <div className="flex items-center gap-2 flex-wrap">
                   <RotateCcw className="w-3.5 h-3.5 text-violet-400" />
                   <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
-                    Returns
+                    {t("pageTitleReturns", "Returns")}
                   </p>
                   {postedCount > 0 && (
                     <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded border text-emerald-400 bg-emerald-500/10 border-emerald-500/20">
-                      {postedCount} posted
+                      {postedCount} {t("posted", "posted")}
                     </span>
                   )}
                   {pendingCount > 0 && (
                     <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded border text-amber-400 bg-amber-500/10 border-amber-500/20">
-                      {pendingCount} pending
+                      {pendingCount} {t("pending", "pending")}
                     </span>
                   )}
                   {returnSummary && returnSummary.totalReturnedQty > 0 && (
                     <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded border text-violet-400 bg-violet-500/10 border-violet-500/20">
-                      {returnSummary.totalReturnedQty} units
+                      {returnSummary.totalReturnedQty} {t("units", "units")}
                     </span>
                   )}
                 </div>
@@ -382,21 +384,21 @@ export default function InvoiceDetailsPage() {
                     className="flex items-center gap-1 text-[10px] px-2.5 py-1 rounded border font-medium border-violet-500/30 bg-violet-500/10 text-violet-400 hover:bg-violet-500/20 transition"
                   >
                     <Plus className="w-3 h-3" />
-                    New Return
+                    {t("newReturn", "New Return")}
                   </button>
                 )}
               </div>
 
               <div className="p-4">
                 {!hasReturns ? (
-                  <p className="text-[11px] text-muted-foreground">No return documents yet.</p>
+                  <p className="text-[11px] text-muted-foreground">{t("noReturnDocuments", "No return documents yet.")}</p>
                 ) : (
                   <div className="space-y-2">
                     {/* Per-line returned qty indicators */}
                     {Object.keys(returnSummary!.lineReturns).length > 0 && (
                       <div className="space-y-1 pb-2 border-b border-border">
                         <p className="text-[9px] font-semibold text-muted-foreground uppercase tracking-wider">
-                          Returned per line
+                          {t("returnedPerLine", "Returned per line")}
                         </p>
                         {lines.map((line) => {
                           const retQty = returnSummary!.lineReturns[line.id] ?? 0;
@@ -412,7 +414,7 @@ export default function InvoiceDetailsPage() {
                                     {line.product?.name ?? line.product_id.slice(0, 8)}
                                   </p>
                                   {fullyReturned && (
-                                    <span className="text-[9px] text-violet-400 font-semibold shrink-0">Full</span>
+                                    <span className="text-[9px] text-violet-400 font-semibold shrink-0">{t("fullReturn", "Full")}</span>
                                   )}
                                 </div>
                                 <div className="w-full h-1 rounded-full bg-muted/30 overflow-hidden mt-0.5">
@@ -450,7 +452,7 @@ export default function InvoiceDetailsPage() {
                             </div>
                             <p className="text-[10px] text-muted-foreground">
                               {fmtDate(ret.created_at)}
-                              {ret.posted_at ? ` · Posted ${fmtDate(ret.posted_at)}` : ""}
+                              {ret.posted_at ? ` · ${t("posted", "Posted")} ${fmtDate(ret.posted_at)}` : ""}
                             </p>
                           </div>
                           <span className="text-[11px] font-semibold text-foreground shrink-0">
@@ -476,7 +478,7 @@ export default function InvoiceDetailsPage() {
               className="flex items-center gap-1.5 text-xs px-4 py-2 rounded-lg bg-amber-500 text-black font-semibold hover:bg-amber-400 transition disabled:opacity-40"
             >
               {acting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Clock className="w-3.5 h-3.5" />}
-              Post to Ready
+              {t("postToReady", "Post to Ready")}
             </button>
           )}
 
@@ -486,7 +488,7 @@ export default function InvoiceDetailsPage() {
               className="flex items-center gap-1.5 text-xs px-4 py-2 rounded-lg bg-primary text-primary-foreground font-semibold hover:opacity-90 transition"
             >
               <Play className="w-3.5 h-3.5" />
-              {pickingStarted ? "Resume Picking" : "Start Picking"}
+              {pickingStarted ? t("resumePicking", "Resume Picking") : t("startPicking", "Start Picking")}
             </button>
           )}
 
@@ -497,7 +499,7 @@ export default function InvoiceDetailsPage() {
               className="flex items-center gap-1.5 text-xs px-4 py-2 rounded-lg border border-blue-500/30 bg-blue-500/10 text-blue-400 font-medium hover:bg-blue-500/20 transition disabled:opacity-40"
             >
               {acting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Truck className="w-3.5 h-3.5" />}
-              Mark Done
+              {t("markDone", "Mark Done")}
             </button>
           )}
 
@@ -508,7 +510,7 @@ export default function InvoiceDetailsPage() {
               className="flex items-center gap-1.5 text-xs px-4 py-2 rounded-lg bg-emerald-500 text-white font-semibold hover:bg-emerald-600 transition disabled:opacity-40"
             >
               {acting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
-              Mark Received
+              {t("markReceived", "Mark Received")}
             </button>
           )}
 
@@ -520,12 +522,12 @@ export default function InvoiceDetailsPage() {
                 className="flex items-center gap-1.5 text-xs px-4 py-2 rounded-lg border border-red-500/20 bg-transparent text-red-400 font-medium hover:bg-red-500/10 transition disabled:opacity-40"
               >
                 <XCircle className="w-3.5 h-3.5" />
-                Cancel
+                {t("cancel", "Cancel")}
               </button>
               {(returnSummary?.documents.length ?? 0) > 0 && (
                 <p className="w-full text-[10px] text-amber-400 flex items-center gap-1">
                   <RotateCcw className="w-3 h-3 shrink-0" />
-                  Invoice has returns — use the Returns workflow instead of cancellation.
+                  {t("invoiceHasReturns", "Invoice has returns — use the Returns workflow instead of cancellation.")}
                 </p>
               )}
             </>
@@ -536,7 +538,7 @@ export default function InvoiceDetailsPage() {
               onClick={() => navigate(`/invoice-entry/${id}`)}
               className="flex items-center gap-1.5 text-xs px-4 py-2 rounded-lg border border-border text-muted-foreground hover:bg-muted/30 transition"
             >
-              Edit
+              {t("edit", "Edit")}
             </button>
           )}
         </div>
@@ -547,14 +549,14 @@ export default function InvoiceDetailsPage() {
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
           <div className="w-full max-w-md rounded-2xl border border-border bg-card p-5 space-y-4">
             <div>
-              <h2 className="text-sm font-bold text-foreground">Cancel Invoice</h2>
+              <h2 className="text-sm font-bold text-foreground">{t("cancelInvoice", "Cancel Invoice")}</h2>
               <p className="text-xs text-muted-foreground mt-1">
                 #{header.invoice_number ?? "—"} · {header.customer_name ?? "—"}
               </p>
               {header.status === "received" && (
                 <div className="mt-2 rounded-lg bg-amber-500/8 border border-amber-500/20 px-3 py-2">
                   <p className="text-[11px] text-amber-400">
-                    RECEIVED — cancellation subject to 14-day rule from receipt date.
+                    {t("receivedCancelRule", "RECEIVED — cancellation subject to 14-day rule from receipt date.")}
                   </p>
                 </div>
               )}
@@ -562,7 +564,7 @@ export default function InvoiceDetailsPage() {
             <textarea
               value={cancelReason}
               onChange={(e) => setCancelReason(e.target.value)}
-              placeholder="Cancel reason (required)..."
+              placeholder={t("cancelReasonPlaceholder", "Cancel reason (required)...")}
               rows={3}
               className="w-full bg-background border border-border rounded-lg px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary resize-none"
             />
@@ -571,14 +573,14 @@ export default function InvoiceDetailsPage() {
                 onClick={() => setCancelModal(false)}
                 className="flex-1 py-2 rounded-lg border border-border text-xs text-muted-foreground hover:bg-muted/30 transition"
               >
-                Back
+                {t("back", "Back")}
               </button>
               <button
                 onClick={handleCancelSubmit}
                 disabled={acting || !cancelReason.trim()}
                 className="flex-1 py-2 rounded-lg bg-red-500 text-white text-xs font-semibold hover:bg-red-600 transition disabled:opacity-40"
               >
-                {acting ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : "Confirm Cancel"}
+                {acting ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : t("confirmCancel", "Confirm Cancel")}
               </button>
             </div>
           </div>
@@ -591,11 +593,12 @@ export default function InvoiceDetailsPage() {
 // ─── Timeline ──────────────────────────────────────────────────────────────
 
 function InvoiceTimeline({ header }: { header: ReturnType<typeof fetchInvoiceDetail> extends Promise<infer T> ? T["header"] : never }) {
+  const { t } = useLang();
   const STEPS = [
-    { key: "draft",    label: "Draft",    at: header.created_at,  color: "text-muted-foreground", ring: "border-border bg-muted/30" },
-    { key: "ready",    label: "Ready",    at: header.ready_at,    color: "text-amber-400",        ring: "border-amber-500/60 bg-amber-500/15" },
-    { key: "done",     label: "Done",     at: header.done_at,     color: "text-blue-400",         ring: "border-blue-500/60 bg-blue-500/15" },
-    { key: "received", label: "Received", at: header.received_at, color: "text-emerald-400",      ring: "border-emerald-500/60 bg-emerald-500/15" },
+    { key: "draft",    label: t("draft", "Draft"),       at: header.created_at,  color: "text-muted-foreground", ring: "border-border bg-muted/30" },
+    { key: "ready",    label: t("ready", "Ready"),        at: header.ready_at,    color: "text-amber-400",        ring: "border-amber-500/60 bg-amber-500/15" },
+    { key: "done",     label: t("done", "Done"),          at: header.done_at,     color: "text-blue-400",         ring: "border-blue-500/60 bg-blue-500/15" },
+    { key: "received", label: t("received", "Received"),  at: header.received_at, color: "text-emerald-400",      ring: "border-emerald-500/60 bg-emerald-500/15" },
   ];
   const ORDER      = ["draft", "ready", "done", "received"];
   const currentIdx = ORDER.indexOf(header.status);
@@ -654,7 +657,7 @@ function InvoiceTimeline({ header }: { header: ReturnType<typeof fetchInvoiceDet
                 }
               </div>
               <span className={`text-[9px] font-medium ${header.status === "cancelled" ? "text-red-400" : "text-violet-400"}`}>
-                {header.status === "cancelled" ? "Cancelled" : "Returns"}
+                {header.status === "cancelled" ? t("cancelled", "Cancelled") : t("pageTitleReturns", "Returns")}
               </span>
               {(header.status === "cancelled" ? header.cancelled_at : header.returns_at) && (
                 <span className="text-[8px] text-muted-foreground">
@@ -668,7 +671,7 @@ function InvoiceTimeline({ header }: { header: ReturnType<typeof fetchInvoiceDet
       </div>
       {header.status === "cancelled" && header.cancel_reason && (
         <p className="mt-2 text-[10px] text-muted-foreground border-t border-border pt-2">
-          Reason: {header.cancel_reason}
+          {t("reason", "Reason")}: {header.cancel_reason}
         </p>
       )}
     </div>

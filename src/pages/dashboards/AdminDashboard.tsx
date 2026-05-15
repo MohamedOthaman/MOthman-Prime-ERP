@@ -23,6 +23,7 @@ import { usePermissions } from "@/hooks/usePermissions";
 import { supabase } from "@/integrations/supabase/client";
 import { getRecentAuditLogs, type AuditLogRow } from "@/services/auditService";
 import { AlertsPanel } from "@/components/notifications/AlertsPanel";
+import { useLang } from "@/contexts/LanguageContext";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -57,21 +58,23 @@ const TIER_COLORS: Record<string, { bg: string; text: string; border: string }> 
 
 
 
-const quickActions = [
-  { label: "User Management", path: "/admin/users",     icon: Users,         color: "text-blue-400",    bg: "bg-blue-500/10",    border: "border-blue-500/20"    },
-  { label: "System Settings", path: "/admin/settings",  icon: Settings,      color: "text-slate-400",   bg: "bg-slate-500/10",   border: "border-slate-500/20"   },
-  { label: "Stock Overview",  path: "/stock",            icon: Package,       color: "text-emerald-400", bg: "bg-emerald-500/10", border: "border-emerald-500/20" },
-  { label: "Reports",         path: "/reports",          icon: BarChart3,     color: "text-violet-400",  bg: "bg-violet-500/10",  border: "border-violet-500/20"  },
-  { label: "GRN / Receiving", path: "/grn",              icon: ClipboardList, color: "text-amber-400",   bg: "bg-amber-500/10",   border: "border-amber-500/20"   },
-  { label: "Products",        path: "/products",         icon: Boxes,         color: "text-cyan-400",    bg: "bg-cyan-500/10",    border: "border-cyan-500/20"    },
-  { label: "Import / Export", path: "/import-export",    icon: FileSpreadsheet, color: "text-orange-400", bg: "bg-orange-500/10", border: "border-orange-500/20" },
-];
 
 // ─── Component ───────────────────────────────────────────────────────────────
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
+  const { t } = useLang();
   const { role, tier, isOwner } = usePermissions();
+
+  const quickActions = [
+    { label: t("manageUsers", "User Management"), path: "/admin/users",    icon: Users,          color: "text-blue-400",    bg: "bg-blue-500/10",    border: "border-blue-500/20"    },
+    { label: t("systemSettings", "System Settings"), path: "/admin/settings", icon: Settings,    color: "text-slate-400",   bg: "bg-slate-500/10",   border: "border-slate-500/20"   },
+    { label: t("stockOverview", "Stock Overview"),  path: "/stock",         icon: Package,        color: "text-emerald-400", bg: "bg-emerald-500/10", border: "border-emerald-500/20" },
+    { label: t("reports", "Reports"),               path: "/reports",       icon: BarChart3,      color: "text-violet-400",  bg: "bg-violet-500/10",  border: "border-violet-500/20"  },
+    { label: t("grnReceiving", "GRN / Receiving"),  path: "/grn",           icon: ClipboardList,  color: "text-amber-400",   bg: "bg-amber-500/10",   border: "border-amber-500/20"   },
+    { label: t("manageProducts", "Products"),        path: "/products",      icon: Boxes,          color: "text-cyan-400",    bg: "bg-cyan-500/10",    border: "border-cyan-500/20"    },
+    { label: t("importExportTitle", "Import / Export"), path: "/import-export", icon: FileSpreadsheet, color: "text-orange-400", bg: "bg-orange-500/10", border: "border-orange-500/20" },
+  ];
   const [userStats, setUserStats] = useState<UserStats | null>(null);
   const [statsLoading, setStatsLoading] = useState(true);
   const [recentLogs, setRecentLogs] = useState<AuditLogRow[]>([]);
@@ -142,7 +145,7 @@ export default function AdminDashboard() {
             </div>
             <div>
               <h1 className="text-lg font-bold tracking-tight text-foreground">
-                Admin Dashboard
+                {t("adminDashboard", "Admin Dashboard")}
               </h1>
               <p className="text-xs text-muted-foreground">{role} · {tier} tier</p>
             </div>
@@ -152,7 +155,7 @@ export default function AdminDashboard() {
                 className="flex items-center gap-1.5 text-xs bg-primary text-primary-foreground px-3 py-1.5 rounded-lg font-medium hover:opacity-90 transition"
               >
                 <UserPlus className="w-3.5 h-3.5" />
-                Manage Users
+                {t("manageUsers", "Manage Users")}
               </button>
             </div>
           </div>
@@ -167,30 +170,30 @@ export default function AdminDashboard() {
             <p className="text-xl font-bold text-foreground">
               {statsLoading ? "..." : userStats?.total ?? 0}
             </p>
-            <p className="text-xs text-muted-foreground">Total Users</p>
-            <p className="text-[10px] text-muted-foreground/70">from profiles table</p>
+            <p className="text-xs text-muted-foreground">{t("totalUsers", "Total Users")}</p>
+            <p className="text-[10px] text-muted-foreground/70">{t("fromProfilesTable", "from profiles table")}</p>
           </div>
           <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/10 p-3.5">
             <Activity className="w-5 h-5 text-emerald-400 mb-2" />
             <p className="text-xl font-bold text-foreground">
               {statsLoading ? "..." : userStats?.active ?? 0}
             </p>
-            <p className="text-xs text-muted-foreground">Active Users</p>
-            <p className="text-[10px] text-muted-foreground/70">is_active = true</p>
+            <p className="text-xs text-muted-foreground">{t("activeUsers", "Active Users")}</p>
+            <p className="text-[10px] text-muted-foreground/70">{t("isActiveTrue", "is_active = true")}</p>
           </div>
           <div className="rounded-xl border border-red-500/20 bg-red-500/10 p-3.5">
             <AlertTriangle className="w-5 h-5 text-red-400 mb-2" />
             <p className="text-xl font-bold text-foreground">
               {statsLoading ? "..." : userStats?.inactive ?? 0}
             </p>
-            <p className="text-xs text-muted-foreground">Inactive Users</p>
-            <p className="text-[10px] text-muted-foreground/70">disabled accounts</p>
+            <p className="text-xs text-muted-foreground">{t("inactiveUsers", "Inactive Users")}</p>
+            <p className="text-[10px] text-muted-foreground/70">{t("disabledAccounts", "disabled accounts")}</p>
           </div>
           <div className="rounded-xl border border-amber-500/20 bg-amber-500/10 p-3.5">
             <Bell className="w-5 h-5 text-amber-400 mb-2" />
             <p className="text-xl font-bold text-foreground">0</p>
-            <p className="text-xs text-muted-foreground">System Alerts</p>
-            <p className="text-[10px] text-muted-foreground/70">all clear</p>
+            <p className="text-xs text-muted-foreground">{t("systemAlerts", "System Alerts")}</p>
+            <p className="text-[10px] text-muted-foreground/70">{t("allClear", "all clear")}</p>
           </div>
         </div>
 
@@ -200,7 +203,7 @@ export default function AdminDashboard() {
           <div className="rounded-xl border border-border bg-card p-4">
             <div className="flex items-center gap-2 mb-3">
               <Shield className="w-4 h-4 text-violet-400" />
-              <h2 className="text-sm font-semibold text-foreground">Role Distribution</h2>
+              <h2 className="text-sm font-semibold text-foreground">{t("roleDistribution", "Role Distribution")}</h2>
               {!statsLoading && userStats && (
                 <span className="ml-auto text-[10px] font-mono text-muted-foreground">
                   {Object.keys(userStats.byRole).length} roles
@@ -236,7 +239,7 @@ export default function AdminDashboard() {
 
                 {/* Top roles breakdown */}
                 <div className="mt-3 pt-2 border-t border-border space-y-1">
-                  <p className="text-[10px] text-muted-foreground font-medium mb-1">Top roles</p>
+                  <p className="text-[10px] text-muted-foreground font-medium mb-1">{t("topRoles", "Top roles")}</p>
                   {Object.entries(userStats?.byRole ?? {})
                     .sort(([, a], [, b]) => b - a)
                     .slice(0, 5)
@@ -257,7 +260,7 @@ export default function AdminDashboard() {
           <div className="rounded-xl border border-border bg-card p-4">
             <div className="flex items-center gap-2 mb-3">
               <Clock className="w-4 h-4 text-muted-foreground" />
-              <h2 className="text-sm font-semibold text-foreground">Recent Activity</h2>
+              <h2 className="text-sm font-semibold text-foreground">{t("recentActivity", "Recent Activity")}</h2>
               {!logsLoading && (
                 <span className="ml-auto text-[10px] font-mono text-muted-foreground">
                   {recentLogs.length} entries
@@ -271,7 +274,7 @@ export default function AdminDashboard() {
             ) : recentLogs.length === 0 ? (
               <div className="flex items-center gap-2 py-4 text-xs text-muted-foreground">
                 <Activity className="w-3.5 h-3.5" />
-                No activity recorded yet
+                {t("noActivityYet", "No activity recorded yet")}
               </div>
             ) : (
               <div className="space-y-1.5">
@@ -308,7 +311,7 @@ export default function AdminDashboard() {
             <div className="flex items-center gap-2 mb-3">
               <Building2 className="w-4 h-4 text-amber-400" />
               <h2 className="text-xs font-semibold text-amber-400 uppercase tracking-wider">
-                Owner Tools
+                {t("ownerTools", "Owner Tools")}
               </h2>
             </div>
             <div className="flex items-center gap-2 flex-wrap">
@@ -317,15 +320,15 @@ export default function AdminDashboard() {
                 className="inline-flex items-center gap-1.5 rounded-md border border-amber-500/25 bg-amber-500/10 px-3 py-2 text-xs text-amber-400 font-medium hover:bg-amber-500/20 transition"
               >
                 <Eye className="w-3.5 h-3.5" />
-                View as User
+                {t("viewAsUser", "View as User")}
               </button>
               <button
                 disabled
                 className="inline-flex items-center gap-1.5 rounded-md border border-border bg-muted/30 px-3 py-2 text-xs text-muted-foreground cursor-not-allowed"
               >
                 <LayoutDashboard className="w-3.5 h-3.5" />
-                Visual Dashboard Builder
-                <span className="text-[9px] bg-muted rounded px-1 py-0.5 ml-1">Coming Soon</span>
+                {t("visualDashboardBuilder", "Visual Dashboard Builder")}
+                <span className="text-[9px] bg-muted rounded px-1 py-0.5 ml-1">{t("comingSoon2", "Coming Soon")}</span>
               </button>
             </div>
           </div>
@@ -334,7 +337,7 @@ export default function AdminDashboard() {
         {/* ── Quick Actions ──────────────────────────────────── */}
         <div>
           <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
-            Quick Actions
+            {t("quickActions", "Quick Actions")}
           </h2>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
             {quickActions.map((action) => {

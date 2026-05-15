@@ -60,7 +60,7 @@ const Index = () => {
         setOperationalError(
           loadError instanceof Error
             ? loadError.message
-            : "Failed to load warehouse inventory visibility."
+            : t("failedToLoadWarehouseInventory", "Failed to load warehouse inventory visibility.")
         );
       } finally {
         setOperationalLoading(false);
@@ -77,10 +77,10 @@ const Index = () => {
 
   const filterGroups = useMemo<FilterDropdownGroup[]>(
     () => [
-      { key: "brand", label: "Brands", options: sortValues(flatProducts.map((product) => product.brand)) },
-      { key: "category", label: "Category", options: sortValues(flatProducts.map((product) => product.category)) },
-      { key: "storage", label: "Storage", options: sortValues(flatProducts.map((product) => product.storageType)) },
-      { key: "section", label: "Section", options: sortValues(flatProducts.map((product) => product.section)) },
+      { key: "brand", label: t("brands", "Brands"), options: sortValues(flatProducts.map((product) => product.brand)) },
+      { key: "category", label: t("category", "Category"), options: sortValues(flatProducts.map((product) => product.category)) },
+      { key: "storage", label: t("storage", "Storage"), options: sortValues(flatProducts.map((product) => product.storageType)) },
+      { key: "section", label: t("section", "Section"), options: sortValues(flatProducts.map((product) => product.section)) },
     ],
     [flatProducts]
   );
@@ -227,26 +227,26 @@ const Index = () => {
 
   const handleExportExcel = () => {
     void exportExcel({
-      title: "Stock Report",
-      subtitle: `${filteredProducts.length} filtered products`,
+      title: t("stockReport", "Stock Report"),
+      subtitle: `${filteredProducts.length} ${t("filteredProducts", "filtered products")}`,
       filename: "stock_filtered",
-      sheetName: "Stock",
+      sheetName: t("stock", "Stock"),
       columns: [
-        { header: "Code", key: "code", width: 14 },
-        { header: "Item Code", key: "itemCode", width: 14 },
-        { header: "Product Name", key: "name", width: 30 },
-        { header: "Arabic Name", key: "nameAr", width: 26 },
-        { header: "Brand", key: "brand", width: 18 },
-        { header: "Category", key: "category", width: 18 },
-        { header: "Section", key: "section", width: 18 },
-        { header: "Storage", key: "storage", width: 12 },
-        { header: "Barcode", key: "barcode", width: 16 },
-        { header: "Packaging", key: "packaging", width: 14 },
-        { header: "Qty", key: "qty", width: 18 },
-        { header: "Unit", key: "unit", width: 10 },
-        { header: "Batch Count", key: "batchCount", width: 12 },
-        { header: "Nearest Expiry", key: "nearestExpiry", width: 14 },
-        { header: "Status", key: "status", width: 14 },
+        { header: t("code", "Code"), key: "code", width: 14 },
+        { header: t("itemCode", "Item Code"), key: "itemCode", width: 14 },
+        { header: t("productName", "Product Name"), key: "name", width: 30 },
+        { header: t("arabicName", "Arabic Name"), key: "nameAr", width: 26 },
+        { header: t("brand", "Brand"), key: "brand", width: 18 },
+        { header: t("category", "Category"), key: "category", width: 18 },
+        { header: t("section", "Section"), key: "section", width: 18 },
+        { header: t("storage", "Storage"), key: "storage", width: 12 },
+        { header: t("barcode", "Barcode"), key: "barcode", width: 16 },
+        { header: t("packaging", "Packaging"), key: "packaging", width: 14 },
+        { header: t("qty", "Qty"), key: "qty", width: 18 },
+        { header: t("unit", "Unit"), key: "unit", width: 10 },
+        { header: t("batchCount", "Batch Count"), key: "batchCount", width: 12 },
+        { header: t("nearestExpiry", "Nearest Expiry"), key: "nearestExpiry", width: 14 },
+        { header: t("status", "Status"), key: "status", width: 14 },
       ],
       rows: exportRows,
     });
@@ -254,26 +254,26 @@ const Index = () => {
 
   const handleExportPdf = () => {
     exportPDF({
-      title: "Stock Report",
-      subtitle: `${filteredProducts.length} filtered products`,
+      title: t("stockReport", "Stock Report"),
+      subtitle: `${filteredProducts.length} ${t("filteredProducts", "filtered products")}`,
       filename: "stock_filtered",
-      sheetName: "Stock",
+      sheetName: t("stock", "Stock"),
       columns: [
-        { header: "Code", key: "code" },
-        { header: "Item Code", key: "itemCode" },
-        { header: "Product Name", key: "name" },
-        { header: "Arabic Name", key: "nameAr" },
-        { header: "Brand", key: "brand" },
-        { header: "Category", key: "category" },
-        { header: "Section", key: "section" },
-        { header: "Storage", key: "storage" },
-        { header: "Barcode", key: "barcode" },
-        { header: "Packaging", key: "packaging" },
-        { header: "Qty", key: "qty" },
-        { header: "Unit", key: "unit" },
-        { header: "Batch Count", key: "batchCount" },
-        { header: "Nearest Expiry", key: "nearestExpiry" },
-        { header: "Status", key: "status" },
+        { header: t("code", "Code"), key: "code" },
+        { header: t("itemCode", "Item Code"), key: "itemCode" },
+        { header: t("productName", "Product Name"), key: "name" },
+        { header: t("arabicName", "Arabic Name"), key: "nameAr" },
+        { header: t("brand", "Brand"), key: "brand" },
+        { header: t("category", "Category"), key: "category" },
+        { header: t("section", "Section"), key: "section" },
+        { header: t("storage", "Storage"), key: "storage" },
+        { header: t("barcode", "Barcode"), key: "barcode" },
+        { header: t("packaging", "Packaging"), key: "packaging" },
+        { header: t("qty", "Qty"), key: "qty" },
+        { header: t("unit", "Unit"), key: "unit" },
+        { header: t("batchCount", "Batch Count"), key: "batchCount" },
+        { header: t("nearestExpiry", "Nearest Expiry"), key: "nearestExpiry" },
+        { header: t("status", "Status"), key: "status" },
       ],
       rows: exportRows,
     });
@@ -285,9 +285,9 @@ const Index = () => {
         <div className="max-w-5xl mx-auto">
           <div className="mb-2 flex items-center gap-2">
             <Package className="w-5 h-5 text-primary" />
-            <h1 className="text-lg font-bold tracking-tight text-foreground">{t("stockOverview")}</h1>
+            <h1 className="text-lg font-bold tracking-tight text-foreground">{t("stockOverview", "Stock Overview")}</h1>
             <span className="ml-auto flex items-center gap-2 font-mono text-xs text-muted-foreground">
-              {totalProducts} {t("items")}
+              {totalProducts} {t("items", "Items")}
             </span>
           </div>
           <div className="flex flex-wrap items-center gap-2">
@@ -295,7 +295,7 @@ const Index = () => {
               <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground rtl:left-auto rtl:right-3" />
               <input
                 type="text"
-                placeholder={t("searchProduct")}
+                placeholder={t("searchProducts", "Search products...")}
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="h-9 w-full rounded-md border border-border bg-secondary py-2 pl-8 pr-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring rtl:pl-3 rtl:pr-8"
@@ -329,14 +329,14 @@ const Index = () => {
                 className="rounded-lg border border-border bg-card p-4"
               >
                 <div className="text-xs uppercase tracking-[0.14em] text-muted-foreground">
-                  Expiry {threshold}D
+                  {t("expiry", "Expiry")} {threshold}D
                 </div>
                 <div className="mt-2 text-2xl font-semibold text-foreground">
                   {alert?.batch_count ?? 0}
                 </div>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  {(alert?.product_count ?? 0)} products |{" "}
-                  {(alert?.total_quantity ?? 0).toFixed(3)} qty
+                  {(alert?.product_count ?? 0)} {t("products", "products")} |{" "}
+                  {(alert?.total_quantity ?? 0).toFixed(3)} {t("qty", "qty")}
                 </p>
               </div>
             );
@@ -348,14 +348,14 @@ const Index = () => {
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div>
                 <h2 className="text-sm font-semibold text-foreground">
-                  Batch Visibility
+                  {t("batchVisibility", "Batch Visibility")}
                 </h2>
                 <p className="text-xs text-muted-foreground">
-                  FEFO-sorted warehouse batches with expiry and operational status.
+                  {t("batchVisibilityDesc", "FEFO-sorted warehouse batches with expiry and operational status.")}
                 </p>
               </div>
               <div className="text-xs text-muted-foreground">
-                {filteredBatchRows.length} visible batches
+                {filteredBatchRows.length} {t("visibleBatches", "visible batches")}
               </div>
             </div>
           </div>
@@ -366,22 +366,22 @@ const Index = () => {
             </div>
           ) : operationalLoading ? (
             <div className="px-4 py-6 text-sm text-muted-foreground">
-              Loading warehouse visibility...
+              {t("loadingStock", "Loading stock data...")}
             </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="min-w-[1120px] w-full text-left text-sm">
                 <thead className="bg-secondary/50 text-[11px] uppercase tracking-[0.12em] text-muted-foreground">
                   <tr>
-                    <th className="px-3 py-2">FEFO</th>
-                    <th className="px-3 py-2">Product</th>
-                    <th className="px-3 py-2">Batch</th>
-                    <th className="px-3 py-2">Expiry</th>
-                    <th className="px-3 py-2">Days</th>
-                    <th className="px-3 py-2">Available</th>
-                    <th className="px-3 py-2">Reserved</th>
-                    <th className="px-3 py-2">Status</th>
-                    <th className="px-3 py-2">Reference</th>
+                    <th className="px-3 py-2">{t("fefo", "FEFO")}</th>
+                    <th className="px-3 py-2">{t("product", "Product")}</th>
+                    <th className="px-3 py-2">{t("batchNumber", "Batch Number")}</th>
+                    <th className="px-3 py-2">{t("expiryDate", "Expiry Date")}</th>
+                    <th className="px-3 py-2">{t("days", "Days")}</th>
+                    <th className="px-3 py-2">{t("available", "Available")}</th>
+                    <th className="px-3 py-2">{t("reserved", "Reserved")}</th>
+                    <th className="px-3 py-2">{t("status", "Status")}</th>
+                    <th className="px-3 py-2">{t("reference", "Reference")}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -440,7 +440,7 @@ const Index = () => {
         {grouped.length === 0 ? (
           <div className="py-16 text-center text-muted-foreground">
             <Package className="mx-auto mb-3 h-10 w-10 opacity-40" />
-            <p className="text-sm">{t("noProducts")}</p>
+            <p className="text-sm">{t("noProductsFound", "No products found")}</p>
           </div>
         ) : (
           grouped.map((brand) => (

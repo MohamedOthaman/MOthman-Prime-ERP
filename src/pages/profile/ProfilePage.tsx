@@ -1,3 +1,5 @@
+import { useMemo } from "react";
+import { useLang } from "@/contexts/LanguageContext";
 import {
   LogOut,
   Shield,
@@ -205,6 +207,7 @@ function TrendIndicator({ trend, value }: { trend?: string; value?: string }) {
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function ProfilePage() {
+  const { t } = useLang();
   const { user, signOut } = useAuth();
   const permissions = usePermissions();
   const navigate = useNavigate();
@@ -215,7 +218,53 @@ export default function ProfilePage() {
   const fullName = user?.user_metadata?.full_name as string | undefined;
   const initials = getInitials(fullName, user?.email);
   const tierIndex = TIER_STEPS.indexOf(tier);
-  const deptLabel = DEPT_LABELS[department] ?? department;
+
+  const TIER_LABELS_I18N = useMemo<Record<string, string>>(() => ({
+    owner: t("tierOwner", "Owner"),
+    executive: t("tierExecutive", "Executive"),
+    admin: t("tierAdmin", "Admin"),
+    manager: t("tierManager", "Manager"),
+    user: t("tierStaff", "Staff"),
+  }), [t]);
+
+  const DEPT_I18N = useMemo<Record<string, string>>(() => ({
+    operations: t("deptOperations", "Operations"),
+    executive: t("deptExecutive", "Executive"),
+    sales: t("deptSales", "Sales"),
+    warehouse: t("deptWarehouse", "Warehouse & Inventory"),
+    purchasing: t("deptPurchasing", "Purchasing"),
+    finance: t("deptFinance", "Finance & Accounting"),
+    invoicing: t("deptInvoicing", "Invoicing"),
+    marketing: t("deptMarketing", "Marketing"),
+    hr: t("deptHr", "Human Resources"),
+    general: t("deptGeneral", "General"),
+  }), [t]);
+
+  const PERMISSIONS_I18N = useMemo(() => ([
+    { key: "canManageInvoices" as const, label: t("permManageInvoices", "Manage Invoices"), icon: FileText },
+    { key: "canManageReceiving" as const, label: t("permGrnReceiving", "GRN / Receiving"), icon: Truck },
+    { key: "canManageStock" as const, label: t("permStockProducts", "Stock & Products"), icon: Package },
+    { key: "canManageCustomers" as const, label: t("permCustomers", "Customers"), icon: Users },
+    { key: "canManageSalesmen" as const, label: t("permSalesmen", "Salesmen"), icon: Users },
+    { key: "canViewReports" as const, label: t("permReports", "Reports"), icon: BarChart3 },
+    { key: "canImportExport" as const, label: t("permImportExport", "Import / Export"), icon: FileSpreadsheet },
+    { key: "canEditUsers" as const, label: t("permUserManagement", "User Management"), icon: Shield },
+    { key: "canPreviewAsUser" as const, label: t("permViewAsUser", "View as Other User"), icon: Eye },
+    { key: "canUseVisualBuilder" as const, label: t("permDashboardBuilder", "Dashboard Builder"), icon: LayoutDashboard },
+  ]), [t]);
+
+  const KPI_LABEL_I18N = useMemo<Record<string, string>>(() => ({
+    "Total Sales": t("kpiTotalSales", "Total Sales"),
+    "Inventory Health": t("kpiInventoryHealth", "Inventory Health"),
+    "Activity Count": t("kpiActivityCount", "Activity Count"),
+  }), [t]);
+
+  const ACTION_LABEL_I18N = useMemo<Record<string, string>>(() => ({
+    "View Reports": t("viewReports", "View Reports"),
+    "Check Stock": t("checkStock", "Check Stock"),
+  }), [t]);
+
+  const deptLabel = DEPT_I18N[department] ?? department;
 
   // Get mock KPIs and quick actions for the current user
   const userEmail = user?.email ?? "";
@@ -245,9 +294,9 @@ export default function ProfilePage() {
             className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition text-sm shrink-0"
           >
             <ArrowLeft className="w-4 h-4" />
-            <span className="hidden sm:inline">Back</span>
+            <span className="hidden sm:inline">{t("back", "Back")}</span>
           </button>
-          <h1 className="text-[14px] font-semibold text-foreground">My Profile</h1>
+          <h1 className="text-[14px] font-semibold text-foreground">{t("myProfile", "My Profile")}</h1>
         </div>
       </header>
 
@@ -273,7 +322,7 @@ export default function ProfilePage() {
               <div className="flex items-center gap-2 mt-2.5 flex-wrap">
                 <span className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[11px] font-semibold ${cfg.bg} ${cfg.border} ${cfg.color}`}>
                   <TierIcon className="w-3 h-3" />
-                  {cfg.label}
+                  {TIER_LABELS_I18N[tier]}
                 </span>
                 <span className="inline-flex items-center rounded-full border border-border bg-muted/40 px-2.5 py-0.5 text-[11px] font-medium text-muted-foreground capitalize">
                   {role.replace(/_/g, " ")}
@@ -289,7 +338,7 @@ export default function ProfilePage() {
         {/* ── KPI Cards ───────────────────────────────────────── */}
         <div>
           <h3 className="text-[11px] font-semibold text-muted-foreground uppercase tracking-widest mb-2.5">
-            Key Metrics
+            {t("keyMetrics", "Key Metrics")}
           </h3>
           <div className="grid grid-cols-3 gap-3">
             {kpis.map((kpi) => {
@@ -307,7 +356,7 @@ export default function ProfilePage() {
                   </p>
                   <div className="flex items-center justify-between mt-1">
                     <p className="text-[11px] text-muted-foreground">
-                      {kpi.label}
+                      {KPI_LABEL_I18N[kpi.label] ?? kpi.label}
                     </p>
                     <TrendIndicator trend={kpi.trend} value={kpi.trendValue} />
                   </div>
@@ -320,7 +369,7 @@ export default function ProfilePage() {
         {/* ── Quick Actions ───────────────────────────────────── */}
         <div>
           <h3 className="text-[11px] font-semibold text-muted-foreground uppercase tracking-widest mb-2.5">
-            Quick Actions
+            {t("quickActions", "Quick Actions")}
           </h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             {quickActions.map((action) => {
@@ -335,7 +384,7 @@ export default function ProfilePage() {
                     <ActionIcon className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-foreground">{action.label}</p>
+                    <p className="text-sm font-medium text-foreground">{ACTION_LABEL_I18N[action.label] ?? action.label}</p>
                   </div>
                   <ChevronRight className="w-4 h-4 text-muted-foreground/40" />
                 </button>
@@ -347,7 +396,7 @@ export default function ProfilePage() {
         {/* ── Authority tier visualization ───────────────────── */}
         <div className="rounded-xl border border-border bg-card p-4">
           <h3 className="text-[11px] font-semibold text-muted-foreground uppercase tracking-widest mb-4">
-            Authority Level
+            {t("accessLevel", "Access Level")}
           </h3>
           <div className="flex items-start gap-0">
             {TIER_STEPS.map((step, idx) => {
@@ -363,7 +412,7 @@ export default function ProfilePage() {
                       <StepIcon className={`w-3.5 h-3.5 ${isActive ? sc.color : "text-muted-foreground"}`} />
                     </div>
                     <span className={`text-[9px] font-semibold text-center leading-tight ${isActive ? sc.color : "text-muted-foreground"}`}>
-                      {sc.label}
+                      {TIER_LABELS_I18N[step]}
                     </span>
                   </div>
                   {idx < TIER_STEPS.length - 1 && (
@@ -378,10 +427,10 @@ export default function ProfilePage() {
         {/* ── Permission matrix ──────────────────────────────── */}
         <div className="rounded-xl border border-border bg-card p-4">
           <h3 className="text-[11px] font-semibold text-muted-foreground uppercase tracking-widest mb-3">
-            Access & Permissions
+            {t("myPermissions", "My Permissions")}
           </h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
-            {PERMISSIONS.map(({ key, label, icon: Icon }) => {
+            {PERMISSIONS_I18N.map(({ key, label, icon: Icon }) => {
               const granted = permissions[key] as boolean;
               return (
                 <div
@@ -405,7 +454,7 @@ export default function ProfilePage() {
         {/* ── Account actions ────────────────────────────────── */}
         <div className="rounded-xl border border-border bg-card overflow-hidden">
           <div className="px-4 pt-4 pb-1">
-            <h3 className="text-[11px] font-semibold text-muted-foreground uppercase tracking-widest">Account</h3>
+            <h3 className="text-[11px] font-semibold text-muted-foreground uppercase tracking-widest">{t("accountSettings", "Account Settings")}</h3>
           </div>
 
           {permissions.canPreviewAsUser && (
@@ -417,8 +466,8 @@ export default function ProfilePage() {
                 <Eye className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
               </div>
               <div className="flex-1 text-left">
-                <p className="text-sm font-medium text-foreground">View as Another User</p>
-                <p className="text-[11px] text-muted-foreground">Preview the system through any role's perspective</p>
+                <p className="text-sm font-medium text-foreground">{t("viewAsAnotherUser", "View as Another User")}</p>
+                <p className="text-[11px] text-muted-foreground">{t("viewAsAnotherUserHint", "Preview the system through any role's perspective")}</p>
               </div>
               <ChevronRight className="w-4 h-4 text-muted-foreground" />
             </button>
@@ -433,8 +482,8 @@ export default function ProfilePage() {
                 <LayoutDashboard className="w-3.5 h-3.5 text-violet-600 dark:text-violet-400" />
               </div>
               <div className="flex-1 text-left">
-                <p className="text-sm font-medium text-foreground">Dashboard Builder</p>
-                <p className="text-[11px] text-muted-foreground">Customize role layouts and widget configurations</p>
+                <p className="text-sm font-medium text-foreground">{t("dashboardBuilder", "Dashboard Builder")}</p>
+                <p className="text-[11px] text-muted-foreground">{t("dashboardBuilderHint", "Customize role layouts and widget configurations")}</p>
               </div>
               <ChevronRight className="w-4 h-4 text-muted-foreground" />
             </button>
@@ -449,8 +498,8 @@ export default function ProfilePage() {
                 <Settings className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
               </div>
               <div className="flex-1 text-left">
-                <p className="text-sm font-medium text-foreground">User Management</p>
-                <p className="text-[11px] text-muted-foreground">Manage accounts, roles, and access</p>
+                <p className="text-sm font-medium text-foreground">{t("userManagement", "User Management")}</p>
+                <p className="text-[11px] text-muted-foreground">{t("manageAccountsDesc", "Manage accounts, roles, and access")}</p>
               </div>
               <ChevronRight className="w-4 h-4 text-muted-foreground" />
             </button>
@@ -463,7 +512,7 @@ export default function ProfilePage() {
             <div className="w-8 h-8 rounded-lg bg-muted/50 border border-border flex items-center justify-center shrink-0 group-hover:bg-destructive/10 group-hover:border-destructive/20 transition">
               <LogOut className="w-3.5 h-3.5 text-muted-foreground group-hover:text-destructive transition" />
             </div>
-            <span className="text-sm font-medium text-foreground group-hover:text-destructive transition">Sign Out</span>
+            <span className="text-sm font-medium text-foreground group-hover:text-destructive transition">{t("signOut", "Sign Out")}</span>
           </button>
         </div>
 
@@ -471,17 +520,17 @@ export default function ProfilePage() {
         <div className="rounded-xl border border-dashed border-border/60 bg-muted/5 p-4">
           <div className="flex items-center gap-2 mb-2">
             <Clock className="w-3.5 h-3.5 text-muted-foreground/40" />
-            <span className="text-[11px] text-muted-foreground/50 font-medium">Session Info</span>
+            <span className="text-[11px] text-muted-foreground/50 font-medium">{t("sessionInfo", "Session Info")}</span>
           </div>
           <div className="space-y-1">
             <p className="text-[10px] text-muted-foreground/40 font-mono">
-              User ID: {user?.id?.slice(0, 16)}…
+              {t("userId", "User ID")}: {user?.id?.slice(0, 16)}…
             </p>
             <p className="text-[10px] text-muted-foreground/40 font-mono">
-              Last sign-in: {formatSignIn(user?.last_sign_in_at)}
+              {t("lastSignIn", "Last sign-in")}: {formatSignIn(user?.last_sign_in_at)}
             </p>
             <p className="text-[10px] text-muted-foreground/40 font-mono">
-              Role: {role} · Tier: {tier} · Dept: {department}
+              {t("roleLabel", "Role")}: {role} · {t("tierLabel", "Tier")}: {tier} · {t("deptLabel", "Dept")}: {department}
             </p>
           </div>
         </div>

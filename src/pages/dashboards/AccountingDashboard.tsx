@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { usePermissions } from "@/hooks/usePermissions";
+import { useLang } from "@/contexts/LanguageContext";
 import {
   fetchInvoiceStatusCounts,
   fetchReturnCounts,
@@ -78,69 +79,34 @@ function useAccountingData() {
   return { data, loading };
 }
 
-// ─── Role labels ──────────────────────────────────────────────────────────────
-
-const ROLE_LABELS: Record<string, string> = {
-  accountant:   "Accountant",
-  accounting:   "Accounting",
-  cashier:      "Cashier",
-};
-
-// ─── Actions ─────────────────────────────────────────────────────────────────
-
-const ACTIONS: ActionItem[] = [
-  {
-    label: "Invoice List",
-    path: "/invoices",
-    icon: FileText,
-    color: "text-blue-400",
-    bg: "bg-blue-500/10",
-    border: "border-blue-500/20",
-    description: "Review all invoices",
-  },
-  {
-    label: "Returns",
-    path: "/returns",
-    icon: RotateCcw,
-    color: "text-violet-400",
-    bg: "bg-violet-500/10",
-    border: "border-violet-500/20",
-    description: "Process returns",
-  },
-  {
-    label: "Customers",
-    path: "/customers",
-    icon: Users,
-    color: "text-cyan-400",
-    bg: "bg-cyan-500/10",
-    border: "border-cyan-500/20",
-    description: "Customer accounts",
-  },
-  {
-    label: "Reports",
-    path: "/reports",
-    icon: BarChart3,
-    color: "text-amber-400",
-    bg: "bg-amber-500/10",
-    border: "border-amber-500/20",
-    description: "Financial reports",
-  },
-];
-
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function AccountingDashboard() {
   const navigate = useNavigate();
+  const { t } = useLang();
   const { role } = usePermissions();
   const { data, loading } = useAccountingData();
 
+  const ROLE_LABELS: Record<string, string> = {
+    accountant: t("roleAccountant", "Accountant"),
+    accounting: t("roleAccounting", "Accounting"),
+    cashier:    t("roleCashier", "Cashier"),
+  };
+
   const roleLabel = ROLE_LABELS[role] ?? role.replace(/_/g, " ");
+
+  const actions: ActionItem[] = [
+    { label: t("invoiceList", "Invoice List"), path: "/invoices",  icon: FileText, color: "text-blue-400",   bg: "bg-blue-500/10",   border: "border-blue-500/20",   description: t("reviewAllInvoices", "Review all invoices") },
+    { label: t("pageTitleReturns", "Returns"), path: "/returns",   icon: RotateCcw, color: "text-violet-400", bg: "bg-violet-500/10", border: "border-violet-500/20", description: t("processReturns", "Process returns") },
+    { label: t("customersNav", "Customers"),   path: "/customers", icon: Users,    color: "text-cyan-400",   bg: "bg-cyan-500/10",   border: "border-cyan-500/20",   description: t("customerAccounts", "Customer accounts") },
+    { label: t("reports", "Reports"),          path: "/reports",   icon: BarChart3, color: "text-amber-400", bg: "bg-amber-500/10",  border: "border-amber-500/20",  description: t("financialReports", "Financial reports") },
+  ];
 
   const kpis: KpiItem[] = [
     {
-      label: "Done Today",
+      label: t("doneToday", "Done Today"),
       value: data?.invoices.doneToday ?? "—",
-      sub: "Invoices executed today",
+      sub: t("invoicesExecutedToday", "Invoices executed today"),
       icon: TrendingDown,
       color: "text-emerald-500",
       bg: "bg-emerald-500/10",
@@ -149,9 +115,9 @@ export default function AccountingDashboard() {
       trend: data?.invoices.doneToday ? "up" : "neutral",
     },
     {
-      label: "Ready",
+      label: t("ready", "Ready"),
       value: data?.invoices.ready ?? "—",
-      sub: "Awaiting execution",
+      sub: t("awaitingExecution", "Awaiting execution"),
       icon: Clock,
       color: "text-amber-500",
       bg: "bg-amber-500/10",
@@ -159,9 +125,9 @@ export default function AccountingDashboard() {
       loading,
     },
     {
-      label: "Pending Returns",
+      label: t("pendingReturns", "Pending Returns"),
       value: data?.returns.draft ?? "—",
-      sub: "Awaiting processing",
+      sub: t("awaitingProcessing", "Awaiting processing"),
       icon: RotateCcw,
       color: data?.returns.draft ? "text-violet-500" : "text-muted-foreground",
       bg: data?.returns.draft ? "bg-violet-500/10" : "bg-muted/20",
@@ -169,9 +135,9 @@ export default function AccountingDashboard() {
       loading,
     },
     {
-      label: "Cancelled",
+      label: t("cancelled", "Cancelled"),
       value: data?.invoices.cancelled ?? "—",
-      sub: "Requires review",
+      sub: t("requiresReview", "Requires review"),
       icon: XCircle,
       color: data?.invoices.cancelled ? "text-red-500" : "text-muted-foreground",
       bg: data?.invoices.cancelled ? "bg-red-500/10" : "bg-muted/20",
@@ -183,8 +149,8 @@ export default function AccountingDashboard() {
   return (
     <DashboardShell
       icon={DollarSign}
-      title="Accounting Dashboard"
-      subtitle={`${roleLabel} · Financial Review & Invoice Oversight`}
+      title={t("accountingDashboard", "Accounting Dashboard")}
+      subtitle={`${roleLabel} · ${t("financialReviewSubtitle", "Financial Review & Invoice Oversight")}`}
       accent="blue"
       headerAction={
         <button
@@ -192,16 +158,15 @@ export default function AccountingDashboard() {
           className="flex items-center gap-1.5 text-xs bg-primary text-primary-foreground px-3 py-1.5 rounded-lg font-medium hover:opacity-90 transition shrink-0"
         >
           <BarChart3 className="w-3.5 h-3.5" />
-          Reports
+          {t("reports", "Reports")}
         </button>
       }
     >
       <KpiGrid items={kpis} />
 
       <div className="grid md:grid-cols-2 gap-4">
-        {/* Invoice financial summary */}
         <SectionCard
-          title="Invoice Breakdown"
+          title={t("invoiceBreakdown", "Invoice Breakdown")}
           icon={Receipt}
           iconClass="text-blue-400"
           action={
@@ -209,18 +174,18 @@ export default function AccountingDashboard() {
               onClick={() => navigate("/invoices")}
               className="text-[10px] text-primary font-medium hover:underline"
             >
-              View all →
+              {t("viewAll", "View all →")}
             </button>
           }
         >
           <PipelineBar
             rows={[
-              { label: "Draft",     count: data?.invoices.draft    ?? 0, bar: "bg-muted-foreground/30", text: "text-muted-foreground" },
-              { label: "Ready",     count: data?.invoices.ready    ?? 0, bar: "bg-amber-500",           text: "text-amber-400" },
-              { label: "Done",      count: data?.invoices.done     ?? 0, bar: "bg-emerald-500",         text: "text-emerald-400" },
-              { label: "Received",  count: data?.invoices.received ?? 0, bar: "bg-blue-500",            text: "text-blue-400" },
-              { label: "Cancelled", count: data?.invoices.cancelled ?? 0, bar: "bg-red-500",            text: "text-red-400" },
-              { label: "Returns",   count: data?.invoices.returns  ?? 0, bar: "bg-violet-500",          text: "text-violet-400" },
+              { label: t("draft", "Draft"),     count: data?.invoices.draft    ?? 0, bar: "bg-muted-foreground/30", text: "text-muted-foreground" },
+              { label: t("ready", "Ready"),     count: data?.invoices.ready    ?? 0, bar: "bg-amber-500",           text: "text-amber-400" },
+              { label: t("done", "Done"),       count: data?.invoices.done     ?? 0, bar: "bg-emerald-500",         text: "text-emerald-400" },
+              { label: t("received", "Received"), count: data?.invoices.received ?? 0, bar: "bg-blue-500",          text: "text-blue-400" },
+              { label: t("cancelled", "Cancelled"), count: data?.invoices.cancelled ?? 0, bar: "bg-red-500",        text: "text-red-400" },
+              { label: t("pageTitleReturns", "Returns"), count: data?.invoices.returns ?? 0, bar: "bg-violet-500", text: "text-violet-400" },
             ] satisfies PipelineRow[]}
             total={data?.invoices.total ?? 0}
             loading={loading}
@@ -229,25 +194,24 @@ export default function AccountingDashboard() {
           <div className="pt-3 border-t border-border grid grid-cols-2 gap-3 text-center">
             <div>
               <p className="text-2xl font-bold text-foreground">{loading ? "…" : data?.invoices.total ?? 0}</p>
-              <p className="text-[10px] text-muted-foreground">Total invoices</p>
+              <p className="text-[10px] text-muted-foreground">{t("totalInvoicesCount", "Total invoices")}</p>
             </div>
             <div>
               <p className="text-2xl font-bold text-foreground">{loading ? "…" : data?.customerCount ?? 0}</p>
-              <p className="text-[10px] text-muted-foreground">Customers</p>
+              <p className="text-[10px] text-muted-foreground">{t("customersNav", "Customers")}</p>
             </div>
           </div>
         </SectionCard>
 
-        {/* Returns & recent invoices */}
         <SectionCard
-          title="Recent Invoices"
+          title={t("recentInvoices", "Recent Invoices")}
           icon={FileText}
           iconClass="text-blue-400"
         >
           {loading ? (
             <LoadingRows count={5} />
           ) : !data || data.invoices.recent.length === 0 ? (
-            <EmptyState icon={FileText} message="No invoices yet" sub="Invoices will appear here once created" />
+            <EmptyState icon={FileText} message={t("noInvoicesYet", "No invoices yet")} sub={t("invoicesWillAppear", "Invoices will appear here once created")} />
           ) : (
             <>
               <div className="space-y-1.5">
@@ -271,20 +235,19 @@ export default function AccountingDashboard() {
                 ))}
               </div>
 
-              {/* Returns summary footer */}
               {data.returns && (
                 <div className="mt-3 pt-3 border-t border-border grid grid-cols-3 gap-2 text-center">
                   <div>
                     <p className="text-base font-bold text-violet-400">{data.returns.draft}</p>
-                    <p className="text-[9px] text-muted-foreground">Pending</p>
+                    <p className="text-[9px] text-muted-foreground">{t("pending", "Pending")}</p>
                   </div>
                   <div>
                     <p className="text-base font-bold text-emerald-400">{data.returns.received}</p>
-                    <p className="text-[9px] text-muted-foreground">Processed</p>
+                    <p className="text-[9px] text-muted-foreground">{t("processed", "Processed")}</p>
                   </div>
                   <div>
                     <p className="text-base font-bold text-red-400">{data.returns.cancelled}</p>
-                    <p className="text-[9px] text-muted-foreground">Cancelled</p>
+                    <p className="text-[9px] text-muted-foreground">{t("cancelled", "Cancelled")}</p>
                   </div>
                 </div>
               )}
@@ -293,23 +256,22 @@ export default function AccountingDashboard() {
         </SectionCard>
       </div>
 
-      {/* Financial placeholders (no real data yet) */}
       <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
         {[
-          { label: "Customer Balances",    sub: "AR overview",         color: "text-blue-400",    bg: "bg-blue-500/10",    border: "border-blue-500/20",    icon: Users },
-          { label: "Payment Receipts",     sub: "Payments received",   color: "text-emerald-400", bg: "bg-emerald-500/10", border: "border-emerald-500/20", icon: CheckCircle2 },
-          { label: "Outstanding Invoices", sub: "Awaiting collection", color: "text-amber-400",   bg: "bg-amber-500/10",   border: "border-amber-500/20",   icon: Clock },
+          { label: t("customerBalances", "Customer Balances"),      sub: t("arOverview", "AR overview"),            color: "text-blue-400",    bg: "bg-blue-500/10",    border: "border-blue-500/20",    icon: Users },
+          { label: t("paymentReceipts", "Payment Receipts"),        sub: t("paymentsReceived", "Payments received"), color: "text-emerald-400", bg: "bg-emerald-500/10", border: "border-emerald-500/20", icon: CheckCircle2 },
+          { label: t("outstandingInvoices", "Outstanding Invoices"),sub: t("awaitingCollection", "Awaiting collection"), color: "text-amber-400", bg: "bg-amber-500/10", border: "border-amber-500/20",   icon: Clock },
         ].map(({ label, sub, color, bg, border, icon: Icon }) => (
           <div key={label} className={`rounded-xl border ${border} ${bg} p-4 opacity-60`}>
             <Icon className={`w-4 h-4 ${color} mb-2`} />
             <p className="text-sm font-semibold text-foreground">{label}</p>
             <p className="text-[10px] text-muted-foreground">{sub}</p>
-            <p className="text-[9px] text-muted-foreground mt-1 italic">Coming soon</p>
+            <p className="text-[9px] text-muted-foreground mt-1 italic">{t("comingSoon", "Coming soon")}</p>
           </div>
         ))}
       </div>
 
-      <ActionGrid actions={ACTIONS} onNavigate={navigate} cols={4} />
+      <ActionGrid actions={actions} onNavigate={navigate} cols={4} />
     </DashboardShell>
   );
 }

@@ -12,6 +12,7 @@ import {
   Truck, XCircle, RotateCcw, Clock, Loader2, ChevronRight,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { useLang } from "@/contexts/LanguageContext";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useSalesmanScope } from "@/hooks/useSalesmanScope";
 import {
@@ -43,6 +44,16 @@ const STATUS_CONFIG: Record<
 
 const TABS: (SalesInvoiceStatus | "all")[] = ["all", "ready", "done", "received", "draft", "cancelled", "returns"];
 
+const TAB_KEYS: Record<SalesInvoiceStatus | "all", string> = {
+  all:       "all",
+  draft:     "draft",
+  ready:     "ready",
+  done:      "done",
+  received:  "received",
+  cancelled: "cancelled",
+  returns:   "returns",
+};
+
 function fmtDate(iso: string | null | undefined) {
   if (!iso) return "—";
   return new Date(iso).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "2-digit" });
@@ -59,6 +70,7 @@ type Invoice = Awaited<ReturnType<typeof fetchInvoiceList>>[number];
 
 export default function InvoiceListPage() {
   const navigate = useNavigate();
+  const { t } = useLang();
   const { isAdmin, isManager, canManageInvoices, role } = usePermissions();
   const { salesmanId, loading: scopeLoading } = useSalesmanScope();
 
@@ -114,7 +126,7 @@ export default function InvoiceListPage() {
     setBusy(inv.id, true);
     try {
       await markDoneMutation.mutateAsync(inv.id);
-      toast.success(`Invoice ${inv.invoice_number ?? inv.id.slice(0,8)} marked DONE`);
+      toast.success(`${t("invoiceLabel", "Invoice")} ${inv.invoice_number ?? inv.id.slice(0,8)} ${t("markedDone", "marked Done")}`);
     } catch (e: any) { toast.error(e.message); }
     setBusy(inv.id, false);
   };
@@ -123,24 +135,24 @@ export default function InvoiceListPage() {
     setBusy(inv.id, true);
     try {
       await markReceivedMutation.mutateAsync(inv.id);
-      toast.success(`Invoice ${inv.invoice_number ?? inv.id.slice(0,8)} marked RECEIVED`);
+      toast.success(`${t("invoiceLabel", "Invoice")} ${inv.invoice_number ?? inv.id.slice(0,8)} ${t("markedReceived", "marked Received")}`);
     } catch (e: any) { toast.error(e.message); }
     setBusy(inv.id, false);
   };
 
   const handleCancelSubmit = async () => {
     if (!cancelTarget) return;
-    if (!cancelReason.trim()) { toast.error("Cancel reason required"); return; }
+    if (!cancelReason.trim()) { toast.error(t("cancelReasonRequired", "Cancel reason is required")); return; }
     setBusy(cancelTarget.id, true);
     try {
       await cancelMutation.mutateAsync({ headerId: cancelTarget.id, reason: cancelReason });
-      toast.success(`Invoice ${cancelTarget.invoice_number ?? "—"} cancelled`);
+      toast.success(`${t("invoiceLabel", "Invoice")} ${cancelTarget.invoice_number ?? "—"} ${t("invoiceCancelled", "cancelled")}`);
       setCancelTarget(null);
       setCancelReason("");
     } catch (e: any) {
       const err = e as Error & { code?: string };
       if (err.code === "14_DAY_RULE") {
-        toast.error("14-day rule: use Returns workflow instead", { duration: 5000 });
+        toast.error(t("rule14DayError", "14-day rule: use Returns workflow instead"), { duration: 5000 });
       } else {
         toast.error(err.message);
       }
@@ -160,7 +172,7 @@ export default function InvoiceListPage() {
       <header className="sticky top-11 z-40 border-b border-border bg-background/95 backdrop-blur-sm">
         <div className="max-w-5xl mx-auto px-4 py-3 flex items-center gap-3">
           <FileText className="w-5 h-5 text-blue-400 shrink-0" />
-          <h1 className="text-[15px] font-bold text-foreground flex-1">Invoices</h1>
+          <h1 className="text-[15px] font-bold text-foreground flex-1">{t("pageTitleInvoices", "Invoices")}</h1>
           <button
             onClick={load}
             disabled={loading}
@@ -174,7 +186,7 @@ export default function InvoiceListPage() {
               className="flex items-center gap-1.5 text-xs bg-primary text-primary-foreground px-3 py-1.5 rounded-lg font-medium hover:opacity-90 transition"
             >
               <Plus className="w-3.5 h-3.5" />
-              New
+              {t("invoiceNew", "New")}
             </button>
           )}
         </div>
@@ -182,21 +194,21 @@ export default function InvoiceListPage() {
         {/* Status tabs */}
         <div className="max-w-5xl mx-auto px-4 pb-2">
           <div className="flex gap-1 overflow-x-auto scrollbar-none">
-            {TABS.map(t => {
-              const cfg = STATUS_CONFIG[t];
-              const count = t === "all" ? invoices.length : (counts[t] ?? 0);
-              const active = tab === t;
+            {TABS.map(tabKey => {
+              const cfg = STATUS_CONFIG[tabKey];
+              const count = tabKey === "all" ? invoices.length : (counts[tabKey] ?? 0);
+              const active = tab === tabKey;
               return (
                 <button
-                  key={t}
-                  onClick={() => setTab(t)}
+                  key={tabKey}
+                  onClick={() => setTab(tabKey)}
                   className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-all border ${
                     active
                       ? `${cfg.bg} ${cfg.color} ${cfg.border}`
                       : "bg-transparent text-muted-foreground border-transparent hover:bg-muted/30"
                   }`}
                 >
-                  {cfg.label}
+                  {t(TAB_KEYS[tabKey], cfg.label)}
                   {count > 0 && (
                     <span className={`text-[10px] font-mono rounded-full px-1.5 py-0.5 ${active ? cfg.bg : "bg-muted/50"}`}>
                       {count}
@@ -215,7 +227,7 @@ export default function InvoiceListPage() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
           <input
             type="text"
-            placeholder="Search invoice #, customer, salesman..."
+            placeholder={t("invoiceSearch", "Search invoice #, customer, salesman...")}
             value={search}
             onChange={e => setSearch(e.target.value)}
             className="w-full bg-background border border-border rounded-lg pl-9 pr-3 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
@@ -230,10 +242,10 @@ export default function InvoiceListPage() {
         ) : filtered.length === 0 ? (
           <div className="text-center py-16 text-muted-foreground">
             <FileText className="w-10 h-10 mx-auto mb-3 opacity-20" />
-            <p className="text-sm">No invoices found</p>
+            <p className="text-sm">{t("noInvoicesFound", "No invoices found")}</p>
             {tab !== "all" && (
               <button onClick={() => setTab("all")} className="text-xs text-primary mt-2 hover:underline">
-                Show all →
+                {t("showAll", "Show all")} →
               </button>
             )}
           </div>
@@ -263,7 +275,7 @@ export default function InvoiceListPage() {
                         #{inv.invoice_number ?? inv.id.slice(0, 8)}
                       </span>
                       <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded border ${cfg.bg} ${cfg.color} ${cfg.border}`}>
-                        {inv.status.toUpperCase()}
+                        {t(inv.status, inv.status.toUpperCase())}
                       </span>
                     </div>
                     <p className="text-[11px] text-muted-foreground truncate mt-0.5">
@@ -289,7 +301,7 @@ export default function InvoiceListPage() {
                         disabled={isBusy}
                         className="text-[10px] px-2 py-1 rounded border border-blue-500/30 bg-blue-500/10 text-blue-400 font-medium hover:bg-blue-500/20 transition disabled:opacity-40"
                       >
-                        {isBusy ? <Loader2 className="w-3 h-3 animate-spin" /> : "Mark Done"}
+                        {isBusy ? <Loader2 className="w-3 h-3 animate-spin" /> : t("invoiceMarkDone", "Mark Done")}
                       </button>
                     )}
 
@@ -300,7 +312,7 @@ export default function InvoiceListPage() {
                         disabled={isBusy}
                         className="text-[10px] px-2 py-1 rounded border border-emerald-500/30 bg-emerald-500/10 text-emerald-400 font-medium hover:bg-emerald-500/20 transition disabled:opacity-40"
                       >
-                        {isBusy ? <Loader2 className="w-3 h-3 animate-spin" /> : "Received"}
+                        {isBusy ? <Loader2 className="w-3 h-3 animate-spin" /> : t("received", "Received")}
                       </button>
                     )}
 
@@ -311,7 +323,7 @@ export default function InvoiceListPage() {
                         disabled={isBusy}
                         className="text-[10px] px-2 py-1 rounded border border-red-500/20 bg-red-500/8 text-red-400 font-medium hover:bg-red-500/15 transition disabled:opacity-40"
                       >
-                        Cancel
+                        {t("cancel", "Cancel")}
                       </button>
                     )}
 
@@ -335,14 +347,14 @@ export default function InvoiceListPage() {
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
           <div className="w-full max-w-md rounded-2xl border border-border bg-card p-5 space-y-4">
             <div>
-              <h2 className="text-sm font-bold text-foreground">Cancel Invoice</h2>
+              <h2 className="text-sm font-bold text-foreground">{t("invoiceCancelAction", "Cancel Invoice")}</h2>
               <p className="text-xs text-muted-foreground mt-1">
                 #{cancelTarget.invoice_number ?? "—"} · {cancelTarget.customer_name ?? "—"}
               </p>
               {cancelTarget.status === "received" && (
                 <div className="mt-2 flex items-start gap-2 rounded-lg bg-amber-500/8 border border-amber-500/20 px-3 py-2">
                   <span className="text-[11px] text-amber-400">
-                    This invoice is RECEIVED. Cancellation is only allowed within 14 days of receipt.
+                    {t("invoiceCancelWarning", "This invoice is RECEIVED. Cancellation is only allowed within 14 days of receipt.")}
                   </span>
                 </div>
               )}
@@ -350,7 +362,7 @@ export default function InvoiceListPage() {
             <textarea
               value={cancelReason}
               onChange={e => setCancelReason(e.target.value)}
-              placeholder="Enter cancel reason (required)..."
+              placeholder={t("invoiceCancelReason", "Enter cancel reason (required)...")}
               rows={3}
               className="w-full bg-background border border-border rounded-lg px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary resize-none"
             />
@@ -359,14 +371,14 @@ export default function InvoiceListPage() {
                 onClick={() => { setCancelTarget(null); setCancelReason(""); }}
                 className="flex-1 py-2 rounded-lg border border-border text-xs text-muted-foreground hover:bg-muted/30 transition"
               >
-                Back
+                {t("back", "Back")}
               </button>
               <button
                 onClick={handleCancelSubmit}
                 disabled={busy(cancelTarget.id) || !cancelReason.trim()}
                 className="flex-1 py-2 rounded-lg bg-red-500 text-white text-xs font-semibold hover:bg-red-600 transition disabled:opacity-40 disabled:cursor-not-allowed"
               >
-                {busy(cancelTarget.id) ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : "Confirm Cancel"}
+                {busy(cancelTarget.id) ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : t("invoiceCancelConfirm", "Confirm Cancel")}
               </button>
             </div>
           </div>

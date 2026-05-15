@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { usePermissions } from "@/hooks/usePermissions";
+import { useLang } from "@/contexts/LanguageContext";
 import { supabase } from "@/integrations/supabase/client";
 import {
   fetchPickingStats,
@@ -166,107 +167,40 @@ function useWarehouseData() {
   return { base, picking, returns, movements, loading };
 }
 
-// ─── Role labels ──────────────────────────────────────────────────────────────
-
-const ROLE_LABELS: Record<string, string> = {
-  warehouse:            "Warehouse",
-  warehouse_manager:    "Warehouse Manager",
-  inventory_controller: "Inventory Controller",
-  inventory:            "Inventory",
-  qc:                   "Quality Control",
-};
-
-// ─── Actions ─────────────────────────────────────────────────────────────────
-
-const ACTIONS: ActionItem[] = [
-  {
-    label: "Picking Queue",
-    path: "/warehouse/picking",
-    icon: ScanLine,
-    color: "text-emerald-400",
-    bg: "bg-emerald-500/10",
-    border: "border-emerald-500/20",
-    description: "Start picking",
-  },
-  {
-    label: "Returns",
-    path: "/returns",
-    icon: RotateCcw,
-    color: "text-violet-400",
-    bg: "bg-violet-500/10",
-    border: "border-violet-500/20",
-    description: "Process returns",
-  },
-  {
-    label: "GRN List",
-    path: "/grn",
-    icon: Truck,
-    color: "text-blue-400",
-    bg: "bg-blue-500/10",
-    border: "border-blue-500/20",
-    description: "Receiving notes",
-  },
-  {
-    label: "Movements",
-    path: "/warehouse/movements",
-    icon: Activity,
-    color: "text-amber-400",
-    bg: "bg-amber-500/10",
-    border: "border-amber-500/20",
-    description: "Stock ledger",
-  },
-  {
-    label: "New GRN",
-    path: "/grn/new",
-    icon: ClipboardList,
-    color: "text-cyan-400",
-    bg: "bg-cyan-500/10",
-    border: "border-cyan-500/20",
-    description: "Record delivery",
-  },
-  {
-    label: "Products",
-    path: "/products",
-    icon: Boxes,
-    color: "text-rose-400",
-    bg: "bg-rose-500/10",
-    border: "border-rose-500/20",
-    description: "Product catalogue",
-  },
-  {
-    label: "Cold Storage",
-    path: "/warehouse/fridge",
-    icon: ThermometerSnowflake,
-    color: "text-cyan-400",
-    bg: "bg-cyan-500/10",
-    border: "border-cyan-500/20",
-    description: "Frozen / Chilled / Dry",
-  },
-  {
-    label: "Import / Export",
-    path: "/import-export",
-    icon: FileSpreadsheet,
-    color: "text-orange-400",
-    bg: "bg-orange-500/10",
-    border: "border-orange-500/20",
-    description: "Bulk data tools",
-  },
-];
-
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function WarehouseDashboard() {
   const navigate = useNavigate();
+  const { t } = useLang();
   const { role } = usePermissions();
   const { base, picking, returns, movements, loading } = useWarehouseData();
+
+  const ROLE_LABELS: Record<string, string> = {
+    warehouse:            t("roleWarehouse", "Warehouse"),
+    warehouse_manager:    t("roleWarehouseManager", "Warehouse Manager"),
+    inventory_controller: t("roleInventoryController", "Inventory Controller"),
+    inventory:            t("roleInventory", "Inventory"),
+    qc:                   t("roleQc", "Quality Control"),
+  };
+
+  const ACTIONS: ActionItem[] = [
+    { label: t("pickingQueue", "Picking Queue"), path: "/warehouse/picking", icon: ScanLine, color: "text-emerald-400", bg: "bg-emerald-500/10", border: "border-emerald-500/20", description: t("startPicking", "Start picking") },
+    { label: t("pageTitleReturns", "Returns"),   path: "/returns",           icon: RotateCcw, color: "text-violet-400", bg: "bg-violet-500/10", border: "border-violet-500/20", description: t("processReturns", "Process returns") },
+    { label: t("grnList", "GRN List"),           path: "/grn",               icon: Truck,    color: "text-blue-400",   bg: "bg-blue-500/10",   border: "border-blue-500/20",   description: t("receivingNotes", "Receiving notes") },
+    { label: t("movements", "Movements"),        path: "/warehouse/movements",icon: Activity, color: "text-amber-400", bg: "bg-amber-500/10",  border: "border-amber-500/20",  description: t("stockLedger", "Stock ledger") },
+    { label: t("newGRN", "New GRN"),             path: "/grn/new",           icon: ClipboardList, color: "text-cyan-400", bg: "bg-cyan-500/10", border: "border-cyan-500/20",  description: t("recordDelivery", "Record delivery") },
+    { label: t("manageProducts", "Products"),    path: "/products",          icon: Boxes,    color: "text-rose-400",   bg: "bg-rose-500/10",   border: "border-rose-500/20",   description: t("productCatalogue", "Product catalogue") },
+    { label: t("coldStorage", "Cold Storage"),   path: "/warehouse/fridge",  icon: ThermometerSnowflake, color: "text-cyan-400", bg: "bg-cyan-500/10", border: "border-cyan-500/20", description: t("frozenChilledDry", "Frozen / Chilled / Dry") },
+    { label: t("importExportTitle", "Import / Export"), path: "/import-export", icon: FileSpreadsheet, color: "text-orange-400", bg: "bg-orange-500/10", border: "border-orange-500/20", description: t("bulkDataTools", "Bulk data tools") },
+  ];
 
   const roleLabel = ROLE_LABELS[role] ?? role.replace(/_/g, " ");
 
   const kpis: KpiItem[] = [
     {
-      label: "Ready to Pick",
+      label: t("readyToPick", "Ready to Pick"),
       value: picking?.readyInvoices ?? "—",
-      sub: "Invoices awaiting picking",
+      sub: t("awaitingPicking", "Invoices awaiting picking"),
       icon: ScanLine,
       color: "text-emerald-500",
       bg: "bg-emerald-500/10",
@@ -274,9 +208,9 @@ export default function WarehouseDashboard() {
       loading,
     },
     {
-      label: "Active Picking",
+      label: t("activePicking", "Active Picking"),
       value: picking?.activeSessions ?? "—",
-      sub: "Sessions in progress",
+      sub: t("sessionsInProgress", "Sessions in progress"),
       icon: Eye,
       color: picking?.activeSessions ? "text-amber-500" : "text-muted-foreground",
       bg: picking?.activeSessions ? "bg-amber-500/10" : "bg-muted/20",
@@ -284,9 +218,9 @@ export default function WarehouseDashboard() {
       loading,
     },
     {
-      label: "Returns Waiting",
+      label: t("returnsWaiting", "Returns Waiting"),
       value: returns?.draft ?? "—",
-      sub: "Pending processing",
+      sub: t("pendingProcessing", "Pending processing"),
       icon: RotateCcw,
       color: returns?.draft ? "text-violet-500" : "text-muted-foreground",
       bg: returns?.draft ? "bg-violet-500/10" : "bg-muted/20",
@@ -294,9 +228,9 @@ export default function WarehouseDashboard() {
       loading,
     },
     {
-      label: "Movements Today",
+      label: t("movementsToday", "Movements Today"),
       value: movements?.totalToday ?? "—",
-      sub: `+${movements?.inboundToday ?? 0} in / -${movements?.outboundToday ?? 0} out`,
+      sub: `+${movements?.inboundToday ?? 0} ${t("inOut", "in")} / -${movements?.outboundToday ?? 0} out`,
       icon: Activity,
       color: "text-blue-500",
       bg: "bg-blue-500/10",
@@ -304,9 +238,9 @@ export default function WarehouseDashboard() {
       loading,
     },
     {
-      label: "Pending Inspection",
+      label: t("pendingInspection", "Pending Inspection"),
       value: base?.pendingInspection ?? "—",
-      sub: "GRNs awaiting QC",
+      sub: t("grnsAwaitingQc", "GRNs awaiting QC"),
       icon: Clock,
       color: "text-amber-500",
       bg: "bg-amber-500/10",
@@ -314,9 +248,9 @@ export default function WarehouseDashboard() {
       loading,
     },
     {
-      label: "Expiring ≤ 30d",
+      label: t("expiringLe30", "Expiring ≤ 30d"),
       value: base?.expiry.within30 ?? "—",
-      sub: "SKUs near expiry",
+      sub: t("skusNearExpiry", "SKUs near expiry"),
       icon: CalendarX2,
       color: base?.expiry.within30 ? "text-orange-500" : "text-muted-foreground",
       bg: base?.expiry.within30 ? "bg-orange-500/10" : "bg-muted/20",
@@ -324,9 +258,9 @@ export default function WarehouseDashboard() {
       loading,
     },
     {
-      label: "Today's GRNs",
+      label: t("todaysGrns", "Today's GRNs"),
       value: base?.todayGrns ?? "—",
-      sub: "Received today",
+      sub: t("receivedToday2", "Received today"),
       icon: Truck,
       color: "text-blue-500",
       bg: "bg-blue-500/10",
@@ -334,9 +268,9 @@ export default function WarehouseDashboard() {
       loading,
     },
     {
-      label: "Expired Stock",
+      label: t("expiredSkus", "Expired Stock"),
       value: base?.expiry.expired ?? "—",
-      sub: "SKUs past expiry",
+      sub: t("skusPastExpiry", "SKUs past expiry"),
       icon: AlertTriangle,
       color: base?.expiry.expired ? "text-red-500" : "text-muted-foreground",
       bg: base?.expiry.expired ? "bg-red-500/10" : "bg-muted/20",
@@ -348,8 +282,8 @@ export default function WarehouseDashboard() {
   return (
     <DashboardShell
       icon={Package}
-      title="Warehouse Dashboard"
-      subtitle={`${roleLabel} · Receiving, Picking & Inventory`}
+      title={t("warehouseDashboard", "Warehouse Dashboard")}
+      subtitle={`${roleLabel} · ${t("receivingPickingInventory", "Receiving, Picking & Inventory")}`}
       accent="emerald"
       headerAction={
         <button
@@ -357,7 +291,7 @@ export default function WarehouseDashboard() {
           className="flex items-center gap-1.5 text-xs bg-primary text-primary-foreground px-3 py-1.5 rounded-lg font-medium hover:opacity-90 transition shrink-0"
         >
           <ScanLine className="w-3.5 h-3.5" />
-          Start Picking
+          {t("startPicking", "Start Picking")}
         </button>
       }
     >
@@ -403,19 +337,19 @@ export default function WarehouseDashboard() {
       <div className="grid md:grid-cols-2 gap-4">
         {/* Recent GRNs */}
         <SectionCard
-          title="Recent Deliveries"
+          title={t("recentDeliveries", "Recent Deliveries")}
           icon={Truck}
           iconClass="text-blue-400"
           action={
             <button onClick={() => navigate("/grn")} className="text-[10px] text-primary font-medium hover:underline">
-              View all →
+              {t("viewAll", "View all →")}
             </button>
           }
         >
           {loading ? (
             <LoadingRows count={4} />
           ) : !base || base.recentGrns.length === 0 ? (
-            <EmptyState icon={Truck} message="No GRNs recorded yet" sub="Start receiving goods to see them here" />
+            <EmptyState icon={Truck} message={t("noGrnsYet", "No GRNs recorded yet")} sub={t("startReceiving", "Start receiving goods to see them here")} />
           ) : (
             <div className="space-y-1.5">
               {base.recentGrns.map((grn) => (
@@ -441,7 +375,7 @@ export default function WarehouseDashboard() {
         </SectionCard>
 
         {/* Storage overview */}
-        <SectionCard title="Storage Overview" icon={Boxes} iconClass="text-emerald-400">
+        <SectionCard title={t("storageOverview", "Storage Overview")} icon={Boxes} iconClass="text-emerald-400">
           <div className="grid grid-cols-3 gap-2 mb-4">
             {(base?.storage ?? Object.entries(STORAGE_CONFIG).map(([type, cfg]) => ({
               type, count: 0, hex: cfg.hex, icon: cfg.icon,
@@ -458,12 +392,12 @@ export default function WarehouseDashboard() {
           </div>
 
           <div className="pt-3 border-t border-border">
-            <h3 className="text-[11px] font-medium text-muted-foreground mb-2.5">Expiry Alerts</h3>
+            <h3 className="text-[11px] font-medium text-muted-foreground mb-2.5">{t("expiryAlerts", "Expiry Alerts")}</h3>
             <div className="space-y-2">
               {[
-                { label: "Expired",         count: base?.expiry.expired  ?? 0, color: "text-red-400",    bg: "bg-red-500/8",    border: "border-red-500/20",    icon: AlertTriangle },
-                { label: "Within 30 days",  count: base?.expiry.within30 ?? 0, color: "text-orange-400", bg: "bg-orange-500/8", border: "border-orange-500/20", icon: CalendarX2 },
-                { label: "Within 6 months", count: base?.expiry.within180 ?? 0, color: "text-yellow-400", bg: "bg-yellow-500/8", border: "border-yellow-500/20", icon: Clock },
+                { label: t("expiredStockLabel", "Expired"),        count: base?.expiry.expired  ?? 0, color: "text-red-400",    bg: "bg-red-500/8",    border: "border-red-500/20",    icon: AlertTriangle },
+                { label: t("within30Days", "Within 30 days"),      count: base?.expiry.within30 ?? 0, color: "text-orange-400", bg: "bg-orange-500/8", border: "border-orange-500/20", icon: CalendarX2 },
+                { label: t("within6Months", "Within 6 months"),    count: base?.expiry.within180 ?? 0, color: "text-yellow-400", bg: "bg-yellow-500/8", border: "border-yellow-500/20", icon: Clock },
               ].map(({ label, count, color, bg, border, icon: Icon }) =>
                 count > 0 ? (
                   <div key={label} className={`flex items-center gap-2.5 rounded-lg ${bg} border ${border} px-3 py-2`}>
@@ -476,7 +410,7 @@ export default function WarehouseDashboard() {
               {!loading && base && base.expiry.expired === 0 && base.expiry.within30 === 0 && (
                 <div className="flex items-center gap-2 rounded-lg bg-emerald-500/8 border border-emerald-500/15 px-3 py-2.5">
                   <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                  <p className="text-xs text-emerald-400 font-medium">No critical expiry alerts</p>
+                  <p className="text-xs text-emerald-400 font-medium">{t("noCriticalAlerts", "No critical expiry alerts")}</p>
                 </div>
               )}
             </div>

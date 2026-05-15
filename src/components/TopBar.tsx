@@ -48,9 +48,9 @@ export function TopBar() {
   };
 
   return (
-    <header className="sticky top-0 z-50 surface-nav border-b border-border">
+    <header className="sticky top-0 z-50 surface-nav border-b border-border" dir="ltr">
       <div className="max-w-7xl mx-auto px-4 h-11 flex items-center gap-2">
-        <AppBrand compact className="mr-auto" />
+        <AppBrand compact className="me-auto" />
 
         {/* Preview mode indicator chip */}
         {isPreviewMode && (
@@ -69,7 +69,7 @@ export function TopBar() {
         {/* Profile avatar button */}
         <button
           onClick={() => navigate("/profile")}
-          title="My Profile"
+          title={t("myProfile")}
           className={`w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-bold hover:opacity-80 transition shrink-0 ${avatarCls}`}
         >
           {initials}
@@ -77,7 +77,7 @@ export function TopBar() {
 
         <button
           onClick={handleLogout}
-          title="Logout"
+          title={t("logout")}
           className="flex items-center gap-1 bg-secondary text-secondary-foreground px-2 py-1 rounded-md text-xs font-semibold border border-border hover:bg-destructive/15 hover:text-destructive hover:border-destructive/30 transition-colors"
         >
           <LogOut className="w-3.5 h-3.5" />

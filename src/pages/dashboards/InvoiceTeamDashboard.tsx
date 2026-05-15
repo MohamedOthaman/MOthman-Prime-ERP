@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { usePermissions } from "@/hooks/usePermissions";
+import { useLang } from "@/contexts/LanguageContext";
 import {
   fetchInvoiceStatusCounts,
   fetchReturnCounts,
@@ -58,67 +59,32 @@ function useInvoiceTeamData() {
   return { invoices, returns, loading };
 }
 
-// ─── Role labels ──────────────────────────────────────────────────────────────
-
-const ROLE_LABELS: Record<string, string> = {
-  invoice_team: "Invoice Team",
-};
-
-// ─── Actions ─────────────────────────────────────────────────────────────────
-
-const ACTIONS: ActionItem[] = [
-  {
-    label: "New Invoice",
-    path: "/invoice-entry",
-    icon: Plus,
-    color: "text-emerald-400",
-    bg: "bg-emerald-500/10",
-    border: "border-emerald-500/20",
-    description: "Create new invoice",
-  },
-  {
-    label: "Invoice List",
-    path: "/invoices",
-    icon: FileText,
-    color: "text-blue-400",
-    bg: "bg-blue-500/10",
-    border: "border-blue-500/20",
-    description: "All invoices",
-  },
-  {
-    label: "Returns Queue",
-    path: "/returns",
-    icon: RotateCcw,
-    color: "text-violet-400",
-    bg: "bg-violet-500/10",
-    border: "border-violet-500/20",
-    description: "Process returns",
-  },
-  {
-    label: "Customers",
-    path: "/customers",
-    icon: ListChecks,
-    color: "text-cyan-400",
-    bg: "bg-cyan-500/10",
-    border: "border-cyan-500/20",
-    description: "Customer list",
-  },
-];
-
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function InvoiceTeamDashboard() {
   const navigate = useNavigate();
+  const { t }    = useLang();
   const { role } = usePermissions();
   const { invoices, returns, loading } = useInvoiceTeamData();
 
+  const ROLE_LABELS: Record<string, string> = {
+    invoice_team: t("roleInvoiceTeam", "Invoice Team"),
+  };
+
   const roleLabel = ROLE_LABELS[role] ?? role.replace(/_/g, " ");
+
+  const actions: ActionItem[] = [
+    { label: t("newInvoice", "New Invoice"),       path: "/invoice-entry", icon: Plus,      color: "text-emerald-400", bg: "bg-emerald-500/10", border: "border-emerald-500/20", description: t("createNewInvoice", "Create new invoice") },
+    { label: t("invoiceList", "Invoice List"),     path: "/invoices",      icon: FileText,  color: "text-blue-400",   bg: "bg-blue-500/10",   border: "border-blue-500/20",   description: t("allInvoices", "All invoices") },
+    { label: t("returnsQueue", "Returns Queue"),   path: "/returns",       icon: RotateCcw, color: "text-violet-400", bg: "bg-violet-500/10", border: "border-violet-500/20", description: t("processReturns", "Process returns") },
+    { label: t("customersNav", "Customers"),       path: "/customers",     icon: ListChecks, color: "text-cyan-400",  bg: "bg-cyan-500/10",   border: "border-cyan-500/20",   description: t("customerList", "Customer list") },
+  ];
 
   const kpis: KpiItem[] = [
     {
-      label: "Ready Invoices",
+      label: t("readyInvoices", "Ready Invoices"),
       value: invoices?.ready ?? "—",
-      sub: "Awaiting warehouse",
+      sub: t("awaitingWarehouse", "Awaiting warehouse"),
       icon: ScanLine,
       color: "text-amber-500",
       bg: "bg-amber-500/10",
@@ -126,9 +92,9 @@ export default function InvoiceTeamDashboard() {
       loading,
     },
     {
-      label: "Done Today",
+      label: t("doneToday", "Done Today"),
       value: invoices?.doneToday ?? "—",
-      sub: "Executed today",
+      sub: t("executedToday", "Executed today"),
       icon: TrendingUp,
       color: "text-emerald-500",
       bg: "bg-emerald-500/10",
@@ -137,9 +103,9 @@ export default function InvoiceTeamDashboard() {
       trend: invoices?.doneToday ? "up" : "neutral",
     },
     {
-      label: "Received Today",
+      label: t("receivedToday", "Received Today"),
       value: invoices?.receivedToday ?? "—",
-      sub: "Customer confirmed",
+      sub: t("customerConfirmed", "Customer confirmed"),
       icon: CheckCircle2,
       color: "text-blue-500",
       bg: "bg-blue-500/10",
@@ -147,9 +113,9 @@ export default function InvoiceTeamDashboard() {
       loading,
     },
     {
-      label: "Pending Returns",
+      label: t("pendingReturns", "Pending Returns"),
       value: returns?.draft ?? "—",
-      sub: "Awaiting processing",
+      sub: t("awaitingProcessing", "Awaiting processing"),
       icon: RotateCcw,
       color: returns?.draft ? "text-violet-500" : "text-muted-foreground",
       bg: returns?.draft ? "bg-violet-500/10" : "bg-muted/20",
@@ -161,8 +127,8 @@ export default function InvoiceTeamDashboard() {
   return (
     <DashboardShell
       icon={Receipt}
-      title="Invoice Dashboard"
-      subtitle={`${roleLabel} · Invoice Workflow & Processing`}
+      title={t("invoiceTeamDashboardTitle", "Invoice Dashboard")}
+      subtitle={`${roleLabel} · ${t("invoiceWorkflowSubtitle", "Invoice Workflow & Processing")}`}
       accent="blue"
       headerAction={
         <button
@@ -170,7 +136,7 @@ export default function InvoiceTeamDashboard() {
           className="flex items-center gap-1.5 text-xs bg-primary text-primary-foreground px-3 py-1.5 rounded-lg font-medium hover:opacity-90 transition shrink-0"
         >
           <Plus className="w-3.5 h-3.5" />
-          New Invoice
+          {t("newInvoice", "New Invoice")}
         </button>
       }
     >
@@ -209,7 +175,7 @@ export default function InvoiceTeamDashboard() {
       <div className="grid md:grid-cols-2 gap-4">
         {/* Invoice lifecycle pipeline */}
         <SectionCard
-          title="Invoice Pipeline"
+          title={t("invoicePipeline", "Invoice Pipeline")}
           icon={Receipt}
           iconClass="text-blue-400"
           action={
@@ -217,38 +183,37 @@ export default function InvoiceTeamDashboard() {
               onClick={() => navigate("/invoices")}
               className="text-[10px] text-primary font-medium hover:underline"
             >
-              View all →
+              {t("viewAll", "View all →")}
             </button>
           }
         >
           <PipelineBar
             rows={[
-              { label: "Draft",     count: invoices?.draft    ?? 0, bar: "bg-muted-foreground/30", text: "text-muted-foreground" },
-              { label: "Ready",     count: invoices?.ready    ?? 0, bar: "bg-amber-500",           text: "text-amber-400" },
-              { label: "Done",      count: invoices?.done     ?? 0, bar: "bg-emerald-500",         text: "text-emerald-400" },
-              { label: "Received",  count: invoices?.received ?? 0, bar: "bg-blue-500",            text: "text-blue-400" },
-              { label: "Cancelled", count: invoices?.cancelled ?? 0, bar: "bg-red-500",            text: "text-red-400" },
-              { label: "Returns",   count: invoices?.returns  ?? 0, bar: "bg-violet-500",          text: "text-violet-400" },
+              { label: t("draft", "Draft"),     count: invoices?.draft    ?? 0, bar: "bg-muted-foreground/30", text: "text-muted-foreground" },
+              { label: t("ready", "Ready"),     count: invoices?.ready    ?? 0, bar: "bg-amber-500",           text: "text-amber-400" },
+              { label: t("done", "Done"),       count: invoices?.done     ?? 0, bar: "bg-emerald-500",         text: "text-emerald-400" },
+              { label: t("received", "Received"), count: invoices?.received ?? 0, bar: "bg-blue-500",          text: "text-blue-400" },
+              { label: t("cancelled", "Cancelled"), count: invoices?.cancelled ?? 0, bar: "bg-red-500",        text: "text-red-400" },
+              { label: t("pageTitleReturns", "Returns"), count: invoices?.returns ?? 0, bar: "bg-violet-500", text: "text-violet-400" },
             ] satisfies PipelineRow[]}
             total={invoices?.total ?? 0}
             loading={loading}
           />
           <div className="pt-3 mt-2 border-t border-border text-center">
             <p className="text-2xl font-bold text-foreground">{loading ? "…" : invoices?.total ?? 0}</p>
-            <p className="text-[10px] text-muted-foreground">Total invoices</p>
+            <p className="text-[10px] text-muted-foreground">{t("totalInvoicesCount", "Total invoices")}</p>
           </div>
         </SectionCard>
 
-        {/* Recent invoices */}
         <SectionCard
-          title="Recent Invoices"
+          title={t("recentInvoices", "Recent Invoices")}
           icon={FileText}
           iconClass="text-blue-400"
         >
           {loading ? (
             <LoadingRows count={5} />
           ) : !invoices || invoices.recent.length === 0 ? (
-            <EmptyState icon={FileText} message="No invoices yet" sub="Create the first invoice to get started" />
+            <EmptyState icon={FileText} message={t("noInvoicesYet", "No invoices yet")} sub={t("createFirstInvoice", "Create the first invoice to get started")} />
           ) : (
             <div className="space-y-1.5">
               {invoices.recent.map((inv) => (
@@ -274,7 +239,7 @@ export default function InvoiceTeamDashboard() {
         </SectionCard>
       </div>
 
-      <ActionGrid actions={ACTIONS} onNavigate={navigate} cols={4} />
+      <ActionGrid actions={actions} onNavigate={navigate} cols={4} />
     </DashboardShell>
   );
 }

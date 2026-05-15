@@ -6,6 +6,7 @@ import {
 } from "lucide-react";
 import { fetchInvoiceList } from "@/features/invoices/salesInvoiceService";
 import { toast } from "sonner";
+import { useLang } from "@/contexts/LanguageContext";
 
 type Invoice = Awaited<ReturnType<typeof fetchInvoiceList>>[number];
 
@@ -26,6 +27,7 @@ function fmtAED(n: number | null | undefined) {
 
 export default function PickingQueuePage() {
   const navigate = useNavigate();
+  const { t } = useLang();
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading]   = useState(true);
   const [search, setSearch]     = useState("");
@@ -62,7 +64,7 @@ export default function PickingQueuePage() {
             <ClipboardList className="w-4 h-4 text-amber-400" />
           </div>
           <div className="flex-1">
-            <h1 className="text-[15px] font-bold text-foreground">Picking Queue</h1>
+            <h1 className="text-[15px] font-bold text-foreground">{t("pageTitlePickingQueue", "Picking Queue")}</h1>
             <p className="text-[10px] text-muted-foreground">
               {loading ? "Loading…" : `${filtered.length} ready invoice${filtered.length !== 1 ? "s" : ""}`}
             </p>
@@ -82,7 +84,7 @@ export default function PickingQueuePage() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
             <input
               type="text"
-              placeholder="Search invoice #, customer, salesman..."
+              placeholder={t("invoiceSearch", "Search invoice #, customer, salesman...")}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="w-full bg-background border border-border rounded-lg pl-9 pr-3 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
@@ -99,8 +101,8 @@ export default function PickingQueuePage() {
         ) : filtered.length === 0 ? (
           <div className="text-center py-20 text-muted-foreground">
             <Package className="w-12 h-12 mx-auto mb-3 opacity-15" />
-            <p className="text-sm font-medium">Queue is empty</p>
-            <p className="text-xs mt-1">No invoices in READY state</p>
+            <p className="text-sm font-medium">{t("queueEmpty", "Queue is empty")}</p>
+            <p className="text-xs mt-1">{t("noReadyInvoices", "No invoices in READY state")}</p>
           </div>
         ) : (
           filtered.map((inv) => (
@@ -142,12 +144,12 @@ export default function PickingQueuePage() {
                   className="flex-1 flex items-center justify-center gap-2 py-3.5 rounded-xl bg-amber-500 text-black font-bold text-sm hover:bg-amber-400 active:scale-95 transition"
                 >
                   <Play className="w-4 h-4" />
-                  Start Picking
+                  {t("startPicking", "Start Picking")}
                 </button>
                 <button
                   onClick={() => navigate(`/invoices/${inv.id}`)}
                   className="flex items-center justify-center w-14 rounded-xl border border-border bg-muted/30 hover:bg-muted/50 transition"
-                  title="View invoice details"
+                  title={t("viewInvoiceDetails", "View invoice details")}
                 >
                   <ChevronRight className="w-5 h-5 text-muted-foreground" />
                 </button>

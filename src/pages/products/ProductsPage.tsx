@@ -31,7 +31,7 @@ function sortValues(values: (string | null | undefined)[]) {
 }
 
 export default function ProductsPage() {
-  const { lang } = useLang();
+  const { lang, t } = useLang();
   const navigate = useNavigate();
   const [rows, setRows] = useState<ProductRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -210,7 +210,7 @@ export default function ProductsPage() {
       <header className="sticky top-11 z-40 border-b border-border bg-background/95 px-4 py-3 backdrop-blur-sm">
         <div className="mx-auto flex max-w-5xl items-center gap-2">
           <Package className="h-5 w-5 text-primary" />
-          <h1 className="text-lg font-bold text-foreground">Products Master</h1>
+          <h1 className="text-lg font-bold text-foreground">{t("pageTitleProducts", "Products")}</h1>
           <span className="ml-auto flex items-center gap-2">
             <button
               onClick={() => {
@@ -256,7 +256,7 @@ export default function ProductsPage() {
         {loading ? (
           <div className="py-10 text-center text-sm text-muted-foreground">Loading...</div>
         ) : filteredRows.length === 0 ? (
-          <div className="py-10 text-center text-sm text-muted-foreground">No products found</div>
+          <div className="py-10 text-center text-sm text-muted-foreground">{t("noProductsFound", "No products found")}</div>
         ) : (
           groupedRows.map((group) => (
             <section key={group.name} className="overflow-hidden rounded-lg border border-border bg-card">
@@ -282,7 +282,7 @@ export default function ProductsPage() {
                   </div>
                   {!row.is_active && (
                     <span className="rounded bg-destructive/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-destructive">
-                      Inactive
+                      {t("inactive", "Inactive")}
                     </span>
                   )}
                   <StorageBadge type={inferStorageType(row) as any} />

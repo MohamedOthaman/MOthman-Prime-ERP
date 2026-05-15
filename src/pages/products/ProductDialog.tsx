@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useLang } from "@/contexts/LanguageContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Barcode, Check, ChevronRight, Keyboard, Package2, Plus, RotateCcw, X } from "lucide-react";
 import { Drawer, DrawerContent, DrawerTrigger } from "@/components/ui/drawer";
@@ -539,6 +540,7 @@ async function loadProductBatches(productId: string, fallbackUnit: string) {
 }
 
 export default function ProductDialog({ open, onClose, onSaved, editingProduct }: ProductDialogProps) {
+  const { t } = useLang();
   const [brand, setBrand] = useState("");
   const [category, setCategory] = useState("");
   const [section, setSection] = useState("");
@@ -829,10 +831,10 @@ export default function ProductDialog({ open, onClose, onSaved, editingProduct }
     <div className="fixed inset-0 z-50 flex items-center justify-center overflow-hidden bg-black/40 p-2 sm:p-4">
       <div className="flex h-[min(84dvh,calc(100dvh-1rem))] w-[min(72rem,calc(100vw-1rem))] max-w-full min-w-0 flex-col overflow-hidden rounded-2xl border border-border bg-background shadow-2xl">
         <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-3 py-3 sm:px-4">
-          <h2 className="text-xl font-semibold">{isEdit ? "Edit Product" : "Add Product"}</h2>
+          <h2 className="text-xl font-semibold">{isEdit ? t("editProduct", "Edit Product") : t("addProduct", "Add Product")}</h2>
           <div className="flex max-w-full flex-wrap items-center justify-end gap-2">
             <button type="button" onClick={onClose} className="rounded-lg border border-border px-3 py-1.5 text-sm font-medium hover:bg-secondary">
-              Cancel
+              {t("cancelAction", "Cancel")}
             </button>
             <button
               type="button"
@@ -840,7 +842,7 @@ export default function ProductDialog({ open, onClose, onSaved, editingProduct }
               onClick={handleSave}
               className="rounded-lg bg-primary px-3.5 py-1.5 text-sm font-medium text-primary-foreground disabled:opacity-60"
             >
-              {saving ? "Saving..." : isEdit ? "Update" : "Create"}
+              {saving ? t("saving", "Saving...") : isEdit ? t("updateAction", "Update") : t("createAction", "Create")}
             </button>
             <button type="button" onClick={onClose} className="rounded-lg p-2 hover:bg-secondary">
               <X size={18} />
@@ -853,31 +855,31 @@ export default function ProductDialog({ open, onClose, onSaved, editingProduct }
             <div className="rounded-xl border border-border bg-card p-2.5">
               <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
                 <div>
-                  <label className="mb-1 block text-sm font-medium">Category</label>
+                  <label className="mb-1 block text-sm font-medium">{t("category", "Category")}</label>
                   <input value={category} onChange={(event) => setCategory(event.target.value)} placeholder="e.g. Syrups" className="w-full rounded-xl border border-border bg-secondary px-3 py-2 text-[13px] outline-none focus:ring" />
                 </div>
                 <div>
-                  <label className="mb-1 block text-sm font-medium">Section</label>
+                  <label className="mb-1 block text-sm font-medium">{t("section", "Section")}</label>
                   <input value={section} onChange={(event) => setSection(event.target.value)} placeholder="e.g. Beverage Exporters" className="w-full rounded-xl border border-border bg-secondary px-3 py-2 text-[13px] outline-none focus:ring" />
                 </div>
                 <div>
-                  <label className="mb-1 block text-sm font-medium">Brand</label>
+                  <label className="mb-1 block text-sm font-medium">{t("brand", "Brand")}</label>
                   <input value={brand} onChange={(event) => setBrand(event.target.value)} placeholder="e.g. MONIN" className="w-full rounded-xl border border-border bg-secondary px-3 py-2 text-[13px] outline-none focus:ring" />
                 </div>
                 <div>
-                  <label className="mb-1 block text-sm font-medium">Product Code</label>
+                  <label className="mb-1 block text-sm font-medium">{t("productCode", "Product Code")}</label>
                   <input value={itemCode} onChange={(event) => setItemCode(event.target.value)} className="w-full rounded-xl border border-border bg-secondary px-3 py-2 text-[13px] font-mono uppercase outline-none focus:ring" />
                 </div>
                 <div>
-                  <label className="mb-1 block text-sm font-medium">Product Name</label>
+                  <label className="mb-1 block text-sm font-medium">{t("productName", "Product Name")}</label>
                   <input value={nameEn} onChange={(event) => setNameEn(event.target.value)} className="w-full rounded-xl border border-border bg-secondary px-3 py-2 text-[13px] outline-none focus:ring" />
                 </div>
                 <div>
-                  <label className="mb-1 block text-sm font-medium">Arabic Name</label>
+                  <label className="mb-1 block text-sm font-medium">{t("arabicName", "Arabic Name")}</label>
                   <input value={nameAr} onChange={(event) => setNameAr(event.target.value)} className="w-full rounded-xl border border-border bg-secondary px-3 py-2 text-[13px] outline-none focus:ring" dir="rtl" />
                 </div>
                 <div className="md:col-span-3">
-                  <label className="mb-1 block text-sm font-medium">Packaging</label>
+                  <label className="mb-1 block text-sm font-medium">{t("packaging", "Packaging")}</label>
                   <div className="flex flex-wrap gap-2">
                     {UOM_OPTIONS.map((option) => {
                       const selected = packagingUnits.includes(option);
@@ -897,10 +899,10 @@ export default function ProductDialog({ open, onClose, onSaved, editingProduct }
                       );
                     })}
                   </div>
-                  <p className="mt-2 text-xs text-muted-foreground">Select every sellable or stock unit this product supports, such as carton and pieces together.</p>
+                  <p className="mt-2 text-xs text-muted-foreground">{t("packagingHint", "Select every sellable or stock unit this product supports, such as carton and pieces together.")}</p>
                 </div>
                 <div>
-                  <label className="mb-1 block text-sm font-medium">Storage Type</label>
+                  <label className="mb-1 block text-sm font-medium">{t("storageType", "Storage Type")}</label>
                   <div className="flex gap-1">
                     {STORAGE_OPTIONS.map((option) => (
                       <button
@@ -919,15 +921,15 @@ export default function ProductDialog({ open, onClose, onSaved, editingProduct }
                   </div>
                 </div>
                 <IntegerDrawerField
-                  label="Carton Holds"
+                  label={t("cartonHolds", "Carton Holds")}
                   value={cartonHolds}
                   onChange={setCartonHolds}
                   min={1}
                   max={999}
-                  placeholder="Qty inside carton..."
+                  placeholder={t("qtyInsideCarton", "Qty inside carton...")}
                 />
                 <div>
-                  <label className="mb-1 block text-sm font-medium">Weight Holds</label>
+                  <label className="mb-1 block text-sm font-medium">{t("weightHolds", "Weight Holds")}</label>
                   <input
                     value={weightHolds}
                     onChange={(event) => setWeightHolds(event.target.value)}
@@ -936,17 +938,17 @@ export default function ProductDialog({ open, onClose, onSaved, editingProduct }
                   />
                 </div>
                 <DecimalDrawerField
-                  label="Cost Price"
+                  label={t("costPrice", "Cost Price")}
                   value={costPrice}
                   onChange={setCostPrice}
                 />
                 <DecimalDrawerField
-                  label="Selling Price"
+                  label={t("sellingPrice", "Selling Price")}
                   value={sellingPrice}
                   onChange={setSellingPrice}
                 />
                 <div>
-                  <label className="mb-1 block text-sm font-medium">Discount</label>
+                  <label className="mb-1 block text-sm font-medium">{t("discount", "Discount")}</label>
                   <div className="flex items-center gap-2">
                     <div className="min-w-0 flex-1">
                       {discountManualMode ? (
@@ -1005,7 +1007,7 @@ export default function ProductDialog({ open, onClose, onSaved, editingProduct }
             >
               <div className="rounded-xl border border-border bg-card p-2.5">
                 <h3 className="mb-2 flex items-center gap-1 text-sm font-semibold">
-                  <Barcode className="h-4 w-4" /> Barcodes ({barcodes.length})
+                  <Barcode className="h-4 w-4" /> {t("barcodes", "Barcodes")} ({barcodes.length})
                 </h3>
                 <div className="mb-2 flex gap-2">
                   <input
@@ -1019,7 +1021,7 @@ export default function ProductDialog({ open, onClose, onSaved, editingProduct }
                         addBarcodeToForm();
                       }
                     }}
-                    placeholder="Enter or scan barcode..."
+                    placeholder={t("enterOrScanBarcode", "Enter or scan barcode...")}
                     className="flex-1 rounded-lg border border-border bg-secondary px-3 py-2 font-mono text-sm outline-none focus:ring"
                   />
                   <button
@@ -1027,9 +1029,9 @@ export default function ProductDialog({ open, onClose, onSaved, editingProduct }
                     onClick={() => barcodeInputRef.current?.focus()}
                     className="rounded-lg border border-border px-3 py-2 text-sm font-medium hover:bg-secondary"
                   >
-                    Scan
+                    {t("scan", "Scan")}
                   </button>
-                  <button type="button" onClick={addBarcodeToForm} className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90">Add</button>
+                  <button type="button" onClick={addBarcodeToForm} className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90">{t("addBarcode", "Add")}</button>
                 </div>
                 {barcodes.length > 0 ? (
                   <div className="flex max-h-28 flex-wrap gap-2 overflow-y-auto">
@@ -1043,26 +1045,26 @@ export default function ProductDialog({ open, onClose, onSaved, editingProduct }
                     ))}
                   </div>
                 ) : (
-                  <p className="mt-2 text-xs text-muted-foreground">At least one barcode is required to uniquely identify the product.</p>
+                  <p className="mt-2 text-xs text-muted-foreground">{t("barcodeRequired", "At least one barcode is required to uniquely identify the product.")}</p>
                 )}
               </div>
 
               <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-border bg-card">
                 <div className="flex items-center justify-between border-b border-border px-4 py-2.5">
                   <div>
-                    <h3 className="text-sm font-semibold">Batches</h3>
+                    <h3 className="text-sm font-semibold">{t("batches", "Batches")}</h3>
                     <p className="text-xs text-muted-foreground">
-                      Capture batch number, production date, expiry date, quantity, and unit.
+                      {t("batchesHint", "Capture batch number, production date, expiry date, quantity, and unit.")}
                     </p>
                   </div>
                   <button type="button" onClick={addBatch} className="inline-flex items-center gap-1 text-xs font-semibold text-primary">
-                    <Plus className="h-3 w-3" /> Add Batch
+                    <Plus className="h-3 w-3" /> {t("addBatch", "Add Batch")}
                   </button>
                 </div>
 
                 <div className="min-h-0 flex-1 overflow-y-auto">
                   {batches.length === 0 ? (
-                    <div className="px-4 py-6 text-center text-sm text-muted-foreground">No batches added yet.</div>
+                    <div className="px-4 py-6 text-center text-sm text-muted-foreground">{t("noBatchesYet", "No batches added yet.")}</div>
                   ) : (
                     batches.map((batch, index) => (
                       <button
@@ -1095,8 +1097,8 @@ export default function ProductDialog({ open, onClose, onSaved, editingProduct }
               <div className="flex h-full flex-col overflow-hidden rounded-xl border border-border bg-card">
                 <div className="flex items-center justify-between border-b border-border px-4 py-3">
                   <div>
-                    <h3 className="text-sm font-semibold">{batchEditorIndex == null ? "Add Batch" : "Edit Batch"}</h3>
-                    <p className="text-xs text-muted-foreground">Use wheel mode by default, or switch to manual typing when needed.</p>
+                    <h3 className="text-sm font-semibold">{batchEditorIndex == null ? t("addBatch", "Add Batch") : t("editBatch", "Edit Batch")}</h3>
+                    <p className="text-xs text-muted-foreground">{t("batchEditorHint", "Use wheel mode by default, or switch to manual typing when needed.")}</p>
                   </div>
                   <div className="flex items-center gap-2">
                     <button
@@ -1104,14 +1106,14 @@ export default function ProductDialog({ open, onClose, onSaved, editingProduct }
                       onClick={closeBatchEditor}
                       className="rounded-lg border border-border px-3 py-1.5 text-xs font-medium hover:bg-secondary"
                     >
-                      Cancel
+                      {t("cancelAction", "Cancel")}
                     </button>
                     <button
                       type="button"
                       onClick={commitBatchEditor}
                       className="inline-flex items-center gap-1 rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:opacity-90"
                     >
-                      <Check className="h-3.5 w-3.5" /> Confirm
+                      <Check className="h-3.5 w-3.5" /> {t("confirmAction", "Confirm")}
                     </button>
                   </div>
                 </div>
@@ -1121,7 +1123,7 @@ export default function ProductDialog({ open, onClose, onSaved, editingProduct }
                     <div className="space-y-3">
                       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                         <div>
-                          <label className="mb-1 block text-xs font-medium text-muted-foreground">Batch No</label>
+                          <label className="mb-1 block text-xs font-medium text-muted-foreground">{t("batchNo", "Batch No")}</label>
                           <input
                             value={batchEditorDraft.batchNo}
                             onChange={(event) => updateBatchDraft("batchNo", event.target.value)}
@@ -1129,7 +1131,7 @@ export default function ProductDialog({ open, onClose, onSaved, editingProduct }
                           />
                         </div>
                         <div>
-                          <label className="mb-1 block text-xs font-medium text-muted-foreground">Packaging Unit</label>
+                          <label className="mb-1 block text-xs font-medium text-muted-foreground">{t("packagingUnit", "Packaging Unit")}</label>
                           <div className="flex flex-wrap gap-2">
                             {packagingUnits.map((unit) => (
                               <button
@@ -1152,7 +1154,7 @@ export default function ProductDialog({ open, onClose, onSaved, editingProduct }
 
                       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                         <div>
-                          <label className="mb-1 block text-xs font-medium text-muted-foreground">Production Date</label>
+                          <label className="mb-1 block text-xs font-medium text-muted-foreground">{t("productionDate", "Production Date")}</label>
                           <Drawer>
                             <DrawerTrigger asChild>
                               <Button
@@ -1162,7 +1164,7 @@ export default function ProductDialog({ open, onClose, onSaved, editingProduct }
                                   !batchEditorDraft.productionDate && "text-muted-foreground"
                                 )}
                               >
-                                {batchEditorDraft.productionDate || "Select date"}
+                                {batchEditorDraft.productionDate || t("selectDate", "Select date")}
                               </Button>
                             </DrawerTrigger>
                             <DrawerContent className="px-4 pb-8">
@@ -1170,7 +1172,7 @@ export default function ProductDialog({ open, onClose, onSaved, editingProduct }
                                 <DateWheel
                                   value={batchEditorDraft.productionDate || todayIso()}
                                   onChange={(value) => updateBatchDraft("productionDate", value)}
-                                  label="Production Date"
+                                  label={t("productionDate", "Production Date")}
                                 />
                               </div>
                             </DrawerContent>
@@ -1178,7 +1180,7 @@ export default function ProductDialog({ open, onClose, onSaved, editingProduct }
                         </div>
 
                         <div>
-                          <label className="mb-1 block text-xs font-medium text-muted-foreground">Expiry Date</label>
+                          <label className="mb-1 block text-xs font-medium text-muted-foreground">{t("expiryDate", "Expiry Date")}</label>
                           <Drawer>
                             <DrawerTrigger asChild>
                               <Button
@@ -1188,7 +1190,7 @@ export default function ProductDialog({ open, onClose, onSaved, editingProduct }
                                   !batchEditorDraft.expiryDate && "text-muted-foreground"
                                 )}
                               >
-                                {batchEditorDraft.expiryDate || "Select date"}
+                                {batchEditorDraft.expiryDate || t("selectDate", "Select date")}
                               </Button>
                             </DrawerTrigger>
                             <DrawerContent className="px-4 pb-8">
@@ -1196,7 +1198,7 @@ export default function ProductDialog({ open, onClose, onSaved, editingProduct }
                                 <DateWheel
                                   value={batchEditorDraft.expiryDate || todayIso()}
                                   onChange={(value) => updateBatchDraft("expiryDate", value)}
-                                  label="Expiry Date"
+                                  label={t("expiryDate", "Expiry Date")}
                                 />
                               </div>
                             </DrawerContent>
@@ -1206,7 +1208,7 @@ export default function ProductDialog({ open, onClose, onSaved, editingProduct }
 
                       <div>
                         <div className="mb-1 flex items-center justify-between">
-                          <label className="block text-xs font-medium text-muted-foreground">Qty</label>
+                          <label className="block text-xs font-medium text-muted-foreground">{t("qty", "Qty")}</label>
                           <EntryModeToggle manual={batchQtyManualMode} onToggle={() => setBatchQtyManualMode((current) => !current)} />
                         </div>
                         {batchQtyManualMode ? (
@@ -1232,7 +1234,7 @@ export default function ProductDialog({ open, onClose, onSaved, editingProduct }
                                   onChange={(value) => updateBatchDraft("qty", value)}
                                   min={0}
                                   max={999}
-                                  label="Quantity"
+                                  label={t("traceQuantity", "Quantity")}
                                 />
                               </div>
                             </DrawerContent>
@@ -1246,7 +1248,7 @@ export default function ProductDialog({ open, onClose, onSaved, editingProduct }
                           onClick={removeBatchFromEditor}
                           className="w-full rounded-lg bg-destructive/10 py-2 text-xs font-semibold text-destructive"
                         >
-                          Remove Batch
+                          {t("removeBatch", "Remove Batch")}
                         </button>
                       )}
                     </div>

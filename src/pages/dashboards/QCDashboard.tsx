@@ -13,6 +13,7 @@ import {
   Activity,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { useLang } from "@/contexts/LanguageContext";
 import {
   fetchQcLineCounts,
   fetchGrnStatusCounts,
@@ -64,58 +65,25 @@ function useQCData() {
   return { data, loading };
 }
 
-// ─── Actions ─────────────────────────────────────────────────────────────────
-
-const ACTIONS: ActionItem[] = [
-  {
-    label: "GRN List",
-    path: "/grn",
-    icon: ClipboardList,
-    color: "text-emerald-400",
-    bg: "bg-emerald-500/10",
-    border: "border-emerald-500/20",
-    description: "All receiving notes",
-  },
-  {
-    label: "Stock View",
-    path: "/stock",
-    icon: Package,
-    color: "text-blue-400",
-    bg: "bg-blue-500/10",
-    border: "border-blue-500/20",
-    description: "Current inventory",
-  },
-  {
-    label: "Cold Storage",
-    path: "/warehouse/fridge",
-    icon: ThermometerSnowflake,
-    color: "text-cyan-400",
-    bg: "bg-cyan-500/10",
-    border: "border-cyan-500/20",
-    description: "Expiry-critical batches",
-  },
-  {
-    label: "Movements",
-    path: "/warehouse/movements",
-    icon: Activity,
-    color: "text-amber-400",
-    bg: "bg-amber-500/10",
-    border: "border-amber-500/20",
-    description: "Stock ledger",
-  },
-];
-
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function QCDashboard() {
   const navigate = useNavigate();
+  const { t }    = useLang();
   const { data, loading } = useQCData();
+
+  const actions: ActionItem[] = [
+    { label: t("grnList", "GRN List"),       path: "/grn",                icon: ClipboardList,     color: "text-emerald-400", bg: "bg-emerald-500/10", border: "border-emerald-500/20", description: t("allReceivingNotes", "All receiving notes") },
+    { label: t("stockOverview", "Stock View"),path: "/stock",             icon: Package,            color: "text-blue-400",   bg: "bg-blue-500/10",   border: "border-blue-500/20",   description: t("currentInventory", "Current inventory") },
+    { label: t("coldStorage", "Cold Storage"),path: "/warehouse/fridge",  icon: ThermometerSnowflake, color: "text-cyan-400", bg: "bg-cyan-500/10",   border: "border-cyan-500/20",   description: t("expiryCriticalBatches", "Expiry-critical batches") },
+    { label: t("movements", "Movements"),    path: "/warehouse/movements", icon: Activity,           color: "text-amber-400",  bg: "bg-amber-500/10",  border: "border-amber-500/20",  description: t("stockLedger", "Stock ledger") },
+  ];
 
   const kpis: KpiItem[] = [
     {
-      label: "Pending Inspection",
+      label: t("pendingInspection", "Pending Inspection"),
       value: data?.grns.received ?? "—",
-      sub: "GRNs awaiting QC",
+      sub: t("grnsAwaitingQc", "GRNs awaiting QC"),
       icon: Eye,
       color: "text-amber-500",
       bg: "bg-amber-500/10",
@@ -123,9 +91,9 @@ export default function QCDashboard() {
       loading,
     },
     {
-      label: "Lines on Hold",
+      label: t("linesOnHold", "Lines on Hold"),
       value: data?.qc.holdLines ?? "—",
-      sub: "Held across all GRNs",
+      sub: t("heldAcrossGrns", "Held across all GRNs"),
       icon: Clock,
       color: data?.qc.holdLines ? "text-orange-500" : "text-muted-foreground",
       bg: data?.qc.holdLines ? "bg-orange-500/10" : "bg-muted/20",
@@ -133,9 +101,9 @@ export default function QCDashboard() {
       loading,
     },
     {
-      label: "Rejected Lines",
+      label: t("rejectedLines", "Rejected Lines"),
       value: data?.qc.rejectLines ?? "—",
-      sub: "QC failures",
+      sub: t("qcFailures", "QC failures"),
       icon: XCircle,
       color: data?.qc.rejectLines ? "text-red-500" : "text-muted-foreground",
       bg: data?.qc.rejectLines ? "bg-red-500/10" : "bg-muted/20",
@@ -143,9 +111,9 @@ export default function QCDashboard() {
       loading,
     },
     {
-      label: "Awaiting Posting",
+      label: t("awaitingPosting", "Awaiting Posting"),
       value: data?.qc.awaitingPosting ?? "—",
-      sub: "Approved, ready for stock",
+      sub: t("approvedReadyForStock", "Approved, ready for stock"),
       icon: UploadCloud,
       color: data?.qc.awaitingPosting ? "text-violet-500" : "text-muted-foreground",
       bg: data?.qc.awaitingPosting ? "bg-violet-500/10" : "bg-muted/20",
@@ -158,8 +126,8 @@ export default function QCDashboard() {
   return (
     <DashboardShell
       icon={ScanLine}
-      title="Quality Control"
-      subtitle="QC Inspector · Inspection & Approval Workflow"
+      title={t("qcDashboardTitle", "Quality Control")}
+      subtitle={t("qcDashboardSubtitle", "QC Inspector · Inspection & Approval Workflow")}
       accent="emerald"
       headerAction={
         <button
@@ -167,54 +135,52 @@ export default function QCDashboard() {
           className="flex items-center gap-1.5 text-xs bg-primary text-primary-foreground px-3 py-1.5 rounded-lg font-medium hover:opacity-90 transition shrink-0"
         >
           <ClipboardList className="w-3.5 h-3.5" />
-          View GRNs
+          {t("viewGrns", "View GRNs")}
         </button>
       }
     >
       <KpiGrid items={kpis} />
 
       <div className="grid md:grid-cols-2 gap-4">
-        {/* Pending inspection list */}
         <SectionCard
-          title="GRN Pipeline"
+          title={t("grnPipelineTitle", "GRN Pipeline")}
           icon={Clock}
           iconClass="text-amber-400"
         >
           {loading ? (
             <LoadingRows count={5} />
           ) : !data ? (
-            <EmptyState icon={CheckCircle2} message="No data" sub="Could not load GRN status" />
+            <EmptyState icon={CheckCircle2} message={t("noData", "No data")} sub={t("couldNotLoadGrn", "Could not load GRN status")} />
           ) : (
             <>
               <PipelineBar
                 rows={[
-                  { label: "Draft",     count: data.grns.draft,     bar: "bg-muted-foreground/30", text: "text-muted-foreground" },
-                  { label: "Received",  count: data.grns.received,  bar: "bg-amber-500",           text: "text-amber-400" },
-                  { label: "Inspected", count: data.grns.inspected, bar: "bg-violet-500",           text: "text-violet-400" },
-                  { label: "Approved",  count: data.grns.approved,  bar: "bg-blue-500",            text: "text-blue-400" },
-                  { label: "Completed", count: data.grns.completed, bar: "bg-emerald-500",         text: "text-emerald-400" },
-                  { label: "Rejected",  count: data.grns.rejected,  bar: "bg-red-500",             text: "text-red-400" },
+                  { label: t("draft", "Draft"),         count: data.grns.draft,     bar: "bg-muted-foreground/30", text: "text-muted-foreground" },
+                  { label: t("received", "Received"),   count: data.grns.received,  bar: "bg-amber-500",           text: "text-amber-400" },
+                  { label: t("inspected", "Inspected"), count: data.grns.inspected, bar: "bg-violet-500",          text: "text-violet-400" },
+                  { label: t("approved", "Approved"),   count: data.grns.approved,  bar: "bg-blue-500",            text: "text-blue-400" },
+                  { label: t("completed", "Completed"), count: data.grns.completed, bar: "bg-emerald-500",         text: "text-emerald-400" },
+                  { label: t("rejected", "Rejected"),   count: data.grns.rejected,  bar: "bg-red-500",             text: "text-red-400" },
                 ] satisfies PipelineRow[]}
                 total={data.grns.total}
                 loading={loading}
               />
               <div className="pt-3 mt-2 border-t border-border text-center">
                 <p className="text-2xl font-bold text-foreground">{data.grns.total}</p>
-                <p className="text-[10px] text-muted-foreground">Total GRNs</p>
+                <p className="text-[10px] text-muted-foreground">{t("totalGrns", "Total GRNs")}</p>
               </div>
             </>
           )}
         </SectionCard>
 
-        {/* QC workflow guide */}
-        <SectionCard title="Inspection Workflow" icon={ShieldCheck} iconClass="text-violet-400">
+        <SectionCard title={t("inspectionWorkflow", "Inspection Workflow")} icon={ShieldCheck} iconClass="text-violet-400">
           <div className="space-y-3">
             {[
-              { step: "1", label: "Received",  desc: "GRN has been physically received by warehouse",       color: "text-amber-400",  bg: "bg-amber-500/10"  },
-              { step: "2", label: "Inspect",   desc: "Open GRN → QC page to log inspection result",         color: "text-orange-400", bg: "bg-orange-500/10" },
-              { step: "3", label: "Inspected", desc: "QC complete — ready for management approval",          color: "text-violet-400", bg: "bg-violet-500/10" },
-              { step: "4", label: "Approved",  desc: "Ready to post — items will enter inventory",           color: "text-blue-400",   bg: "bg-blue-500/10"   },
-              { step: "5", label: "Completed", desc: "Posted to inventory — stock balances updated",         color: "text-emerald-400",bg: "bg-emerald-500/10"},
+              { step: "1", label: t("received", "Received"),  desc: t("grnReceivedByWarehouse", "GRN has been physically received by warehouse"),  color: "text-amber-400",  bg: "bg-amber-500/10"  },
+              { step: "2", label: t("inspect", "Inspect"),    desc: t("openGrnQcPage", "Open GRN → QC page to log inspection result"),              color: "text-orange-400", bg: "bg-orange-500/10" },
+              { step: "3", label: t("inspected", "Inspected"),desc: t("qcCompleteApproval", "QC complete — ready for management approval"),          color: "text-violet-400", bg: "bg-violet-500/10" },
+              { step: "4", label: t("approved", "Approved"),  desc: t("readyToPostInventory", "Ready to post — items will enter inventory"),         color: "text-blue-400",   bg: "bg-blue-500/10"   },
+              { step: "5", label: t("completed", "Completed"),desc: t("postedStockBalances", "Posted to inventory — stock balances updated"),        color: "text-emerald-400",bg: "bg-emerald-500/10"},
             ].map(({ step, label, desc, color, bg }) => (
               <div key={step} className="flex items-start gap-3">
                 <div className={`w-6 h-6 rounded-full ${bg} flex items-center justify-center shrink-0 mt-0.5`}>
@@ -250,7 +216,7 @@ export default function QCDashboard() {
         </SectionCard>
       </div>
 
-      <ActionGrid actions={ACTIONS} onNavigate={navigate} cols={2} />
+      <ActionGrid actions={actions} onNavigate={navigate} cols={2} />
     </DashboardShell>
   );
 }

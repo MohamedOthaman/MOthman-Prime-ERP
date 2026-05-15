@@ -14,22 +14,11 @@ import {
   fetchInventoryMovementsLog,
   type InventoryMovementLogRow,
 } from "@/features/services/warehouseInventoryService";
+import { useLang } from "@/contexts/LanguageContext";
 
 const PAGE_SIZE = 100;
 
 type MovementTypeFilter = "ALL" | "INBOUND" | "OUTBOUND" | "RETURN" | "ADJUSTMENT";
-
-const TYPE_CONFIG: Record<string, {
-  label: string;
-  badgeClass: string;
-  icon: "in" | "out" | "return" | "adjust";
-}> = {
-  INBOUND:    { label: "Inbound",    badgeClass: "border-emerald-500/30 bg-emerald-500/10 text-emerald-500", icon: "in" },
-  OUTBOUND:   { label: "Outbound",   badgeClass: "border-red-500/30 bg-red-500/10 text-red-500",             icon: "out" },
-  RETURN:     { label: "Return",     badgeClass: "border-blue-500/30 bg-blue-500/10 text-blue-500",           icon: "return" },
-  ADJUSTMENT: { label: "Adjustment", badgeClass: "border-amber-500/30 bg-amber-500/10 text-amber-500",        icon: "adjust" },
-  TRANSFER:   { label: "Transfer",   badgeClass: "border-violet-500/30 bg-violet-500/10 text-violet-500",     icon: "adjust" },
-};
 
 function MovementIcon({ icon }: { icon: string }) {
   if (icon === "in")     return <ArrowDown className="h-3.5 w-3.5 text-emerald-500" />;
@@ -54,6 +43,8 @@ function formatDateShort(value: string | null) {
 
 export default function InventoryMovementsPage() {
   const navigate = useNavigate();
+  const { t } = useLang();
+
   const [rows, setRows] = useState<InventoryMovementLogRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -62,6 +53,15 @@ export default function InventoryMovementsPage() {
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
   const [page, setPage] = useState(0);
+
+  // ─── Movement type config (inside component for i18n) ───────────────────────
+  const TYPE_CONFIG = useMemo(() => ({
+    INBOUND:    { label: t("movementInbound", "Inbound"),       badgeClass: "border-emerald-500/30 bg-emerald-500/10 text-emerald-500", icon: "in"     },
+    OUTBOUND:   { label: t("movementOutbound", "Outbound"),     badgeClass: "border-red-500/30 bg-red-500/10 text-red-500",             icon: "out"    },
+    RETURN:     { label: t("movementReturn", "Return"),         badgeClass: "border-blue-500/30 bg-blue-500/10 text-blue-500",           icon: "return" },
+    ADJUSTMENT: { label: t("movementAdjustment", "Adjustment"), badgeClass: "border-amber-500/30 bg-amber-500/10 text-amber-500",        icon: "adjust" },
+    TRANSFER:   { label: t("movementTransfer", "Transfer"),     badgeClass: "border-violet-500/30 bg-violet-500/10 text-violet-500",     icon: "adjust" },
+  }), [t]);
 
   useEffect(() => {
     async function load() {
@@ -77,7 +77,7 @@ export default function InventoryMovementsPage() {
         });
         setRows(data);
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to load movements.");
+        setError(err instanceof Error ? err.message : t("failedToLoadMovements", "Failed to load movements."));
       } finally {
         setLoading(false);
       }
@@ -115,6 +115,11 @@ export default function InventoryMovementsPage() {
     );
   }, [rows]);
 
+  // Type filter tab labels
+  const typeFilterTabs = useMemo(() => (
+    ["ALL", "INBOUND", "OUTBOUND", "RETURN", "ADJUSTMENT"] as const
+  ), []);
+
   return (
     <div className="min-h-screen bg-background pb-24">
       <header className="sticky top-11 z-40 border-b border-border bg-background/95 px-4 py-3 backdrop-blur-sm">
@@ -129,27 +134,27 @@ export default function InventoryMovementsPage() {
             </button>
             <ClipboardList className="h-5 w-5 text-primary" />
             <h1 className="text-lg font-semibold text-foreground">
-              Inventory Movements
+              {t("pageTitleInventoryMovements", "Inventory Movements")}
             </h1>
             <span className="ml-auto font-mono text-xs text-muted-foreground">
-              {filtered.length} / {rows.length} shown
+              {filtered.length} / {rows.length} {t("shown", "shown")}
             </span>
           </div>
 
           <div className="flex flex-wrap gap-2">
             {/* Type filter tabs */}
-            {(["ALL", "INBOUND", "OUTBOUND", "RETURN", "ADJUSTMENT"] as const).map((t) => (
+            {typeFilterTabs.map((tp) => (
               <button
-                key={t}
+                key={tp}
                 type="button"
-                onClick={() => setTypeFilter(t)}
+                onClick={() => setTypeFilter(tp)}
                 className={`h-8 rounded-md border px-3 text-xs font-medium transition ${
-                  typeFilter === t
+                  typeFilter === tp
                     ? "border-primary bg-primary text-primary-foreground"
                     : "border-border bg-card text-foreground"
                 }`}
               >
-                {t === "ALL" ? "All Types" : (TYPE_CONFIG[t]?.label ?? t)}
+                {tp === "ALL" ? t("allTypes", "All Types") : ((TYPE_CONFIG as any)[tp]?.label ?? tp)}
               </button>
             ))}
 
@@ -175,7 +180,7 @@ export default function InventoryMovementsPage() {
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <input
               type="text"
-              placeholder="Search product, batch, GRN, invoice, notes..."
+              placeholder={t("searchMovements", "Search product, batch, GRN, invoice, notes...")}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="h-9 w-full rounded-md border border-border bg-secondary pl-9 pr-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
@@ -191,7 +196,7 @@ export default function InventoryMovementsPage() {
             <div className="flex items-center gap-2">
               <ArrowDown className="h-4 w-4 text-emerald-500" />
               <span className="text-xs uppercase tracking-[0.14em] text-muted-foreground">
-                Total Inbound
+                {t("totalInbound", "Total Inbound")}
               </span>
             </div>
             <div className="mt-2 font-mono text-2xl font-semibold text-emerald-500">
@@ -202,7 +207,7 @@ export default function InventoryMovementsPage() {
             <div className="flex items-center gap-2">
               <ArrowUp className="h-4 w-4 text-red-500" />
               <span className="text-xs uppercase tracking-[0.14em] text-muted-foreground">
-                Total Outbound
+                {t("totalOutbound", "Total Outbound")}
               </span>
             </div>
             <div className="mt-2 font-mono text-2xl font-semibold text-red-500">
@@ -213,7 +218,7 @@ export default function InventoryMovementsPage() {
             <div className="flex items-center gap-2">
               <RotateCcw className="h-4 w-4 text-blue-500" />
               <span className="text-xs uppercase tracking-[0.14em] text-muted-foreground">
-                Total Returned
+                {t("totalReturned", "Total Returned")}
               </span>
             </div>
             <div className="mt-2 font-mono text-2xl font-semibold text-blue-500">
@@ -241,29 +246,29 @@ export default function InventoryMovementsPage() {
               <table className="min-w-[1100px] w-full text-left text-sm">
                 <thead className="bg-secondary/50 text-[11px] uppercase tracking-[0.12em] text-muted-foreground">
                   <tr>
-                    <th className="px-3 py-2">Date</th>
-                    <th className="px-3 py-2">Type</th>
-                    <th className="px-3 py-2">Product</th>
-                    <th className="px-3 py-2">Batch</th>
-                    <th className="px-3 py-2">Expiry</th>
-                    <th className="px-3 py-2 text-right">Qty In</th>
-                    <th className="px-3 py-2 text-right">Qty Out</th>
-                    <th className="px-3 py-2 text-right">Balance</th>
-                    <th className="px-3 py-2">Reference</th>
-                    <th className="px-3 py-2">Location</th>
-                    <th className="px-3 py-2">Notes</th>
+                    <th className="px-3 py-2">{t("colDate", "Date")}</th>
+                    <th className="px-3 py-2">{t("colType", "Type")}</th>
+                    <th className="px-3 py-2">{t("colProduct", "Product")}</th>
+                    <th className="px-3 py-2">{t("colBatch", "Batch")}</th>
+                    <th className="px-3 py-2">{t("colExpiry", "Expiry")}</th>
+                    <th className="px-3 py-2 text-right">{t("colQtyIn", "Qty In")}</th>
+                    <th className="px-3 py-2 text-right">{t("colQtyOut", "Qty Out")}</th>
+                    <th className="px-3 py-2 text-right">{t("colBalance", "Balance")}</th>
+                    <th className="px-3 py-2">{t("colReference", "Reference")}</th>
+                    <th className="px-3 py-2">{t("colLocation", "Location")}</th>
+                    <th className="px-3 py-2">{t("colNotes", "Notes")}</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filtered.length === 0 ? (
                     <tr>
                       <td colSpan={11} className="py-16 text-center text-sm text-muted-foreground">
-                        No movements found for the selected filters.
+                        {t("noMovementsFound", "No movements found for the selected filters.")}
                       </td>
                     </tr>
                   ) : null}
                   {filtered.map((row) => {
-                    const cfg = TYPE_CONFIG[row.movement_type] ?? {
+                    const cfg = (TYPE_CONFIG as any)[row.movement_type] ?? {
                       label: row.movement_type,
                       badgeClass: "border-border bg-secondary text-foreground",
                       icon: "adjust",
@@ -345,7 +350,7 @@ export default function InventoryMovementsPage() {
             {/* Pagination */}
             <div className="flex items-center justify-between border-t border-border px-4 py-2 text-xs text-muted-foreground">
               <span>
-                Page {page + 1} · {rows.length} records loaded
+                {t("page", "Page")} {page + 1} · {rows.length} {t("recordsLoaded", "records loaded")}
               </span>
               <div className="flex gap-2">
                 <button
@@ -354,7 +359,7 @@ export default function InventoryMovementsPage() {
                   onClick={() => setPage((p) => Math.max(0, p - 1))}
                   className="rounded border border-border bg-card px-3 py-1 text-xs font-medium text-foreground disabled:opacity-40"
                 >
-                  Previous
+                  {t("previous", "Previous")}
                 </button>
                 <button
                   type="button"
@@ -362,7 +367,7 @@ export default function InventoryMovementsPage() {
                   onClick={() => setPage((p) => p + 1)}
                   className="rounded border border-border bg-card px-3 py-1 text-xs font-medium text-foreground disabled:opacity-40"
                 >
-                  Next
+                  {t("next", "Next")}
                 </button>
               </div>
             </div>

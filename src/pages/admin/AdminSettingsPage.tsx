@@ -10,6 +10,7 @@
  */
 
 import { useNavigate } from "react-router-dom";
+import { useMemo } from "react";
 import {
   ArrowLeft,
   Settings,
@@ -28,6 +29,7 @@ import {
   Info,
 } from "lucide-react";
 import { usePermissions } from "@/hooks/usePermissions";
+import { useLang } from "@/contexts/LanguageContext";
 
 // ─── Role permission matrix data ──────────────────────────────────────────────
 
@@ -47,73 +49,22 @@ interface RoleEntry {
   };
 }
 
-const ROLE_MATRIX: RoleEntry[] = [
-  {
-    role: "admin", label: "Admin", dept: "Operations", tier: "admin",
-    permissions: { canViewReports: true, canManageStock: true, canManageInvoices: true, canManageReceiving: true, canManageCustomers: true, canImportExport: true, canEditUsers: true },
-  },
-  {
-    role: "ops_manager", label: "Ops Manager", dept: "Operations", tier: "admin",
-    permissions: { canViewReports: true, canManageStock: true, canManageInvoices: true, canManageReceiving: true, canManageCustomers: true, canImportExport: true, canEditUsers: true },
-  },
-  {
-    role: "ceo", label: "CEO", dept: "Executive", tier: "executive",
-    permissions: { canViewReports: true, canManageStock: false, canManageInvoices: true, canManageReceiving: false, canManageCustomers: false, canImportExport: false, canEditUsers: true },
-  },
-  {
-    role: "gm", label: "GM", dept: "Executive", tier: "executive",
-    permissions: { canViewReports: true, canManageStock: false, canManageInvoices: true, canManageReceiving: false, canManageCustomers: false, canImportExport: false, canEditUsers: true },
-  },
-  {
-    role: "sales_manager", label: "Sales Manager", dept: "Sales", tier: "manager",
-    permissions: { canViewReports: true, canManageStock: false, canManageInvoices: true, canManageReceiving: false, canManageCustomers: true, canImportExport: false, canEditUsers: false },
-  },
-  {
-    role: "salesman", label: "Salesman", dept: "Sales", tier: "user",
-    permissions: { canViewReports: false, canManageStock: false, canManageInvoices: true, canManageReceiving: false, canManageCustomers: false, canImportExport: false, canEditUsers: false },
-  },
-  {
-    role: "invoice_team", label: "Invoice Team", dept: "Invoicing", tier: "user",
-    permissions: { canViewReports: false, canManageStock: false, canManageInvoices: true, canManageReceiving: false, canManageCustomers: true, canImportExport: false, canEditUsers: false },
-  },
-  {
-    role: "accountant", label: "Accountant", dept: "Finance", tier: "user",
-    permissions: { canViewReports: true, canManageStock: false, canManageInvoices: true, canManageReceiving: false, canManageCustomers: false, canImportExport: false, canEditUsers: false },
-  },
-  {
-    role: "cashier", label: "Cashier", dept: "Finance", tier: "user",
-    permissions: { canViewReports: true, canManageStock: false, canManageInvoices: true, canManageReceiving: false, canManageCustomers: false, canImportExport: false, canEditUsers: false },
-  },
-  {
-    role: "warehouse_manager", label: "Warehouse Manager", dept: "Warehouse", tier: "manager",
-    permissions: { canViewReports: true, canManageStock: true, canManageInvoices: false, canManageReceiving: true, canManageCustomers: false, canImportExport: true, canEditUsers: false },
-  },
-  {
-    role: "inventory_controller", label: "Inv. Controller", dept: "Warehouse", tier: "manager",
-    permissions: { canViewReports: true, canManageStock: true, canManageInvoices: false, canManageReceiving: true, canManageCustomers: false, canImportExport: true, canEditUsers: false },
-  },
-  {
-    role: "warehouse", label: "Warehouse Staff", dept: "Warehouse", tier: "user",
-    permissions: { canViewReports: false, canManageStock: true, canManageInvoices: false, canManageReceiving: true, canManageCustomers: false, canImportExport: false, canEditUsers: false },
-  },
-  {
-    role: "qc", label: "QC", dept: "Warehouse", tier: "user",
-    permissions: { canViewReports: false, canManageStock: false, canManageInvoices: false, canManageReceiving: true, canManageCustomers: false, canImportExport: false, canEditUsers: false },
-  },
-  {
-    role: "purchase_manager", label: "Purchase Manager", dept: "Purchasing", tier: "manager",
-    permissions: { canViewReports: true, canManageStock: true, canManageInvoices: false, canManageReceiving: true, canManageCustomers: false, canImportExport: true, canEditUsers: false },
-  },
-];
-
-const PERMISSION_COLS: { key: keyof RoleEntry["permissions"]; label: string }[] = [
-  { key: "canViewReports",     label: "Reports"    },
-  { key: "canManageStock",     label: "Stock"      },
-  { key: "canManageInvoices",  label: "Invoices"   },
-  { key: "canManageReceiving", label: "Receiving"  },
-  { key: "canManageCustomers", label: "Customers"  },
-  { key: "canImportExport",    label: "Import"     },
-  { key: "canEditUsers",       label: "Users"      },
+// Static data — labels translated inside component via useMemo
+const ROLE_MATRIX_DATA: Omit<RoleEntry, "label" | "dept">[] = [
+  { role: "admin",              tier: "admin",     permissions: { canViewReports: true,  canManageStock: true,  canManageInvoices: true,  canManageReceiving: true,  canManageCustomers: true,  canImportExport: true,  canEditUsers: true  } },
+  { role: "ops_manager",        tier: "admin",     permissions: { canViewReports: true,  canManageStock: true,  canManageInvoices: true,  canManageReceiving: true,  canManageCustomers: true,  canImportExport: true,  canEditUsers: true  } },
+  { role: "ceo",                tier: "executive", permissions: { canViewReports: true,  canManageStock: false, canManageInvoices: true,  canManageReceiving: false, canManageCustomers: false, canImportExport: false, canEditUsers: true  } },
+  { role: "gm",                 tier: "executive", permissions: { canViewReports: true,  canManageStock: false, canManageInvoices: true,  canManageReceiving: false, canManageCustomers: false, canImportExport: false, canEditUsers: true  } },
+  { role: "sales_manager",      tier: "manager",   permissions: { canViewReports: true,  canManageStock: false, canManageInvoices: true,  canManageReceiving: false, canManageCustomers: true,  canImportExport: false, canEditUsers: false } },
+  { role: "salesman",           tier: "user",      permissions: { canViewReports: false, canManageStock: false, canManageInvoices: true,  canManageReceiving: false, canManageCustomers: false, canImportExport: false, canEditUsers: false } },
+  { role: "invoice_team",       tier: "user",      permissions: { canViewReports: false, canManageStock: false, canManageInvoices: true,  canManageReceiving: false, canManageCustomers: true,  canImportExport: false, canEditUsers: false } },
+  { role: "accountant",         tier: "user",      permissions: { canViewReports: true,  canManageStock: false, canManageInvoices: true,  canManageReceiving: false, canManageCustomers: false, canImportExport: false, canEditUsers: false } },
+  { role: "cashier",            tier: "user",      permissions: { canViewReports: true,  canManageStock: false, canManageInvoices: true,  canManageReceiving: false, canManageCustomers: false, canImportExport: false, canEditUsers: false } },
+  { role: "warehouse_manager",  tier: "manager",   permissions: { canViewReports: true,  canManageStock: true,  canManageInvoices: false, canManageReceiving: true,  canManageCustomers: false, canImportExport: true,  canEditUsers: false } },
+  { role: "inventory_controller", tier: "manager", permissions: { canViewReports: true,  canManageStock: true,  canManageInvoices: false, canManageReceiving: true,  canManageCustomers: false, canImportExport: true,  canEditUsers: false } },
+  { role: "warehouse",          tier: "user",      permissions: { canViewReports: false, canManageStock: true,  canManageInvoices: false, canManageReceiving: true,  canManageCustomers: false, canImportExport: false, canEditUsers: false } },
+  { role: "qc",                 tier: "user",      permissions: { canViewReports: false, canManageStock: false, canManageInvoices: false, canManageReceiving: true,  canManageCustomers: false, canImportExport: false, canEditUsers: false } },
+  { role: "purchase_manager",   tier: "manager",   permissions: { canViewReports: true,  canManageStock: true,  canManageInvoices: false, canManageReceiving: true,  canManageCustomers: false, canImportExport: true,  canEditUsers: false } },
 ];
 
 const TIER_COLOR: Record<string, string> = {
@@ -124,24 +75,62 @@ const TIER_COLOR: Record<string, string> = {
   user:      "text-muted-foreground bg-muted/30 border-border",
 };
 
-// ─── Admin nav links ──────────────────────────────────────────────────────────
-
-const ADMIN_LINKS = [
-  { icon: Users,         label: "User Management",     sub: "Invite users, assign roles, reset access",    path: "/admin/users"       },
-  { icon: Eye,           label: "Preview As Role",      sub: "View the app as any role (admin only)",       path: "/admin/preview-as"  },
-  { icon: LayoutDashboard, label: "Dashboard",          sub: "Return to your home dashboard",               path: "/"                  },
-  { icon: BarChart3,     label: "Reports",              sub: "Access the reports catalog",                  path: "/reports"           },
-  { icon: Package,       label: "Products",             sub: "Product master, import & validation",         path: "/products"          },
-  { icon: ClipboardList, label: "GRN List",             sub: "Goods received notes & receiving queue",      path: "/grn"               },
-  { icon: FileText,      label: "Invoice List",         sub: "Sales invoices lifecycle",                    path: "/invoices"          },
-  { icon: Layers,        label: "Inventory Movements",  sub: "Full movement audit ledger",                  path: "/warehouse/movements" },
-];
-
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function AdminSettingsPage() {
   const navigate = useNavigate();
   const { role, tier } = usePermissions();
+  const { t } = useLang();
+
+  // ── Translated role matrix ───────────────────────────────────────────────
+  const ROLE_MATRIX = useMemo<RoleEntry[]>(() => {
+    const labelMap: Record<string, [string, string]> = {
+      admin:                ["Admin",            "Operations"],
+      ops_manager:          ["Ops Manager",      "Operations"],
+      ceo:                  ["CEO",              "Executive"],
+      gm:                   ["GM",               "Executive"],
+      sales_manager:        ["Sales Manager",    "Sales"],
+      salesman:             ["Salesman",         "Sales"],
+      invoice_team:         ["Invoice Team",     "Invoicing"],
+      accountant:           ["Accountant",       "Finance"],
+      cashier:              ["Cashier",          "Finance"],
+      warehouse_manager:    ["Warehouse Manager","Warehouse"],
+      inventory_controller: ["Inv. Controller",  "Warehouse"],
+      warehouse:            ["Warehouse Staff",  "Warehouse"],
+      qc:                   ["QC",               "Warehouse"],
+      purchase_manager:     ["Purchase Manager", "Purchasing"],
+    };
+    return ROLE_MATRIX_DATA.map((r) => {
+      const [defaultLabel, defaultDept] = labelMap[r.role] ?? [r.role, "General"];
+      return {
+        ...r,
+        label: t(`role_${r.role}`, defaultLabel),
+        dept: t(`dept_${r.role}_dept`, defaultDept),
+      } as RoleEntry;
+    });
+  }, [t]);
+
+  // ── Translated permission columns ────────────────────────────────────────
+  const PERMISSION_COLS = useMemo<{ key: keyof RoleEntry["permissions"]; label: string }[]>(() => [
+    { key: "canViewReports",     label: t("permReports",   "Reports")   },
+    { key: "canManageStock",     label: t("permStock",     "Stock")     },
+    { key: "canManageInvoices",  label: t("permInvoices",  "Invoices")  },
+    { key: "canManageReceiving", label: t("permReceiving", "Receiving") },
+    { key: "canManageCustomers", label: t("permCustomers", "Customers") },
+    { key: "canImportExport",    label: t("permImport",    "Import")    },
+    { key: "canEditUsers",       label: t("users",         "Users")     },
+  ], [t]);
+
+  const ADMIN_LINKS = [
+    { icon: Users,           label: t("userManagement", "User Management"),      sub: t("inviteUsersDesc", "Invite users, assign roles, reset access"),    path: "/admin/users"        },
+    { icon: Eye,             label: t("previewAsRole", "Preview As Role"),        sub: t("previewAsRoleDesc", "View the app as any role (admin only)"),      path: "/admin/preview-as"   },
+    { icon: LayoutDashboard, label: t("dashboard", "Dashboard"),                  sub: t("returnDashboard", "Return to your home dashboard"),                path: "/"                   },
+    { icon: BarChart3,       label: t("reports", "Reports"),                      sub: t("accessReports", "Access the reports catalog"),                    path: "/reports"            },
+    { icon: Package,         label: t("productsNav", "Products"),                 sub: t("productMasterDesc", "Product master, import & validation"),        path: "/products"           },
+    { icon: ClipboardList,   label: t("pageTitleGrn", "GRN List"),               sub: t("grnListDesc", "Goods received notes & receiving queue"),            path: "/grn"                },
+    { icon: FileText,        label: t("pageTitleInvoices", "Invoice List"),       sub: t("invoiceListDesc", "Sales invoices lifecycle"),                     path: "/invoices"           },
+    { icon: Layers,          label: t("inventoryMovements", "Inventory Movements"), sub: t("inventoryMovementsDesc", "Full movement audit ledger"),          path: "/warehouse/movements" },
+  ];
 
   return (
     <div className="min-h-screen bg-background pb-24">
@@ -158,7 +147,7 @@ export default function AdminSettingsPage() {
             <Settings className="w-4 h-4 text-slate-400" />
           </div>
           <div className="flex-1 min-w-0">
-            <h1 className="text-[15px] font-bold tracking-tight text-foreground leading-tight">System Settings</h1>
+            <h1 className="text-[15px] font-bold tracking-tight text-foreground leading-tight">{t("pageTitleSettings", "System Settings")}</h1>
             <p className="text-[11px] text-muted-foreground leading-tight">Admin · {role.replace(/_/g, " ")}</p>
           </div>
         </div>
@@ -170,16 +159,16 @@ export default function AdminSettingsPage() {
         <section className="rounded-xl border border-border bg-card p-4 space-y-3">
           <div className="flex items-center gap-2 mb-1">
             <Info className="w-3.5 h-3.5 text-muted-foreground" />
-            <h2 className="text-sm font-semibold text-foreground">System Information</h2>
+            <h2 className="text-sm font-semibold text-foreground">{t("systemInfo", "System Information")}</h2>
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-2.5 text-xs">
             {[
-              { label: "Application",  value: "Food Choice ERP" },
-              { label: "Stack",        value: "React · TypeScript · Supabase" },
-              { label: "Your Role",    value: role.replace(/_/g, " ") },
-              { label: "Authority",    value: tier },
-              { label: "Data source",  value: "Supabase PostgreSQL" },
-              { label: "Auth",         value: "Supabase Auth + RLS" },
+              { label: t("application", "Application"),  value: "Food Choice ERP" },
+              { label: t("stack", "Stack"),              value: "React · TypeScript · Supabase" },
+              { label: t("yourRole", "Your Role"),       value: role.replace(/_/g, " ") },
+              { label: t("authority", "Authority"),      value: tier },
+              { label: t("dataSource", "Data source"),   value: "Supabase PostgreSQL" },
+              { label: t("authSystem", "Auth"),          value: "Supabase Auth + RLS" },
             ].map(({ label, value }) => (
               <div key={label} className="flex flex-col gap-0.5">
                 <span className="text-muted-foreground">{label}</span>
@@ -193,7 +182,7 @@ export default function AdminSettingsPage() {
         <section className="rounded-xl border border-border bg-card overflow-hidden">
           <div className="flex items-center gap-2 px-4 py-3 border-b border-border/60">
             <LayoutDashboard className="w-3.5 h-3.5 text-muted-foreground" />
-            <h2 className="text-sm font-semibold text-foreground">Quick Navigation</h2>
+            <h2 className="text-sm font-semibold text-foreground">{t("quickNav", "Quick Navigation")}</h2>
           </div>
           <div className="divide-y divide-border/40">
             {ADMIN_LINKS.map(({ icon: Icon, label, sub, path }) => (
@@ -219,16 +208,16 @@ export default function AdminSettingsPage() {
         <section className="rounded-xl border border-border bg-card overflow-hidden">
           <div className="flex items-center gap-2 px-4 py-3 border-b border-border/60">
             <Shield className="w-3.5 h-3.5 text-blue-400" />
-            <h2 className="text-sm font-semibold text-foreground">Role Permission Matrix</h2>
-            <span className="ml-auto text-[10px] text-muted-foreground">Read-only reference</span>
+            <h2 className="text-sm font-semibold text-foreground">{t("rolePermMatrix", "Role Permission Matrix")}</h2>
+            <span className="ml-auto text-[10px] text-muted-foreground">{t("readOnlyRef", "Read-only reference")}</span>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-[11px]">
               <thead>
                 <tr className="border-b border-border/60 text-muted-foreground">
-                  <th className="px-4 py-2 text-left font-medium min-w-[140px]">Role</th>
-                  <th className="px-3 py-2 text-left font-medium">Dept</th>
-                  <th className="px-3 py-2 text-left font-medium">Tier</th>
+                  <th className="px-4 py-2 text-left font-medium min-w-[140px]">{t("tableRole", "Role")}</th>
+                  <th className="px-3 py-2 text-left font-medium">{t("deptCol", "Dept")}</th>
+                  <th className="px-3 py-2 text-left font-medium">{t("tierCol", "Tier")}</th>
                   {PERMISSION_COLS.map((col) => (
                     <th key={col.key} className="px-2 py-2 text-center font-medium whitespace-nowrap">{col.label}</th>
                   ))}
@@ -244,7 +233,7 @@ export default function AdminSettingsPage() {
                       <span className="font-medium text-foreground">
                         {entry.label}
                         {entry.role === role && (
-                          <span className="ml-1.5 text-[9px] font-bold text-primary uppercase tracking-wide">you</span>
+                          <span className="ml-1.5 text-[9px] font-bold text-primary uppercase tracking-wide">{t("youLabel", "you")}</span>
                         )}
                       </span>
                     </td>
@@ -274,11 +263,10 @@ export default function AdminSettingsPage() {
         <section className="rounded-xl border border-red-500/20 bg-red-500/3 p-4">
           <div className="flex items-center gap-2 mb-2">
             <Shield className="w-3.5 h-3.5 text-red-400" />
-            <h2 className="text-sm font-semibold text-red-400">Danger Zone</h2>
+            <h2 className="text-sm font-semibold text-red-400">{t("dangerZone", "Danger Zone")}</h2>
           </div>
           <p className="text-xs text-muted-foreground">
-            Destructive operations (data purge, schema resets, bulk role changes) are managed directly
-            via Supabase dashboard or CLI migration. Contact your system administrator.
+            {t("dangerZoneDesc", "Destructive operations (data purge, schema resets, bulk role changes) are managed directly via Supabase dashboard or CLI migration. Contact your system administrator.")}
           </p>
         </section>
 

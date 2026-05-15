@@ -1,90 +1,10 @@
+import { useMemo } from "react";
 import { ArrowLeft, Eye, Check, X, Info } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { usePermissions } from "@/hooks/usePermissions";
 import { usePreviewMode } from "@/contexts/PreviewModeContext";
 import { useAuth } from "@/features/reports/hooks/useAuth";
-
-// ─── Role catalogue ────────────────────────────────────────────────────────────
-
-const ROLE_GROUPS = [
-  {
-    dept: "Executive",
-    accent: "text-amber-400",
-    roles: [
-      { key: "ceo", label: "CEO", description: "Company-wide KPIs, strategic overview, all reports" },
-      { key: "gm", label: "General Manager", description: "Operations oversight, approvals, full visibility" },
-    ],
-  },
-  {
-    dept: "Operations",
-    accent: "text-blue-400",
-    roles: [
-      { key: "owner", label: "Owner", description: "Full system control — all modules, admin tools, preview" },
-      { key: "admin", label: "Admin", description: "All modules, user management, import/export" },
-      { key: "ops_manager", label: "Operations Manager", description: "All modules except user management" },
-    ],
-  },
-  {
-    dept: "Sales",
-    accent: "text-cyan-400",
-    roles: [
-      { key: "sales_manager", label: "Sales Manager", description: "Team invoices, customers, salesmen, reports" },
-      { key: "salesman", label: "Salesman", description: "Own invoices, assigned customers" },
-      { key: "sales", label: "Sales Staff", description: "Invoice entry and customer view" },
-    ],
-  },
-  {
-    dept: "Warehouse & Inventory",
-    accent: "text-emerald-400",
-    roles: [
-      { key: "warehouse_manager", label: "Warehouse Manager", description: "Full warehouse: GRN, stock, products, import" },
-      { key: "warehouse", label: "Warehouse Staff", description: "GRN receiving and stock view" },
-      { key: "inventory_controller", label: "Inventory Controller", description: "Stock control, products, import/export" },
-      { key: "inventory", label: "Inventory Staff", description: "View stock and products" },
-      { key: "qc", label: "Quality Control", description: "GRN inspection and QC workflow" },
-    ],
-  },
-  {
-    dept: "Finance & Accounting",
-    accent: "text-violet-400",
-    roles: [
-      { key: "accountant", label: "Accountant", description: "Invoices, reports, financial view" },
-      { key: "accounting", label: "Accounting Staff", description: "Invoices and financial records" },
-      { key: "cashier", label: "Cashier", description: "Invoice entry and cash transactions" },
-    ],
-  },
-  {
-    dept: "Purchasing",
-    accent: "text-orange-400",
-    roles: [
-      { key: "purchase_manager", label: "Purchase Manager", description: "GRN, products, suppliers, import/export" },
-      { key: "purchase", label: "Purchase Staff", description: "GRN receiving and product view" },
-    ],
-  },
-  {
-    dept: "Invoicing",
-    accent: "text-sky-400",
-    roles: [
-      { key: "invoice_team", label: "Invoice Team", description: "Invoice creation, customer management, reports" },
-    ],
-  },
-  {
-    dept: "Marketing",
-    accent: "text-pink-400",
-    roles: [
-      { key: "brand_manager", label: "Brand Manager", description: "Product visibility and brand reporting" },
-    ],
-  },
-  {
-    dept: "Human Resources & General",
-    accent: "text-muted-foreground",
-    roles: [
-      { key: "hr", label: "HR", description: "General system view, no operational modules" },
-      { key: "secretary", label: "Secretary", description: "Read-only access to reports and views" },
-      { key: "read_only", label: "Read Only", description: "View-only: no create, edit, or delete actions" },
-    ],
-  },
-] as const;
+import { useLang } from "@/contexts/LanguageContext";
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
@@ -93,6 +13,88 @@ export default function PreviewAsPage() {
   const { previewRole, setPreviewRole, isPreviewMode, exitPreview } = usePreviewMode();
   const navigate = useNavigate();
   const { role: realRole } = useAuth();
+  const { t } = useLang();
+
+  // ── Translated role groups ───────────────────────────────────────────────
+  const ROLE_GROUPS = useMemo(() => [
+    {
+      dept: t("deptExecutive", "Executive"),
+      accent: "text-amber-400",
+      roles: [
+        { key: "ceo",  label: t("role_ceo", "CEO"),            description: t("roleDesc_ceo", "Company-wide KPIs, strategic overview, all reports") },
+        { key: "gm",   label: t("role_gm",  "General Manager"), description: t("roleDesc_gm",  "Operations oversight, approvals, full visibility")  },
+      ],
+    },
+    {
+      dept: t("deptOperations", "Operations"),
+      accent: "text-blue-400",
+      roles: [
+        { key: "owner",       label: t("role_owner",       "Owner"),               description: t("roleDesc_owner",       "Full system control — all modules, admin tools, preview") },
+        { key: "admin",       label: t("role_admin",       "Admin"),               description: t("roleDesc_admin",       "All modules, user management, import/export")            },
+        { key: "ops_manager", label: t("role_ops_manager", "Operations Manager"),  description: t("roleDesc_ops_manager", "All modules except user management")                     },
+      ],
+    },
+    {
+      dept: t("deptSales", "Sales"),
+      accent: "text-cyan-400",
+      roles: [
+        { key: "sales_manager", label: t("role_sales_manager", "Sales Manager"), description: t("roleDesc_sales_manager", "Team invoices, customers, salesmen, reports") },
+        { key: "salesman",      label: t("role_salesman",      "Salesman"),       description: t("roleDesc_salesman",      "Own invoices, assigned customers")             },
+        { key: "sales",         label: t("role_sales",         "Sales Staff"),    description: t("roleDesc_sales",         "Invoice entry and customer view")              },
+      ],
+    },
+    {
+      dept: t("deptWarehouseInventory", "Warehouse & Inventory"),
+      accent: "text-emerald-400",
+      roles: [
+        { key: "warehouse_manager",    label: t("role_warehouse_manager",    "Warehouse Manager"),    description: t("roleDesc_warehouse_manager",    "Full warehouse: GRN, stock, products, import") },
+        { key: "warehouse",            label: t("role_warehouse",            "Warehouse Staff"),      description: t("roleDesc_warehouse",            "GRN receiving and stock view")                 },
+        { key: "inventory_controller", label: t("role_inventory_controller", "Inventory Controller"), description: t("roleDesc_inventory_controller", "Stock control, products, import/export")       },
+        { key: "inventory",            label: t("role_inventory",            "Inventory Staff"),      description: t("roleDesc_inventory",            "View stock and products")                      },
+        { key: "qc",                   label: t("role_qc",                   "Quality Control"),      description: t("roleDesc_qc",                   "GRN inspection and QC workflow")               },
+      ],
+    },
+    {
+      dept: t("deptFinanceAccounting", "Finance & Accounting"),
+      accent: "text-violet-400",
+      roles: [
+        { key: "accountant", label: t("role_accountant", "Accountant"),      description: t("roleDesc_accountant", "Invoices, reports, financial view")   },
+        { key: "accounting", label: t("role_accounting", "Accounting Staff"), description: t("roleDesc_accounting", "Invoices and financial records")       },
+        { key: "cashier",    label: t("role_cashier",    "Cashier"),          description: t("roleDesc_cashier",    "Invoice entry and cash transactions")  },
+      ],
+    },
+    {
+      dept: t("deptPurchasing", "Purchasing"),
+      accent: "text-orange-400",
+      roles: [
+        { key: "purchase_manager", label: t("role_purchase_manager", "Purchase Manager"), description: t("roleDesc_purchase_manager", "GRN, products, suppliers, import/export") },
+        { key: "purchase",         label: t("role_purchase",         "Purchase Staff"),   description: t("roleDesc_purchase",         "GRN receiving and product view")           },
+      ],
+    },
+    {
+      dept: t("deptInvoicing", "Invoicing"),
+      accent: "text-sky-400",
+      roles: [
+        { key: "invoice_team", label: t("role_invoice_team", "Invoice Team"), description: t("roleDesc_invoice_team", "Invoice creation, customer management, reports") },
+      ],
+    },
+    {
+      dept: t("deptMarketing", "Marketing"),
+      accent: "text-pink-400",
+      roles: [
+        { key: "brand_manager", label: t("role_brand_manager", "Brand Manager"), description: t("roleDesc_brand_manager", "Product visibility and brand reporting") },
+      ],
+    },
+    {
+      dept: t("deptHrGeneral", "Human Resources & General"),
+      accent: "text-muted-foreground",
+      roles: [
+        { key: "hr",        label: t("role_hr",        "HR"),        description: t("roleDesc_hr",        "General system view, no operational modules")       },
+        { key: "secretary", label: t("role_secretary", "Secretary"), description: t("roleDesc_secretary", "Read-only access to reports and views")             },
+        { key: "read_only", label: t("role_read_only", "Read Only"), description: t("roleDesc_read_only", "View-only: no create, edit, or delete actions")     },
+      ],
+    },
+  ], [t]);
 
   // Guard — only admins/executives with canPreviewAsUser permission may access
   if (!canPreviewAsUser) {
@@ -119,7 +121,9 @@ export default function PreviewAsPage() {
 
           <div className="flex items-center gap-2 flex-1 min-w-0">
             <Eye className="w-4 h-4 text-amber-400 shrink-0" />
-            <h1 className="text-[14px] font-semibold text-foreground truncate">View as User</h1>
+            <h1 className="text-[14px] font-semibold text-foreground truncate">
+              {t("previewAsUser", "View as User")}
+            </h1>
           </div>
 
           {isPreviewMode && (
@@ -128,7 +132,7 @@ export default function PreviewAsPage() {
               className="flex items-center gap-1 text-xs text-amber-500 font-semibold hover:underline shrink-0"
             >
               <X className="w-3 h-3" />
-              Exit Preview
+              {t("exitPreview", "Exit Preview")}
             </button>
           )}
         </div>
@@ -140,17 +144,18 @@ export default function PreviewAsPage() {
           <div className="flex items-start gap-3">
             <Info className="w-4 h-4 text-amber-400 mt-0.5 shrink-0" />
             <div>
-              <p className="text-sm font-semibold text-foreground">Admin Preview Mode</p>
+              <p className="text-sm font-semibold text-foreground">
+                {t("adminPreviewMode", "Admin Preview Mode")}
+              </p>
               <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
-                Select any role to see exactly what that user sees — dashboards, navigation,
-                permissions, and available actions. Your actual account and permissions are
-                not changed.
+                {t("adminPreviewModeDesc", "Select any role to see exactly what that user sees — dashboards, navigation, permissions, and available actions. Your actual account and permissions are not changed.")}
               </p>
               {isPreviewMode && (
                 <div className="mt-2 flex items-center gap-2">
                   <div className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
                   <p className="text-xs text-amber-400 font-semibold">
-                    Currently previewing:{" "}
+                    {t("currentlyPreviewing", "Currently previewing:")}
+                    {" "}
                     <span className="font-mono uppercase">{previewRole}</span>
                   </p>
                 </div>
@@ -198,7 +203,7 @@ export default function PreviewAsPage() {
 
                     {isOwnRole && (
                       <span className="text-[10px] font-medium text-muted-foreground shrink-0 bg-muted/60 px-2 py-0.5 rounded">
-                        Your role
+                        {t("yourRole", "Your role")}
                       </span>
                     )}
                     {isCurrentPreview && !isOwnRole && (
@@ -216,7 +221,7 @@ export default function PreviewAsPage() {
 
         {/* ── Footer note ────────────────────────────────────── */}
         <p className="text-[11px] text-muted-foreground/50 text-center pb-2">
-          Preview mode is session-only and not persisted. It resets on page refresh.
+          {t("previewSessionNote", "Preview mode is session-only and not persisted. It resets on page refresh.")}
         </p>
       </main>
     </div>

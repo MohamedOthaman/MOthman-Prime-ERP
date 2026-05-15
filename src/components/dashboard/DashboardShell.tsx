@@ -17,6 +17,7 @@
 
 import { type ReactNode, type ComponentType } from "react";
 import { cn } from "@/lib/utils";
+import { useLang } from "@/contexts/LanguageContext";
 import {
   ArrowUpRight,
   ArrowDownRight,
@@ -120,11 +121,6 @@ export function DashboardShell({
 
 // ─── WelcomeBar ───────────────────────────────────────────────────────────────
 
-function getGreeting(): string {
-  const h = new Date().getHours();
-  return h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening";
-}
-
 export function WelcomeBar({
   name,
   roleLabel,
@@ -134,15 +130,19 @@ export function WelcomeBar({
   roleLabel?: string;
   accent?: AccentKey;
 }) {
+  const { t, lang } = useLang();
   const a = ACCENT[accent];
-  const today = new Date().toLocaleDateString("en-GB", {
+  const h = new Date().getHours();
+  const greetingKey = h < 12 ? "greetingMorning" : h < 17 ? "greetingAfternoon" : "greetingEvening";
+  const greeting = t(greetingKey, h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening");
+  const today = new Date().toLocaleDateString(lang === "ar" ? "ar-EG" : "en-GB", {
     weekday: "long", day: "numeric", month: "long",
   });
   return (
     <div className={cn("rounded-xl border px-4 py-3 flex items-center gap-3", a.cardBg, a.cardBorder)}>
       <div className="flex-1 min-w-0">
         <p className="text-sm font-semibold text-foreground">
-          {getGreeting()}{name ? `, ${name.split(" ")[0]}` : ""}
+          {greeting}{name ? `, ${name.split(" ")[0]}` : ""}
         </p>
         <p className="text-[11px] text-muted-foreground">
           {today}{roleLabel ? ` · ${roleLabel}` : ""}
@@ -338,7 +338,8 @@ interface ActionGridProps {
   title?: string;
 }
 
-export function ActionGrid({ actions, onNavigate, cols = 4, title = "Quick Actions" }: ActionGridProps) {
+export function ActionGrid({ actions, onNavigate, cols = 4, title }: ActionGridProps) {
+  const { t } = useLang();
   const colClass =
     cols === 2 ? "grid-cols-2" :
     cols === 3 ? "grid-cols-2 md:grid-cols-3" :
@@ -346,7 +347,7 @@ export function ActionGrid({ actions, onNavigate, cols = 4, title = "Quick Actio
   return (
     <div>
       <h2 className="text-[11px] font-semibold text-muted-foreground uppercase tracking-widest mb-2.5">
-        {title}
+        {title ?? t("quickActions", "Quick Actions")}
       </h2>
       <div className={cn("grid gap-3", colClass)}>
         {actions.map((action) => {
@@ -414,23 +415,26 @@ export function EmptyState({
 // ─── DashboardError ──────────────────────────────────────────────────────────
 
 export function DashboardError({
-  message = "Failed to load data",
+  message,
   onRetry,
 }: {
   message?: string;
   onRetry?: () => void;
 }) {
+  const { t } = useLang();
   return (
     <div className="flex flex-col items-center justify-center py-10 gap-3">
       <AlertTriangle className="w-8 h-8 text-red-400/40" />
-      <p className="text-sm font-medium text-muted-foreground">{message}</p>
+      <p className="text-sm font-medium text-muted-foreground">
+        {message ?? t("failedToLoad", "Failed to load data")}
+      </p>
       {onRetry && (
         <button
           onClick={onRetry}
           className="flex items-center gap-1.5 text-xs text-primary hover:underline"
         >
           <RefreshCw className="w-3 h-3" />
-          Try again
+          {t("tryAgain", "Try again")}
         </button>
       )}
     </div>

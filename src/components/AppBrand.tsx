@@ -1,4 +1,5 @@
 import { cn } from "@/lib/utils";
+import { useLang } from "@/contexts/LanguageContext";
 
 interface AppBrandProps {
   compact?: boolean;
@@ -11,31 +12,36 @@ export function AppBrand({
   className,
   showDeveloperCredit = false,
 }: AppBrandProps) {
+  const { t } = useLang();
+
   return (
     <div className={cn("flex items-center gap-3", className)}>
       <img
         src="/food-choice-logo.png"
-        alt="Food Choice ERP"
+        alt={t("brandName", "Food Choice ERP")}
         className={cn(
-          "w-auto shrink-0 object-contain rounded-xl",
-          compact ? "h-9" : "h-20"
+          "w-auto shrink-0 object-contain",
+          compact ? "h-9" : "h-20",
         )}
       />
+
       <div className="min-w-0">
         <p
           className={cn(
-            "font-bold tracking-tight text-foreground",
-            compact ? "text-sm" : "text-2xl"
+            "font-bold tracking-tight text-foreground leading-tight",
+            compact ? "text-sm" : "text-2xl",
           )}
         >
-          Food Choice ERP
+          {t("brandName", "Food Choice ERP")}
         </p>
         {compact ? null : (
-          <p className="text-sm text-muted-foreground">Food Solutions Providers</p>
+          <p className="text-sm text-muted-foreground">
+            {t("brandTagline", "Food Solutions Providers")}
+          </p>
         )}
         {showDeveloperCredit ? (
           <p className="mt-1 text-xs text-muted-foreground">
-            Developed by Mohamed Othman
+            {t("developedBy", "Developed by Mohamed Othman")}
           </p>
         ) : null}
       </div>

@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { usePermissions } from "@/hooks/usePermissions";
+import { useLang } from "@/contexts/LanguageContext";
 import {
   fetchInvoiceStatusCounts,
   fetchReturnCounts,
@@ -75,69 +76,34 @@ function useSalesData() {
   return { data, loading };
 }
 
-// ─── Role labels ──────────────────────────────────────────────────────────────
-
-const ROLE_LABELS: Record<string, string> = {
-  sales_manager: "Sales Manager",
-  salesman:      "Salesman",
-  sales:         "Sales",
-};
-
-// ─── Actions ─────────────────────────────────────────────────────────────────
-
-const ACTIONS: ActionItem[] = [
-  {
-    label: "New Invoice",
-    path: "/invoice-entry",
-    icon: Plus,
-    color: "text-emerald-400",
-    bg: "bg-emerald-500/10",
-    border: "border-emerald-500/20",
-    description: "Create invoice",
-  },
-  {
-    label: "Invoice List",
-    path: "/invoices",
-    icon: FileText,
-    color: "text-blue-400",
-    bg: "bg-blue-500/10",
-    border: "border-blue-500/20",
-    description: "All invoices",
-  },
-  {
-    label: "Customers",
-    path: "/customers",
-    icon: Users,
-    color: "text-cyan-400",
-    bg: "bg-cyan-500/10",
-    border: "border-cyan-500/20",
-    description: "Customer list",
-  },
-  {
-    label: "Returns",
-    path: "/returns",
-    icon: RotateCcw,
-    color: "text-violet-400",
-    bg: "bg-violet-500/10",
-    border: "border-violet-500/20",
-    description: "Process returns",
-  },
-];
-
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function SalesDashboard() {
   const navigate  = useNavigate();
+  const { t } = useLang();
   const { role }  = usePermissions();
   const { data, loading } = useSalesData();
+
+  const ROLE_LABELS: Record<string, string> = {
+    sales_manager: t("roleSalesManager", "Sales Manager"),
+    salesman:      t("roleSalesman", "Salesman"),
+    sales:         t("roleSales", "Sales"),
+  };
+
+  const ACTIONS: ActionItem[] = [
+    { label: t("newInvoice", "New Invoice"),     path: "/invoice-entry", icon: Plus,      color: "text-emerald-400", bg: "bg-emerald-500/10", border: "border-emerald-500/20", description: t("createInvoice", "Create invoice") },
+    { label: t("invoiceList", "Invoice List"),   path: "/invoices",      icon: FileText,  color: "text-blue-400",   bg: "bg-blue-500/10",   border: "border-blue-500/20",   description: t("allInvoices", "All invoices") },
+    { label: t("customersNav", "Customers"),     path: "/customers",     icon: Users,     color: "text-cyan-400",   bg: "bg-cyan-500/10",   border: "border-cyan-500/20",   description: t("customerList", "Customer list") },
+    { label: t("pageTitleReturns", "Returns"),   path: "/returns",       icon: RotateCcw, color: "text-violet-400", bg: "bg-violet-500/10", border: "border-violet-500/20", description: t("processReturns", "Process returns") },
+  ];
 
   const roleLabel = ROLE_LABELS[role] ?? role.replace(/_/g, " ");
 
   const kpis: KpiItem[] = [
     {
-      label: "Ready Invoices",
+      label: t("readyInvoices", "Ready Invoices"),
       value: data?.invoices.ready ?? "—",
-      sub: "Awaiting execution",
+      sub: t("awaitingExecution", "Awaiting execution"),
       icon: ScanLine,
       color: "text-amber-500",
       bg: "bg-amber-500/10",
@@ -145,9 +111,9 @@ export default function SalesDashboard() {
       loading,
     },
     {
-      label: "Done Today",
+      label: t("doneToday", "Done Today"),
       value: data?.invoices.doneToday ?? "—",
-      sub: "Delivered today",
+      sub: t("deliveredToday", "Delivered today"),
       icon: TrendingUp,
       color: "text-emerald-500",
       bg: "bg-emerald-500/10",
@@ -156,9 +122,9 @@ export default function SalesDashboard() {
       trend: data?.invoices.doneToday ? "up" : "neutral",
     },
     {
-      label: "Customers",
+      label: t("customersNav", "Customers"),
       value: data?.customerCount ?? "—",
-      sub: "Total accounts",
+      sub: t("totalCustomers2", "Total accounts"),
       icon: Users,
       color: "text-cyan-500",
       bg: "bg-cyan-500/10",
@@ -166,9 +132,9 @@ export default function SalesDashboard() {
       loading,
     },
     {
-      label: "Pending Returns",
+      label: t("pendingReturns", "Pending Returns"),
       value: data?.returns.draft ?? "—",
-      sub: "Awaiting processing",
+      sub: t("awaitingProcessing", "Awaiting processing"),
       icon: RotateCcw,
       color: data?.returns.draft ? "text-violet-500" : "text-muted-foreground",
       bg: data?.returns.draft ? "bg-violet-500/10" : "bg-muted/20",
@@ -180,8 +146,8 @@ export default function SalesDashboard() {
   return (
     <DashboardShell
       icon={ShoppingCart}
-      title="Sales Dashboard"
-      subtitle={`${roleLabel} · Invoices & Customer Activity`}
+      title={t("salesDashboard", "Sales Dashboard")}
+      subtitle={`${roleLabel} · ${t("invoicesCustomerActivity", "Invoices & Customer Activity")}`}
       accent="cyan"
       headerAction={
         <button
@@ -189,7 +155,7 @@ export default function SalesDashboard() {
           className="flex items-center gap-1.5 text-xs bg-primary text-primary-foreground px-3 py-1.5 rounded-lg font-medium hover:opacity-90 transition shrink-0"
         >
           <Plus className="w-3.5 h-3.5" />
-          New Invoice
+          {t("newInvoice", "New Invoice")}
         </button>
       }
     >
@@ -198,7 +164,7 @@ export default function SalesDashboard() {
       <div className="grid md:grid-cols-2 gap-4">
         {/* Recent invoices */}
         <SectionCard
-          title="Recent Invoices"
+          title={t("recentInvoices", "Recent Invoices")}
           icon={FileText}
           iconClass="text-blue-400"
           action={
@@ -206,14 +172,14 @@ export default function SalesDashboard() {
               onClick={() => navigate("/invoices")}
               className="text-[10px] text-primary font-medium hover:underline"
             >
-              View all →
+              {t("viewAll", "View all →")}
             </button>
           }
         >
           {loading ? (
             <LoadingRows count={5} />
           ) : !data || data.invoices.recent.length === 0 ? (
-            <EmptyState icon={FileText} message="No invoices yet" sub="Create the first invoice to see it here" />
+            <EmptyState icon={FileText} message={t("noInvoicesYet2", "No invoices yet")} sub={t("createFirstInvoiceHere", "Create the first invoice to see it here")} />
           ) : (
             <div className="space-y-1.5">
               {data.invoices.recent.map((inv) => (
@@ -240,7 +206,7 @@ export default function SalesDashboard() {
 
         {/* Salesman performance */}
         <SectionCard
-          title="Salesman Performance"
+          title={t("salesmanPerformance", "Salesman Performance")}
           icon={UserSquare2}
           iconClass="text-cyan-400"
           action={
@@ -248,14 +214,14 @@ export default function SalesDashboard() {
               onClick={() => navigate("/reports")}
               className="text-[10px] text-primary font-medium hover:underline"
             >
-              Reports →
+              {t("reports", "Reports")} →
             </button>
           }
         >
           {loading ? (
             <LoadingRows count={4} />
           ) : !data || data.salesmen.length === 0 ? (
-            <EmptyState icon={UserSquare2} message="No salesman data" sub="Invoice data will appear here as invoices are created" />
+            <EmptyState icon={UserSquare2} message={t("noSalesmanData", "No salesman data")} sub={t("invoiceDataWillAppear", "Invoice data will appear here as invoices are created")} />
           ) : (
             <div className="space-y-2">
               {data.salesmen.slice(0, 6).map((s, i) => (
@@ -269,7 +235,7 @@ export default function SalesDashboard() {
                   </div>
                   <div className="text-right shrink-0">
                     <p className="text-xs font-bold text-foreground">{s.invoiceCount}</p>
-                    <p className="text-[9px] text-muted-foreground">invoices</p>
+                    <p className="text-[9px] text-muted-foreground">{t("invoices2", "invoices")}</p>
                   </div>
                 </div>
               ))}
@@ -281,15 +247,15 @@ export default function SalesDashboard() {
             <div className="mt-3 pt-3 border-t border-border grid grid-cols-3 gap-2 text-center">
               <div>
                 <p className="text-base font-bold text-amber-400">{data.invoices.ready}</p>
-                <p className="text-[9px] text-muted-foreground">Ready</p>
+                <p className="text-[9px] text-muted-foreground">{t("ready", "Ready")}</p>
               </div>
               <div>
                 <p className="text-base font-bold text-emerald-400">{data.invoices.done}</p>
-                <p className="text-[9px] text-muted-foreground">Done</p>
+                <p className="text-[9px] text-muted-foreground">{t("done", "Done")}</p>
               </div>
               <div>
                 <p className="text-base font-bold text-violet-400">{data.returns.draft}</p>
-                <p className="text-[9px] text-muted-foreground">Returns</p>
+                <p className="text-[9px] text-muted-foreground">{t("pageTitleReturns", "Returns")}</p>
               </div>
             </div>
           )}
@@ -297,6 +263,7 @@ export default function SalesDashboard() {
       </div>
 
       <ActionGrid actions={ACTIONS} onNavigate={navigate} cols={4} />
+
     </DashboardShell>
   );
 }

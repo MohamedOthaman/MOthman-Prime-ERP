@@ -1,0 +1,33 @@
+{
+  "section": {
+    "dashboard": "لوحة التحكم",
+    "sales": "المبيعات",
+    "warehouse": "المخزن",
+    "receiving": "الاستلام",
+    "reports": "التقارير",
+    "admin": "الإدارة"
+  },
+  "item": {
+    "dashboard": "لوحة التحكم",
+    "stock": "المخزون",
+    "invoices": "الفواتير",
+    "newInvoice": "فاتورة جديدة",
+    "customers": "العملاء",
+    "salesmen": "مندوبو المبيعات",
+    "returns": "المرتجعات",
+    "picking": "تجهيز الطلبات",
+    "movements": "حركة المخزون",
+    "fridge": "الثلاجة",
+    "batchTrace": "تتبع الدفعات",
+    "grn": "إشعار استلام بضاعة",
+    "products": "المنتجات",
+    "importExport": "استيراد / تصدير",
+    "reports": "التقارير",
+    "users": "المستخدمون",
+    "settings": "الإعدادات",
+    "previewAs": "معاينة كـ",
+    "syncLog": "سجل المزامنة",
+    "telemetry": "القياسات",
+    "audit": "سجل التدقيق"
+  }
+}

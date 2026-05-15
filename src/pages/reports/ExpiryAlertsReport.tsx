@@ -6,7 +6,7 @@
  * from warehouseInventoryService.
  */
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import {
   AlertTriangle, Package, ThermometerSnowflake, Flame, Wind, Download, ShieldAlert,
 } from "lucide-react";
@@ -25,6 +25,7 @@ import {
   LoadingRows,
   type KpiItem,
 } from "@/components/dashboard/DashboardShell";
+import { useLang } from "@/contexts/LanguageContext";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -52,16 +53,17 @@ interface BucketTableProps {
   items: InventoryOperationalBatchRow[];
   rowClass: (r: InventoryOperationalBatchRow) => string;
   daysLabel: (r: InventoryOperationalBatchRow) => string;
+  headers: string[];
 }
 
-function BucketTable({ items, rowClass, daysLabel }: BucketTableProps) {
+function BucketTable({ items, rowClass, daysLabel, headers }: BucketTableProps) {
   if (items.length === 0) return null;
   return (
     <div className="overflow-x-auto">
       <table className="w-full">
         <thead>
           <tr className="border-b border-border">
-            {["Product", "Storage", "Batch No", "Expiry", "Days Left", "Qty Available"].map(h => (
+            {headers.map(h => (
               <th key={h} className="pb-2 text-left text-[10px] font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap px-2 first:px-0">
                 {h}
               </th>
@@ -99,6 +101,8 @@ function BucketTable({ items, rowClass, daysLabel }: BucketTableProps) {
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function ExpiryAlertsReport() {
+  const { t } = useLang();
+
   const [buckets, setBuckets]   = useState<InventoryExpiryAlertBucket[]>([]);
   const [expired, setExpired]   = useState<InventoryOperationalBatchRow[]>([]);
   const [loading, setLoading]   = useState(true);
@@ -116,7 +120,7 @@ export default function ExpiryAlertsReport() {
         setBuckets(alerts);
         setExpired(all.filter(r => r.status === "expired"));
       } catch (e: any) {
-        setError(e.message ?? "Failed to load");
+        setError(e.message ?? t("failedToLoad", "Failed to load"));
       } finally {
         setLoading(false);
       }
@@ -129,11 +133,20 @@ export default function ExpiryAlertsReport() {
   const b30 = buckets.find(b => b.threshold_days === 30);
 
   const kpis: KpiItem[] = [
-    { label: "Expired (in stock)",   value: loading ? "—" : expired.length,       icon: ShieldAlert,     color: "text-red-400",    bg: "bg-red-500/8",    border: "border-red-500/20",    loading, trend: expired.length > 0 ? "down" : "neutral" },
-    { label: "Expiring ≤ 7 days",    value: loading ? "—" : (b7?.batch_count ?? 0),  icon: AlertTriangle,   color: "text-red-400",    bg: "bg-red-500/8",    border: "border-red-500/20",    loading, trend: (b7?.batch_count ?? 0) > 0 ? "down" : "neutral" },
-    { label: "Expiring ≤ 14 days",   value: loading ? "—" : (b14?.batch_count ?? 0), icon: AlertTriangle,   color: "text-orange-400", bg: "bg-orange-500/8", border: "border-orange-500/20", loading, trend: (b14?.batch_count ?? 0) > 0 ? "down" : "neutral" },
-    { label: "Expiring ≤ 30 days",   value: loading ? "—" : (b30?.batch_count ?? 0), icon: AlertTriangle,   color: "text-amber-400",  bg: "bg-amber-500/8",  border: "border-amber-500/20",  loading, trend: (b30?.batch_count ?? 0) > 0 ? "down" : "neutral" },
+    { label: t("expiredInStock", "Expired (in stock)"),   value: loading ? "—" : expired.length,       icon: ShieldAlert,     color: "text-red-400",    bg: "bg-red-500/8",    border: "border-red-500/20",    loading, trend: expired.length > 0 ? "down" : "neutral" },
+    { label: t("expiring7d", "Expiring ≤ 7 days"),        value: loading ? "—" : (b7?.batch_count ?? 0),  icon: AlertTriangle,   color: "text-red-400",    bg: "bg-red-500/8",    border: "border-red-500/20",    loading, trend: (b7?.batch_count ?? 0) > 0 ? "down" : "neutral" },
+    { label: t("expiring14d", "Expiring ≤ 14 days"),      value: loading ? "—" : (b14?.batch_count ?? 0), icon: AlertTriangle,   color: "text-orange-400", bg: "bg-orange-500/8", border: "border-orange-500/20", loading, trend: (b14?.batch_count ?? 0) > 0 ? "down" : "neutral" },
+    { label: t("expiring30d", "Expiring ≤ 30 days"),      value: loading ? "—" : (b30?.batch_count ?? 0), icon: AlertTriangle,   color: "text-amber-400",  bg: "bg-amber-500/8",  border: "border-amber-500/20",  loading, trend: (b30?.batch_count ?? 0) > 0 ? "down" : "neutral" },
   ];
+
+  const bucketTableHeaders = useMemo(() => [
+    t("product", "Product"),
+    t("storage", "Storage"),
+    t("batchNo", "Batch No"),
+    t("expiry", "Expiry"),
+    t("daysLeft", "Days Left"),
+    t("qtyAvailable", "Qty Available"),
+  ], [t]);
 
   function handleExport() {
     const rows: InventoryOperationalBatchRow[] = [
@@ -178,15 +191,15 @@ export default function ExpiryAlertsReport() {
   return (
     <DashboardShell
       icon={AlertTriangle}
-      title="Expiry Alerts"
-      subtitle="Batches expiring within 7, 14, and 30 days — plus expired stock"
+      title={t("expiryAlerts", "Expiry Alerts")}
+      subtitle={t("expiryAlertsSubtitle", "Batches expiring within 7, 14, and 30 days — plus expired stock")}
       accent="red"
       headerAction={
         <button
           onClick={handleExport}
           className="flex items-center gap-1.5 rounded-lg border border-border bg-muted/30 px-3 py-1.5 text-xs font-medium text-foreground hover:bg-muted/60 transition"
         >
-          <Download className="w-3.5 h-3.5" /> Export
+          <Download className="w-3.5 h-3.5" /> {t("export", "Export")}
         </button>
       }
     >
@@ -198,15 +211,16 @@ export default function ExpiryAlertsReport() {
 
       {/* Expired stock — highest urgency */}
       <SectionCard
-        title={`Expired (${expired.length})`}
+        title={`${t("expired", "Expired")} (${expired.length})`}
         icon={ShieldAlert}
         iconClass="text-red-400"
       >
         {loading ? <LoadingRows rows={4} /> : expired.length === 0 ? (
-          <EmptyState icon={Package} message="No expired batches in stock" />
+          <EmptyState icon={Package} message={t("noExpiredBatches", "No expired batches in stock")} />
         ) : (
           <BucketTable
             items={expired}
+            headers={bucketTableHeaders}
             rowClass={() => "bg-red-500/5 hover:bg-red-500/10"}
             daysLabel={r => r.days_to_expiry !== null ? `${Math.abs(r.days_to_expiry)}d ago` : "—"}
           />
@@ -215,15 +229,16 @@ export default function ExpiryAlertsReport() {
 
       {/* Critical ≤ 7 days */}
       <SectionCard
-        title={`Critical — Expiring in ≤ 7 days (${b7?.batch_count ?? 0} batches · ${b7?.product_count ?? 0} products)`}
+        title={`${t("criticalExpiring7d", "Critical — Expiring in ≤ 7 days")} (${b7?.batch_count ?? 0} ${t("batches", "batches")} · ${b7?.product_count ?? 0} ${t("products", "products")})`}
         icon={AlertTriangle}
         iconClass="text-red-400"
       >
         {loading ? <LoadingRows rows={4} /> : (b7?.items ?? []).length === 0 ? (
-          <EmptyState icon={Package} message="No batches expiring within 7 days" />
+          <EmptyState icon={Package} message={t("noBatchesExpiring7d", "No batches expiring within 7 days")} />
         ) : (
           <BucketTable
             items={b7!.items}
+            headers={bucketTableHeaders}
             rowClass={() => "hover:bg-red-500/5"}
             daysLabel={r => r.days_to_expiry !== null ? `${r.days_to_expiry}d` : "—"}
           />
@@ -232,15 +247,16 @@ export default function ExpiryAlertsReport() {
 
       {/* Warning 8–14 days */}
       <SectionCard
-        title={`Warning — Expiring in 8–14 days (${items7to14.length} batches)`}
+        title={`${t("warningExpiring8to14d", "Warning — Expiring in 8–14 days")} (${items7to14.length} ${t("batches", "batches")})`}
         icon={AlertTriangle}
         iconClass="text-orange-400"
       >
         {loading ? <LoadingRows rows={4} /> : items7to14.length === 0 ? (
-          <EmptyState icon={Package} message="No batches expiring in this window" />
+          <EmptyState icon={Package} message={t("noBatchesInWindow", "No batches expiring in this window")} />
         ) : (
           <BucketTable
             items={items7to14}
+            headers={bucketTableHeaders}
             rowClass={() => "hover:bg-orange-500/5"}
             daysLabel={r => r.days_to_expiry !== null ? `${r.days_to_expiry}d` : "—"}
           />
@@ -249,15 +265,16 @@ export default function ExpiryAlertsReport() {
 
       {/* Notice 15–30 days */}
       <SectionCard
-        title={`Notice — Expiring in 15–30 days (${items15to30.length} batches)`}
+        title={`${t("noticeExpiring15to30d", "Notice — Expiring in 15–30 days")} (${items15to30.length} ${t("batches", "batches")})`}
         icon={AlertTriangle}
         iconClass="text-amber-400"
       >
         {loading ? <LoadingRows rows={4} /> : items15to30.length === 0 ? (
-          <EmptyState icon={Package} message="No batches expiring in this window" />
+          <EmptyState icon={Package} message={t("noBatchesInWindow", "No batches expiring in this window")} />
         ) : (
           <BucketTable
             items={items15to30}
+            headers={bucketTableHeaders}
             rowClass={() => "hover:bg-amber-500/5"}
             daysLabel={r => r.days_to_expiry !== null ? `${r.days_to_expiry}d` : "—"}
           />

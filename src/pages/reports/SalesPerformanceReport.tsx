@@ -9,6 +9,7 @@ import { useEffect, useState } from "react";
 import { TrendingUp, UserSquare2, FileText, DollarSign, BarChart3, Download } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { getSalesPerformance, type SalesmanPerformanceRow } from "@/features/services/reportService";
+import { useLang } from "@/contexts/LanguageContext";
 import { exportExcel } from "@/lib/exportUtils";
 import {
   DashboardShell,
@@ -35,6 +36,7 @@ function fmtShort(n: number) {
 
 export default function SalesPerformanceReport() {
   const navigate = useNavigate();
+  const { t } = useLang();
 
   const [rows, setRows]         = useState<SalesmanPerformanceRow[]>([]);
   const [loading, setLoading]   = useState(true);
@@ -63,10 +65,10 @@ export default function SalesPerformanceReport() {
   const maxRevenue     = rows[0]?.totalRevenue ?? 1;
 
   const kpis: KpiItem[] = [
-    { label: "Total Revenue", value: `KWD ${fmtShort(totalRevenue)}`, icon: DollarSign, color: "text-emerald-400", bg: "bg-emerald-500/8", border: "border-emerald-500/20", loading },
-    { label: "Total Invoices", value: loading ? "—" : totalInvoices, icon: FileText, color: "text-blue-400", bg: "bg-blue-500/8", border: "border-blue-500/20", loading },
-    { label: "Active Salesmen", value: loading ? "—" : activeSalesmen, icon: UserSquare2, color: "text-violet-400", bg: "bg-violet-500/8", border: "border-violet-500/20", loading },
-    { label: "Avg per Invoice", value: totalInvoices > 0 ? `KWD ${fmtShort(totalRevenue / totalInvoices)}` : "—", icon: TrendingUp, color: "text-amber-400", bg: "bg-amber-500/8", border: "border-amber-500/20", loading },
+    { label: t("totalRevenue", "Total Revenue"), value: `KWD ${fmtShort(totalRevenue)}`, icon: DollarSign, color: "text-emerald-400", bg: "bg-emerald-500/8", border: "border-emerald-500/20", loading },
+    { label: t("totalInvoices", "Total Invoices"), value: loading ? "—" : totalInvoices, icon: FileText, color: "text-blue-400", bg: "bg-blue-500/8", border: "border-blue-500/20", loading },
+    { label: t("activeSalesmen", "Active Salesmen"), value: loading ? "—" : activeSalesmen, icon: UserSquare2, color: "text-violet-400", bg: "bg-violet-500/8", border: "border-violet-500/20", loading },
+    { label: t("avgPerInvoice", "Avg per Invoice"), value: totalInvoices > 0 ? `KWD ${fmtShort(totalRevenue / totalInvoices)}` : "—", icon: TrendingUp, color: "text-amber-400", bg: "bg-amber-500/8", border: "border-amber-500/20", loading },
   ];
 
   function handleExport() {
@@ -87,25 +89,25 @@ export default function SalesPerformanceReport() {
   return (
     <DashboardShell
       icon={TrendingUp}
-      title="Sales Performance"
-      subtitle="Per-salesman revenue & invoice breakdown"
+      title={t("pageTitleSalesPerf", "Sales Performance")}
+      subtitle={t("salesPerfDesc", "Per-salesman revenue & invoice breakdown")}
       accent="emerald"
       headerAction={
         <button
           onClick={handleExport}
           className="flex items-center gap-1.5 rounded-lg border border-border bg-muted/30 px-3 py-1.5 text-xs font-medium text-foreground hover:bg-muted/60 transition"
         >
-          <Download className="w-3.5 h-3.5" /> Export
+          <Download className="w-3.5 h-3.5" /> {t("export", "Export")}
         </button>
       }
     >
       <KpiGrid items={kpis} />
 
       {/* Date filters */}
-      <SectionCard title="Filter by Date Range" icon={BarChart3} iconClass="text-blue-400">
+      <SectionCard title={t("filterByDate", "Filter by Date Range")} icon={BarChart3} iconClass="text-blue-400">
         <div className="flex flex-wrap items-end gap-3">
           <div className="flex flex-col gap-1">
-            <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">From</label>
+            <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">{t("from", "From")}</label>
             <input
               type="date"
               value={fromDate}
@@ -114,7 +116,7 @@ export default function SalesPerformanceReport() {
             />
           </div>
           <div className="flex flex-col gap-1">
-            <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">To</label>
+            <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">{t("to", "To")}</label>
             <input
               type="date"
               value={toDate}
@@ -127,27 +129,27 @@ export default function SalesPerformanceReport() {
             disabled={loading}
             className="rounded-lg border border-primary bg-primary/10 px-4 py-1.5 text-xs font-semibold text-primary hover:bg-primary/20 transition disabled:opacity-50"
           >
-            Apply
+            {t("apply", "Apply")}
           </button>
           {(fromDate || toDate) && (
             <button
               onClick={() => { setFromDate(""); setToDate(""); void load("", ""); }}
               className="rounded-lg border border-border bg-muted/20 px-3 py-1.5 text-xs text-muted-foreground hover:bg-muted/40 transition"
             >
-              Clear
+              {t("clear", "Clear")}
             </button>
           )}
         </div>
       </SectionCard>
 
       {/* Rankings table */}
-      <SectionCard title="Salesman Rankings" icon={UserSquare2} iconClass="text-violet-400">
+      <SectionCard title={t("salesmanRankings", "Salesman Rankings")} icon={UserSquare2} iconClass="text-violet-400">
         {error ? (
           <div className="rounded-lg border border-red-500/20 bg-red-500/8 px-4 py-3 text-xs text-red-400">{error}</div>
         ) : loading ? (
           <LoadingRows rows={6} />
         ) : rows.length === 0 ? (
-          <EmptyState icon={UserSquare2} message="No salesmen found" sub="Create salesmen in the Salesmen module" />
+          <EmptyState icon={UserSquare2} message={t("noSalesmenFound", "No salesmen found")} sub={t("createSalesmenIn", "Create salesmen in the Salesmen module")} />
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full">

@@ -14,6 +14,7 @@ import {
   fetchGrnQcQueue,
   type GrnQcQueueRow,
 } from "@/features/services/grnQcService";
+import { useLang } from "@/contexts/LanguageContext";
 
 type QueueFilter = "all" | "qc" | "municipality" | "approved" | "completed";
 
@@ -26,6 +27,7 @@ function formatDate(value: string | null) {
 
 export default function GRNListPage() {
   const navigate = useNavigate();
+  const { t } = useLang();
   const canGoBack = window.history.length > 1;
   const [rows, setRows] = useState<GrnQcQueueRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -44,7 +46,7 @@ export default function GRNListPage() {
       } catch (loadError) {
         setRows([]);
         setError(
-          loadError instanceof Error ? loadError.message : "Failed to load GRN queue."
+          loadError instanceof Error ? loadError.message : t("failedLoadGrn", "Failed to load GRN queue.")
         );
       } finally {
         setLoading(false);
@@ -110,7 +112,7 @@ export default function GRNListPage() {
             )}
             <ClipboardList className="h-5 w-5 text-primary" />
             <h1 className="text-lg font-semibold text-foreground">
-              GRN Operations
+              {t("pageTitleGrn", "GRN Operations")}
             </h1>
 
             <span className="ml-auto font-mono text-xs text-muted-foreground">
@@ -123,7 +125,7 @@ export default function GRNListPage() {
               className="inline-flex items-center gap-1 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:opacity-90"
             >
               <Plus className="h-3.5 w-3.5" />
-              New GRN
+              {t("newGrn", "New GRN")}
             </button>
           </div>
 
@@ -132,7 +134,7 @@ export default function GRNListPage() {
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <input
                 type="text"
-                placeholder="Search by GRN, supplier, PO, or municipality ref..."
+                placeholder={t("searchGrn", "Search by GRN, supplier, PO, or municipality ref...")}
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
                 className="h-10 w-full rounded-md border border-border bg-secondary pl-9 pr-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
@@ -141,12 +143,12 @@ export default function GRNListPage() {
 
             <div className="flex flex-wrap gap-2">
               {([
-                { key: "all", label: "All" },
-                { key: "qc", label: "QC Queue" },
-                { key: "municipality", label: "Municipality" },
-                { key: "approved", label: "Approved" },
-                { key: "completed", label: "Completed" },
-              ] as const).map((option) => (
+                { key: "all" as QueueFilter,          label: t("all", "All")                         },
+                { key: "qc" as QueueFilter,           label: t("qcQueue", "QC Queue")                },
+                { key: "municipality" as QueueFilter, label: t("municipalityStatus", "Municipality") },
+                { key: "approved" as QueueFilter,     label: t("approved", "Approved")               },
+                { key: "completed" as QueueFilter,    label: t("completed", "Completed")             },
+              ]).map((option) => (
                 <button
                   key={option.key}
                   type="button"
@@ -169,7 +171,7 @@ export default function GRNListPage() {
         <section className="grid gap-3 md:grid-cols-5">
           <div className="rounded-lg border border-border bg-card p-4">
             <div className="text-xs uppercase tracking-[0.14em] text-muted-foreground">
-              Awaiting QC
+              {t("awaitingQC", "Awaiting QC")}
             </div>
             <div className="mt-2 text-2xl font-semibold text-foreground">
               {summary.awaitingQc}
@@ -177,7 +179,7 @@ export default function GRNListPage() {
           </div>
           <div className="rounded-lg border border-border bg-card p-4">
             <div className="text-xs uppercase tracking-[0.14em] text-muted-foreground">
-              Pending QC Lines
+              {t("pendingQCLines", "Pending QC Lines")}
             </div>
             <div className="mt-2 text-2xl font-semibold text-amber-500">
               {summary.pendingLines}
@@ -185,7 +187,7 @@ export default function GRNListPage() {
           </div>
           <div className="rounded-lg border border-border bg-card p-4">
             <div className="text-xs uppercase tracking-[0.14em] text-muted-foreground">
-              Held GRNs
+              {t("heldGRNs", "Held GRNs")}
             </div>
             <div className="mt-2 text-2xl font-semibold text-destructive">
               {summary.held}
@@ -193,7 +195,7 @@ export default function GRNListPage() {
           </div>
           <div className="rounded-lg border border-border bg-card p-4">
             <div className="text-xs uppercase tracking-[0.14em] text-muted-foreground">
-              Municipality Pending
+              {t("municipalityPending", "Municipality Pending")}
             </div>
             <div className="mt-2 text-2xl font-semibold text-primary">
               {summary.municipality}
@@ -201,7 +203,7 @@ export default function GRNListPage() {
           </div>
           <div className="rounded-lg border border-border bg-card p-4">
             <div className="text-xs uppercase tracking-[0.14em] text-muted-foreground">
-              Completed
+              {t("completed", "Completed")}
             </div>
             <div className="mt-2 text-2xl font-semibold text-teal-500">
               {summary.completed}
@@ -225,7 +227,7 @@ export default function GRNListPage() {
         {!loading && filtered.length === 0 ? (
           <div className="rounded-lg border border-border bg-card py-16 text-center text-muted-foreground">
             <ClipboardCheck className="mx-auto mb-3 h-10 w-10 opacity-40" />
-            <p className="text-sm">No GRNs match the current queue filter.</p>
+            <p className="text-sm">{t("noGrnsFound", "No GRNs match the current queue filter.")}</p>
           </div>
         ) : null}
 
@@ -242,35 +244,35 @@ export default function GRNListPage() {
                     <StatusBadge status={row.status} />
                     {row.pending_count > 0 ? (
                       <span className="rounded-md border border-amber-500/25 bg-amber-500/10 px-2 py-0.5 text-[11px] font-semibold text-amber-500">
-                        {row.pending_count} pending
+                        {row.pending_count} {t("pending", "pending")}
                       </span>
                     ) : null}
                     {row.hold_count > 0 ? (
                       <span className="rounded-md border border-red-500/25 bg-red-500/10 px-2 py-0.5 text-[11px] font-semibold text-red-500">
-                        {row.hold_count} hold
+                        {row.hold_count} {t("hold", "Hold")}
                       </span>
                     ) : null}
                   </div>
 
                   <div className="mt-3 grid gap-3 text-xs md:grid-cols-4">
                     <div>
-                      <p className="text-muted-foreground">Supplier</p>
+                      <p className="text-muted-foreground">{t("supplier", "Supplier")}</p>
                       <p className="font-medium text-foreground">
                         {row.supplier_name || "-"}
                       </p>
                     </div>
                     <div>
-                      <p className="text-muted-foreground">PO No</p>
+                      <p className="text-muted-foreground">{t("poNo", "PO No")}</p>
                       <p className="font-medium text-foreground">{row.po_no || "-"}</p>
                     </div>
                     <div>
-                      <p className="text-muted-foreground">Transaction Date</p>
+                      <p className="text-muted-foreground">{t("transactionDate", "Transaction Date")}</p>
                       <p className="font-medium text-foreground">
                         {formatDate(row.transaction_date || row.arrival_date)}
                       </p>
                     </div>
                     <div>
-                      <p className="text-muted-foreground">Municipality Ref</p>
+                      <p className="text-muted-foreground">{t("municipalityRef", "Municipality Ref")}</p>
                       <p className="font-medium text-foreground">
                         {row.municipality_reference_no || "-"}
                       </p>
@@ -279,19 +281,19 @@ export default function GRNListPage() {
 
                   <div className="mt-3 grid gap-2 text-xs md:grid-cols-4">
                     <div className="rounded-md border border-border bg-secondary/60 px-3 py-2">
-                      <p className="text-muted-foreground">Lines</p>
+                      <p className="text-muted-foreground">{t("lines", "Lines")}</p>
                       <p className="font-semibold text-foreground">{row.line_count}</p>
                     </div>
                     <div className="rounded-md border border-border bg-secondary/60 px-3 py-2">
-                      <p className="text-muted-foreground">Pass</p>
+                      <p className="text-muted-foreground">{t("pass", "Pass")}</p>
                       <p className="font-semibold text-emerald-500">{row.pass_count}</p>
                     </div>
                     <div className="rounded-md border border-border bg-secondary/60 px-3 py-2">
-                      <p className="text-muted-foreground">Reject</p>
+                      <p className="text-muted-foreground">{t("reject", "Reject")}</p>
                       <p className="font-semibold text-destructive">{row.reject_count}</p>
                     </div>
                     <div className="rounded-md border border-border bg-secondary/60 px-3 py-2">
-                      <p className="text-muted-foreground">Hold</p>
+                      <p className="text-muted-foreground">{t("hold", "Hold")}</p>
                       <p className="font-semibold text-amber-500">{row.hold_count}</p>
                     </div>
                   </div>
@@ -303,14 +305,14 @@ export default function GRNListPage() {
                     onClick={() => navigate(`/grn/${row.id}`)}
                     className="rounded-md border border-border bg-background px-3 py-2 text-xs font-medium text-foreground"
                   >
-                    GRN Details
+                    {t("grnDetails", "GRN Details")}
                   </button>
                   <button
                     type="button"
                     onClick={() => navigate(`/grn/${row.id}/qc`)}
                     className="rounded-md bg-primary px-3 py-2 text-xs font-medium text-primary-foreground hover:opacity-90"
                   >
-                    QC Workflow
+                    {t("qcWorkflow", "QC Workflow")}
                   </button>
                 </div>
               </div>

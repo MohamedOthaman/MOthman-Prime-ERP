@@ -1,7 +1,20 @@
 import type { Config } from "tailwindcss";
 
 export default {
-  darkMode: ["class"],
+  // Activate `dark:` variants for every dark-leaning theme, not just `.dark`.
+  // Without this, `dark:text-amber-400`-style utilities only fire under the
+  // literal `.dark` theme and stay invisible in `.dim`, `.glass-dark`, and
+  // `.glass-deep` — which is what made the ProfilePage role/permission
+  // colors disappear in those themes.
+  darkMode: [
+    "variant",
+    [
+      "&:where(.dark, .dark *)",
+      "&:where(.dim, .dim *)",
+      "&:where(.glass-dark, .glass-dark *)",
+      "&:where(.glass-deep, .glass-deep *)",
+    ],
+  ],
   content: ["./pages/**/*.{ts,tsx}", "./components/**/*.{ts,tsx}", "./app/**/*.{ts,tsx}", "./src/**/*.{ts,tsx}"],
   prefix: "",
   theme: {
@@ -109,5 +122,5 @@ export default {
       },
     },
   },
-  plugins: [require("tailwindcss-animate")],
+  plugins: [require("tailwindcss-animate"), require("tailwindcss-rtl")],
 } satisfies Config;

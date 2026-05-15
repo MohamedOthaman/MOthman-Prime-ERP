@@ -1,10 +1,12 @@
 import { useNavigate } from "react-router-dom";
 import { ShieldOff, ArrowLeft, LayoutDashboard } from "lucide-react";
 import { usePermissions } from "@/hooks/usePermissions";
+import { useLang } from "@/contexts/LanguageContext";
 
 export default function Unauthorized() {
   const navigate = useNavigate();
   const { role } = usePermissions();
+  const { t } = useLang();
 
   return (
     <div className="min-h-screen bg-background flex flex-col items-center justify-center px-4 pb-24">
@@ -14,13 +16,14 @@ export default function Unauthorized() {
         </div>
 
         <div>
-          <p className="text-xs font-semibold text-red-400 uppercase tracking-widest mb-1">403 Unauthorized</p>
-          <h1 className="text-xl font-bold text-foreground mb-2">Access Denied</h1>
-          <p className="text-sm text-muted-foreground leading-relaxed">
-            Your role <span className="font-medium text-foreground">({role.replace(/_/g, " ")})</span> does not have permission to view this page.
+          <p className="text-xs font-semibold text-red-400 uppercase tracking-widest mb-1">
+            {t("unauthorized", "403 Unauthorized")}
           </p>
-          <p className="text-xs text-muted-foreground mt-1">
-            Contact an administrator if you believe this is incorrect.
+          <h1 className="text-xl font-bold text-foreground mb-2">
+            {t("permissionDenied", "Access Denied")}
+          </h1>
+          <p className="text-sm text-muted-foreground leading-relaxed">
+            <span className="font-medium text-foreground">({role.replace(/_/g, " ")})</span>
           </p>
         </div>
 
@@ -30,14 +33,14 @@ export default function Unauthorized() {
             className="flex items-center gap-1.5 text-sm border border-border rounded-lg px-4 py-2 hover:bg-muted/30 transition text-muted-foreground"
           >
             <ArrowLeft className="w-3.5 h-3.5" />
-            Go Back
+            {t("back", "Go Back")}
           </button>
           <button
             onClick={() => navigate("/")}
             className="flex items-center gap-1.5 text-sm bg-primary text-primary-foreground rounded-lg px-4 py-2 hover:opacity-90 transition font-medium"
           >
             <LayoutDashboard className="w-3.5 h-3.5" />
-            Dashboard
+            {t("goHome", "Dashboard")}
           </button>
         </div>
       </div>

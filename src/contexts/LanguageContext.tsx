@@ -1,230 +1,74 @@
-import { createContext, useContext, useState, ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, ReactNode } from "react";
+import { useTranslation } from "react-i18next";
+import {
+  DEFAULT_LANGUAGE,
+  LANG_STORAGE_KEY,
+  type SupportedLanguage,
+  directionFor,
+  isSupportedLanguage,
+} from "@/i18n/config";
 
-type Lang = "en" | "ar";
-
-const translations = {
-  en: {
-    stockOverview: "Stock Overview",
-    home: "Home",
-    items: "items",
-    searchProduct: "Search product or code...",
-    noProducts: "No products found",
-    productManagement: "Product Management",
-    add: "Add",
-    addNewProduct: "Add New Product",
-    editProduct: "Edit Product",
-    brand: "Brand",
-    productCode: "Product Code",
-    productName: "Product Name",
-    arabicName: "Arabic Name (Optional)",
-    packaging: "Packaging",
-    storageType: "Storage Type",
-    cartonHolds: "Carton Holds",
-    barcodes: "Barcodes",
-    scan: "Scan",
-    stop: "Stop",
-    batches: "Batches",
-    addBatch: "Add Batch",
-    batchNo: "Batch No",
-    unit: "Unit",
-    quantity: "Quantity",
-    productionDate: "Production Date",
-    expiryDate: "Expiry Date",
-    receivedDate: "Received Date",
-    removeBatch: "Remove Batch",
-    cancel: "Cancel",
-    addProduct: "Add Product",
-    saveChanges: "Save Changes",
-    searchProducts: "Search products...",
-    products: "products",
-    product: "product",
-    noBatches: 'No batches. Tap "Add Batch" to create one.',
-    stock: "Stock",
-    invoices: "Invoices",
-    io: "IO",
-    reports: "Reports",
-    productsNav: "Products",
-    customersNav: "Customers",
-    frozen: "Frozen",
-    chilled: "Chilled",
-    dry: "Dry",
-    select: "Select",
-    warehouseStock: "Food Choice ERP",
-    signInTitle: "Sign in to continue",
-    signUpTitle: "Create your account",
-    fullName: "Full name",
-    email: "Email",
-    password: "Password",
-    signInBtn: "Sign In",
-    signUpBtn: "Sign Up",
-    checkEmail: "Check your email to confirm your account",
-    alreadyHaveAccount: "Already have an account? Sign in",
-    needAccount: "Need an account? Sign up",
-    resetPasswordTitle: "Reset Password",
-    resetPasswordDesc: "Enter your new password below",
-    newPassword: "New Password",
-    confirmPassword: "Confirm Password",
-    resetPasswordBtn: "Reset Password",
-    resettingBtn: "Resetting...",
-    backToLogin: "Back to login",
-    passwordMismatch: "Passwords do not match",
-    passwordLength: "Password must be at least 6 characters",
-    resetSuccess: "Password reset successfully",
-    adminNav: "Admin",
-    userManagement: "User Management",
-    users: "users",
-    modified: "modified",
-    saveAll: "Save All",
-    saving: "Saving...",
-    searchUsers: "Search by name, email, or ID...",
-    allRoles: "All Roles",
-    noUsersFound: "No users found",
-    tableId: "ID",
-    tableName: "Name",
-    tableEmail: "Email",
-    tableRole: "Role",
-    tableStatus: "Status",
-    tableReset: "Reset",
-    tableJoined: "Joined",
-    active: "Active",
-    disabled: "Disabled",
-    resetBtn: "Reset",
-    sending: "Sending...",
-    noEmail: "This user has no email address",
-    resetFailed: "Reset failed",
-    resetSentTo: "Reset email sent to",
-    savedSuccessfully: "saved successfully",
-    failedToSave: "failed to save",
-    saved: "saved",
-    warehouseErp: "Food Choice ERP",
-    logout: "Logout",
-  },
-  ar: {
-    stockOverview: "نظرة عامة على المخزون",
-    items: "عنصر",
-    searchProduct: "ابحث عن منتج أو كود...",
-    noProducts: "لا توجد منتجات",
-    productManagement: "إدارة المنتجات",
-    home: "الرئيسية",
-    add: "إضافة",
-    addNewProduct: "إضافة منتج جديد",
-    editProduct: "تعديل المنتج",
-    brand: "العلامة التجارية",
-    productCode: "كود المنتج",
-    productName: "اسم المنتج",
-    arabicName: "الاسم بالعربي (اختياري)",
-    packaging: "التعبئة",
-    storageType: "نوع التخزين",
-    cartonHolds: "حجم الكرتون",
-    barcodes: "الباركود",
-    scan: "مسح",
-    stop: "إيقاف",
-    batches: "الدفعات",
-    addBatch: "إضافة دفعة",
-    batchNo: "رقم الدفعة",
-    unit: "الوحدة",
-    quantity: "الكمية",
-    productionDate: "تاريخ الإنتاج",
-    expiryDate: "تاريخ الانتهاء",
-    receivedDate: "تاريخ الاستلام",
-    removeBatch: "حذف الدفعة",
-    cancel: "إلغاء",
-    addProduct: "إضافة المنتج",
-    saveChanges: "حفظ التعديلات",
-    searchProducts: "ابحث عن منتجات...",
-    products: "منتجات",
-    product: "منتج",
-    noBatches: 'لا توجد دفعات. اضغط "إضافة دفعة" لإنشاء واحدة.',
-    stock: "المخزون",
-    invoices: "الفواتير",
-    io: "استيراد/تصدير",
-    reports: "التقارير",
-    productsNav: "المنتجات",
-    customersNav: "العملاء",
-    frozen: "مجمد",
-    chilled: "مبرد",
-    dry: "جاف",
-    select: "اختر",
-    warehouseStock: "فود تشويس ERP",
-    signInTitle: "تسجيل الدخول للمتابعة",
-    signUpTitle: "إنشاء حسابك",
-    fullName: "الاسم الكامل",
-    email: "البريد الإلكتروني",
-    password: "كلمة المرور",
-    signInBtn: "تسجيل الدخول",
-    signUpBtn: "إنشاء حساب",
-    checkEmail: "تحقق من بريدك لتأكيد حسابك",
-    alreadyHaveAccount: "لديك حساب بالفعل؟ تسجيل الدخول",
-    needAccount: "لا تملك حساب؟ إنشاء حساب",
-    resetPasswordTitle: "إعادة تعيين كلمة المرور",
-    resetPasswordDesc: "أدخل كلمة المرور الجديدة أدناه",
-    newPassword: "كلمة المرور الجديدة",
-    confirmPassword: "تأكيد كلمة المرور",
-    resetPasswordBtn: "إعادة تعيين كلمة المرور",
-    resettingBtn: "جارٍ إعادة التعيين...",
-    backToLogin: "العودة لتسجيل الدخول",
-    passwordMismatch: "كلمتا المرور غير متطابقتين",
-    passwordLength: "يجب أن تكون كلمة المرور 6 أحرف على الأقل",
-    resetSuccess: "تمت إعادة تعيين كلمة المرور بنجاح",
-    adminNav: "الإدارة",
-    userManagement: "إدارة المستخدمين",
-    users: "مستخدمين",
-    modified: "معدل",
-    saveAll: "حفظ الكل",
-    saving: "جارٍ الحفظ...",
-    searchUsers: "البحث بالاسم، البريد أو المعرّف...",
-    allRoles: "كل الأدوار",
-    noUsersFound: "لا يوجد مستخدمون",
-    tableId: "المعرّف",
-    tableName: "الاسم",
-    tableEmail: "البريد",
-    tableRole: "الدور",
-    tableStatus: "الحالة",
-    tableReset: "إعادة تعيين",
-    tableJoined: "تاريخ الانضمام",
-    active: "نشط",
-    disabled: "معطل",
-    resetBtn: "إعادة تعيين",
-    sending: "جارٍ الإرسال...",
-    noEmail: "هذا المستخدم ليس لديه بريد إلكتروني",
-    resetFailed: "فشل إعادة التعيين",
-    resetSentTo: "تم إرسال رابط الإعادة إلى",
-    savedSuccessfully: "تم الحفظ بنجاح",
-    failedToSave: "فشل الحفظ",
-    saved: "تم الحفظ",
-    warehouseErp: "فود تشويس ERP",
-    logout: "تسجيل الخروج",
-  },
-};
+type Lang = SupportedLanguage;
 
 interface LanguageContextType {
   lang: Lang;
   setLang: (l: Lang) => void;
-  t: (key: keyof typeof translations.en) => string;
+  /**
+   * Translate a key. Accepts either a flat key (resolved in the `common`
+   * namespace) or a namespaced key in `ns:key.path` form. Returns the key
+   * itself if no translation is found — backwards-compatible with the prior
+   * inline translation system.
+   */
+  t: (key: string, fallback?: string) => string;
   dir: "ltr" | "rtl";
 }
 
 const LanguageContext = createContext<LanguageContextType | null>(null);
 
+function normalizeLang(value: string | undefined): Lang {
+  if (!value) return DEFAULT_LANGUAGE;
+  const base = value.split("-")[0];
+  return isSupportedLanguage(base) ? base : DEFAULT_LANGUAGE;
+}
+
 export function LanguageProvider({ children }: { children: ReactNode }) {
-  const [lang, setLang] = useState<Lang>(() => {
-    const saved = localStorage.getItem("app-lang");
-    return (saved === "ar" ? "ar" : "en") as Lang;
-  });
+  const { t: i18nT, i18n } = useTranslation();
+  const lang = normalizeLang(i18n.language);
+  const dir = directionFor(lang);
 
-  const t = (key: keyof typeof translations.en) => translations[lang][key] || key;
-  const dir = lang === "ar" ? "rtl" : "ltr";
+  // Keep <html lang> and <html dir> in sync with the active language.
+  useEffect(() => {
+    const root = document.documentElement;
+    if (root.getAttribute("lang") !== lang) root.setAttribute("lang", lang);
+    if (root.getAttribute("dir") !== dir) root.setAttribute("dir", dir);
+  }, [lang, dir]);
 
-  const changeLang = (l: Lang) => {
-    setLang(l);
-    localStorage.setItem("app-lang", l);
-  };
-
-  return (
-    <LanguageContext.Provider value={{ lang, setLang: changeLang, t, dir }}>
-      {children}
-    </LanguageContext.Provider>
+  const setLang = useCallback(
+    (l: Lang) => {
+      void i18n.changeLanguage(l);
+      try {
+        localStorage.setItem(LANG_STORAGE_KEY, l);
+      } catch {
+        // localStorage may be unavailable (private mode); detection cache will repopulate later.
+      }
+    },
+    [i18n],
   );
+
+  const t = useCallback(
+    (key: string, fallback?: string): string => {
+      const result = i18nT(key, { defaultValue: fallback ?? key });
+      return typeof result === "string" ? result : String(result);
+    },
+    [i18nT],
+  );
+
+  const value = useMemo<LanguageContextType>(
+    () => ({ lang, setLang, t, dir }),
+    [lang, setLang, t, dir],
+  );
+
+  return <LanguageContext.Provider value={value}>{children}</LanguageContext.Provider>;
 }
 
 export function useLang() {

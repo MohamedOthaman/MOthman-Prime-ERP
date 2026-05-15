@@ -1,6 +1,7 @@
 import { useState, useRef } from "react";
 import { FileSpreadsheet, Download, Upload, FileText, AlertTriangle, Check, X, Building2, Package, History } from "lucide-react";
 import { useStockContext } from "@/contexts/StockContext";
+import { useLang } from "@/contexts/LanguageContext";
 import { Brand, recalcDaysLeft } from "@/data/stockData";
 import { toast } from "sonner";
 import { WheelPicker } from "@/components/WheelPicker";
@@ -177,6 +178,7 @@ function parseWorkbookToBrands(workbook: XLSX.WorkBook) {
 
 export default function ImportExport() {
   const { stock, movements, importProducts } = useStockContext();
+  const { t } = useLang();
   const [tab, setTab] = useState<Tab>("export");
   const [expiryDays, setExpiryDays] = useState(30);
   const [showExpiryPicker, setShowExpiryPicker] = useState(false);
@@ -215,7 +217,7 @@ export default function ImportExport() {
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Stock");
     XLSX.writeFile(wb, `stock_${new Date().toISOString().split("T")[0]}.xlsx`);
-    toast.success("Excel exported");
+    toast.success(t("excelExported", "Excel exported"));
   };
 
   const exportPDF = () => {
@@ -232,20 +234,20 @@ export default function ImportExport() {
       styles: { fontSize: 7 },
     });
     doc.save(`stock_${new Date().toISOString().split("T")[0]}.pdf`);
-    toast.success("PDF exported");
+    toast.success(t("pdfExported", "PDF exported"));
   };
 
   const exportNearExpiry = () => {
     const rows = flattenStock().filter(r => r["D.Left"] <= expiryDays && r["D.Left"] > 0);
     if (rows.length === 0) {
-      toast.info("No items near expiry");
+      toast.info(t("noItemsNearExpiry", "No items near expiry"));
       return;
     }
     const ws = XLSX.utils.json_to_sheet(rows);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Near Expiry");
     XLSX.writeFile(wb, `near_expiry_${expiryDays}d_${new Date().toISOString().split("T")[0]}.xlsx`);
-    toast.success(`Near expiry report (${expiryDays}d) exported`);
+    toast.success(t("nearExpiryExported", `Near expiry report (${expiryDays}d) exported`));
   };
 
   const exportByBrand = () => {
@@ -273,7 +275,7 @@ export default function ImportExport() {
       }
     });
     XLSX.writeFile(wb, `stock_by_brand_${new Date().toISOString().split("T")[0]}.xlsx`);
-    toast.success("Stock by Brand exported");
+    toast.success(t("stockByBrandExported", "Stock by Brand exported"));
   };
 
   const exportInventorySnapshot = () => {
@@ -292,12 +294,12 @@ export default function ImportExport() {
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Inventory");
     XLSX.writeFile(wb, `inventory_snapshot_${new Date().toISOString().split("T")[0]}.xlsx`);
-    toast.success("Inventory snapshot exported");
+    toast.success(t("inventorySnapshotExported", "Inventory snapshot exported"));
   };
 
   const exportMovements = () => {
     if (movements.length === 0) {
-      toast.info("No movements to export");
+      toast.info(t("noMovementsToExport", "No movements to export"));
       return;
     }
     const rows = movements.map(m => ({
@@ -316,7 +318,7 @@ export default function ImportExport() {
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Movements");
     XLSX.writeFile(wb, `movements_${new Date().toISOString().split("T")[0]}.xlsx`);
-    toast.success("Movements report exported");
+    toast.success(t("movementsExported", "Movements report exported"));
   };
 
   const validateRow = (row: any, rowNum: number): ValidationError[] => {
@@ -348,7 +350,7 @@ export default function ImportExport() {
     const file = e.target.files?.[0];
     if (!file) return;
     if (!file.name.endsWith(".xlsx")) {
-      toast.error("Only .xlsx files are accepted");
+      toast.error(t("onlyXlsxAccepted", "Only .xlsx files are accepted"));
       e.target.value = "";
       return;
     }
@@ -361,18 +363,18 @@ export default function ImportExport() {
         if (parsedWorkbook) {
           setValidationErrors([]);
           setImportPreview(parsedWorkbook);
-          toast.success("Excel workbook parsed successfully");
+          toast.success(t("importSuccess", "Import successful"));
           return;
         }
 
         const ws = wb.Sheets[wb.SheetNames[0]];
         const rows: any[] = XLSX.utils.sheet_to_json(ws);
-        if (rows.length === 0) { toast.error("File is empty"); return; }
+        if (rows.length === 0) { toast.error(t("fileIsEmpty", "File is empty")); return; }
         const allErrors: ValidationError[] = [];
         rows.forEach((row, i) => { allErrors.push(...validateRow(row, i + 2)); });
         setValidationErrors(allErrors);
         if (allErrors.length > 0) {
-          toast.error(`${allErrors.length} validation error(s) found.`);
+          toast.error(t("importError", "Import failed"));
         }
         const brandsMap = new Map<string, Brand>();
         for (const row of rows) {
@@ -405,7 +407,7 @@ export default function ImportExport() {
           p.totalQty = Object.entries(map).map(([unit, amount]) => ({ unit, amount }));
         }));
         setImportPreview(parsed);
-      } catch { toast.error("Failed to parse Excel file."); }
+      } catch { toast.error(t("failedToParseExcel", "Failed to parse Excel file.")); }
     };
     reader.readAsArrayBuffer(file);
     e.target.value = "";
@@ -416,11 +418,11 @@ export default function ImportExport() {
 
   const applyImport = async () => {
     if (!importPreview) return;
-    if (validationErrors.length > 0) { toast.error("Fix validation errors first"); return; }
+    if (validationErrors.length > 0) { toast.error(t("fixValidationErrors", "Fix validation errors first")); return; }
     await importProducts(importPreview);
     setImportPreview(null);
     setValidationErrors([]);
-    toast.success("Products imported successfully");
+    toast.success(t("importSuccess", "Import successful"));
   };
 
   return (
@@ -428,17 +430,17 @@ export default function ImportExport() {
       <header className="sticky top-0 z-10 bg-background/95 backdrop-blur border-b border-border px-4 py-3">
         <div className="max-w-3xl mx-auto flex items-center gap-2">
           <FileSpreadsheet className="w-5 h-5 text-primary" />
-          <h1 className="text-lg font-bold text-foreground tracking-tight">Import / Export</h1>
+          <h1 className="text-lg font-bold text-foreground tracking-tight">{t("importExportTitle", "Import / Export")}</h1>
         </div>
       </header>
 
       <main className="max-w-3xl mx-auto px-4 py-4 space-y-4">
         <div className="flex bg-secondary rounded-lg p-1">
           <button onClick={() => setTab("export")} className={`flex-1 py-2 text-sm font-semibold rounded-md transition-colors ${tab === "export" ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}>
-            <Download className="w-4 h-4 inline mr-1" /> Export
+            <Download className="w-4 h-4 inline mr-1" /> {t("exportSection", "Export Data")}
           </button>
           <button onClick={() => setTab("import")} className={`flex-1 py-2 text-sm font-semibold rounded-md transition-colors ${tab === "import" ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}>
-            <Upload className="w-4 h-4 inline mr-1" /> Import
+            <Upload className="w-4 h-4 inline mr-1" /> {t("importSection", "Import Data")}
           </button>
         </div>
 
@@ -447,16 +449,16 @@ export default function ImportExport() {
             <button onClick={exportExcel} className="w-full bg-card border border-border rounded-lg p-4 text-left hover:bg-row-hover transition-colors flex items-center gap-3">
               <FileSpreadsheet className="w-8 h-8 text-success" />
               <div>
-                <p className="text-sm font-semibold text-foreground">Export Stock as Excel</p>
-                <p className="text-xs text-muted-foreground">Full stock with batches (.xlsx)</p>
+                <p className="text-sm font-semibold text-foreground">{t("exportProducts", "Export Products")}</p>
+                <p className="text-xs text-muted-foreground">{t("exportStockExcelDesc", "Full stock with batches (.xlsx)")}</p>
               </div>
             </button>
 
             <button onClick={exportPDF} className="w-full bg-card border border-border rounded-lg p-4 text-left hover:bg-row-hover transition-colors flex items-center gap-3">
               <FileText className="w-8 h-8 text-destructive" />
               <div>
-                <p className="text-sm font-semibold text-foreground">Export Stock as PDF</p>
-                <p className="text-xs text-muted-foreground">Printable report format</p>
+                <p className="text-sm font-semibold text-foreground">{t("exportStockPdf", "Export Stock as PDF")}</p>
+                <p className="text-xs text-muted-foreground">{t("printableReportFormat", "Printable report format")}</p>
               </div>
             </button>
 
@@ -464,15 +466,15 @@ export default function ImportExport() {
               <div className="flex items-center gap-3 mb-3">
                 <AlertTriangle className="w-8 h-8 text-warning" />
                 <div>
-                  <p className="text-sm font-semibold text-foreground">Near Expiry Report</p>
-                  <p className="text-xs text-muted-foreground">Export items expiring within selected period</p>
+                  <p className="text-sm font-semibold text-foreground">{t("nearExpiryReport", "Near Expiry Report")}</p>
+                  <p className="text-xs text-muted-foreground">{t("nearExpiryReportDesc", "Export items expiring within selected period")}</p>
                 </div>
               </div>
               <button
                 onClick={() => setShowExpiryPicker(!showExpiryPicker)}
                 className="w-full bg-secondary text-foreground text-sm rounded-md px-3 py-2 border border-border text-left mb-3"
               >
-                Period: {expiryDays} days {showExpiryPicker ? "▲" : "▼"}
+                {t("period", "Period")}: {expiryDays} {t("days", "days")} {showExpiryPicker ? "▲" : "▼"}
               </button>
               {showExpiryPicker && (
                 <div className="mb-3">
@@ -485,31 +487,31 @@ export default function ImportExport() {
                 </div>
               )}
               <button onClick={exportNearExpiry} className="w-full bg-warning text-primary-foreground font-semibold py-2 rounded-md text-sm">
-                Export Near Expiry ({expiryDays} days)
+                {t("exportNearExpiry", "Export Near Expiry")} ({expiryDays} {t("days", "days")})
               </button>
             </div>
 
             <button onClick={exportByBrand} className="w-full bg-card border border-border rounded-lg p-4 text-left hover:bg-row-hover transition-colors flex items-center gap-3">
               <Building2 className="w-8 h-8 text-primary" />
               <div>
-                <p className="text-sm font-semibold text-foreground">Stock by Brand</p>
-                <p className="text-xs text-muted-foreground">Each brand in a separate sheet (.xlsx)</p>
+                <p className="text-sm font-semibold text-foreground">{t("stockByBrand", "Stock by Brand")}</p>
+                <p className="text-xs text-muted-foreground">{t("stockByBrandDesc", "Each brand in a separate sheet (.xlsx)")}</p>
               </div>
             </button>
 
             <button onClick={exportInventorySnapshot} className="w-full bg-card border border-border rounded-lg p-4 text-left hover:bg-row-hover transition-colors flex items-center gap-3">
               <Package className="w-8 h-8 text-primary" />
               <div>
-                <p className="text-sm font-semibold text-foreground">Inventory Snapshot</p>
-                <p className="text-xs text-muted-foreground">Summary of all products with totals (.xlsx)</p>
+                <p className="text-sm font-semibold text-foreground">{t("inventorySnapshot", "Inventory Snapshot")}</p>
+                <p className="text-xs text-muted-foreground">{t("inventorySnapshotDesc", "Summary of all products with totals (.xlsx)")}</p>
               </div>
             </button>
 
             <button onClick={exportMovements} className="w-full bg-card border border-border rounded-lg p-4 text-left hover:bg-row-hover transition-colors flex items-center gap-3">
               <History className="w-8 h-8 text-storage-chilled" />
               <div>
-                <p className="text-sm font-semibold text-foreground">Movements Report</p>
-                <p className="text-xs text-muted-foreground">All stock IN/OUT movements (.xlsx)</p>
+                <p className="text-sm font-semibold text-foreground">{t("movementsReport", "Movements Report")}</p>
+                <p className="text-xs text-muted-foreground">{t("movementsReportDesc", "All stock IN/OUT movements (.xlsx)")}</p>
               </div>
             </button>
           </div>
@@ -519,26 +521,26 @@ export default function ImportExport() {
           <div className="space-y-3">
             {/* AI-Powered PDF Import */}
             <div className="mb-2">
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">PDF Import (AI-Powered)</p>
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">{t("pdfImportAiPowered", "PDF Import (AI-Powered)")}</p>
               <PdfImportSection />
             </div>
 
             {/* Excel Import */}
             <div className="mt-4">
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Excel Import</p>
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">{t("importProducts", "Import Products")}</p>
               <div className="bg-card border border-border rounded-lg p-4">
-                <p className="text-sm font-semibold text-foreground mb-1">Import Excel File (.xlsx)</p>
-                <p className="text-xs text-muted-foreground mb-3">Columns: Product Code, Batch No, Production Date, Expiry Date, Qty</p>
+                <p className="text-sm font-semibold text-foreground mb-1">{t("importExcelFile", "Import Excel File (.xlsx)")}</p>
+                <p className="text-xs text-muted-foreground mb-3">{t("supportedFormats", "Supported formats")}: Product Code, Batch No, Production Date, Expiry Date, Qty</p>
                 <input ref={fileRef} type="file" accept=".xlsx" onChange={handleImport} className="hidden" />
                 <button onClick={() => fileRef.current?.click()} className="w-full bg-secondary text-secondary-foreground font-semibold py-2.5 rounded-md text-sm">
-                  Select Excel File
+                  {t("selectFile", "Select File")}
                 </button>
               </div>
             </div>
 
             {validationErrors.length > 0 && (
               <div className="bg-destructive/10 border border-destructive/30 rounded-lg p-3">
-                <p className="text-xs font-semibold text-destructive mb-2">Validation Errors ({validationErrors.length})</p>
+                <p className="text-xs font-semibold text-destructive mb-2">{t("validationErrors", "Validation Errors")} ({validationErrors.length})</p>
                 <div className="max-h-32 overflow-y-auto space-y-1">
                   {validationErrors.map((err, i) => (
                     <p key={i} className="text-xs text-destructive/80">Row {err.row}: {err.field} — {err.message}</p>
@@ -550,8 +552,8 @@ export default function ImportExport() {
             {importPreview && (
               <div className="bg-card border border-border rounded-lg overflow-hidden">
                 <div className="px-3 py-2 bg-brand-header border-b border-border flex items-center justify-between">
-                  <span className="text-xs font-semibold text-foreground uppercase tracking-wide">Import Preview</span>
-                  <span className="text-xs text-muted-foreground">{importPreview.reduce((a, b) => a + b.products.length, 0)} products</span>
+                  <span className="text-xs font-semibold text-foreground uppercase tracking-wide">{t("importPreview", "Import Preview")}</span>
+                  <span className="text-xs text-muted-foreground">{importPreview.reduce((a, b) => a + b.products.length, 0)} {t("productsNav", "products")}</span>
                 </div>
                 {importPreview.map(brand => (
                   <div key={brand.name}>
@@ -560,15 +562,15 @@ export default function ImportExport() {
                       <div key={p.code} className="px-3 py-1.5 border-b border-border/50 flex items-center gap-2 text-sm">
                         <span className="font-mono text-xs text-primary w-16">{p.code}</span>
                         <span className="flex-1 truncate text-foreground">{p.name}</span>
-                        <span className="font-mono text-xs text-muted-foreground">{p.batches.length} batch</span>
+                        <span className="font-mono text-xs text-muted-foreground">{p.batches.length} {t("batch", "batch")}</span>
                       </div>
                     ))}
                   </div>
                 ))}
                 <div className="p-3 flex gap-2">
-                  <button onClick={() => { setImportPreview(null); setValidationErrors([]); }} className="flex-1 bg-secondary text-secondary-foreground font-semibold py-2 rounded-md text-sm">Cancel</button>
+                  <button onClick={() => { setImportPreview(null); setValidationErrors([]); }} className="flex-1 bg-secondary text-secondary-foreground font-semibold py-2 rounded-md text-sm">{t("cancel", "Cancel")}</button>
                   <button onClick={applyImport} disabled={validationErrors.length > 0} className={`flex-1 font-semibold py-2 rounded-md text-sm flex items-center justify-center gap-1 ${validationErrors.length > 0 ? "bg-muted text-muted-foreground" : "bg-success text-primary-foreground"}`}>
-                    <Check className="w-4 h-4" /> Apply Import
+                    <Check className="w-4 h-4" /> {t("applyImport", "Apply Import")}
                   </button>
                 </div>
               </div>

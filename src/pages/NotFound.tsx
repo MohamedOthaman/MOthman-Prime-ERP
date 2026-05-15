@@ -1,10 +1,12 @@
 import { useNavigate, useLocation } from "react-router-dom";
 import { useEffect } from "react";
 import { MapPin, ArrowLeft, LayoutDashboard } from "lucide-react";
+import { useLang } from "@/contexts/LanguageContext";
 
 export default function NotFound() {
   const location = useLocation();
   const navigate = useNavigate();
+  const { t } = useLang();
 
   useEffect(() => {
     console.warn("[404] No route for:", location.pathname);
@@ -19,9 +21,9 @@ export default function NotFound() {
 
         <div>
           <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-1">404</p>
-          <h1 className="text-xl font-bold text-foreground mb-2">Page Not Found</h1>
+          <h1 className="text-xl font-bold text-foreground mb-2">{t("notFound", "Page Not Found")}</h1>
           <p className="text-sm text-muted-foreground leading-relaxed">
-            The page <span className="font-mono text-xs bg-muted px-1.5 py-0.5 rounded">{location.pathname}</span> does not exist.
+            <span className="font-mono text-xs bg-muted px-1.5 py-0.5 rounded">{location.pathname}</span>
           </p>
         </div>
 
@@ -31,14 +33,14 @@ export default function NotFound() {
             className="flex items-center gap-1.5 text-sm border border-border rounded-lg px-4 py-2 hover:bg-muted/30 transition text-muted-foreground"
           >
             <ArrowLeft className="w-3.5 h-3.5" />
-            Go Back
+            {t("back", "Go Back")}
           </button>
           <button
             onClick={() => navigate("/")}
             className="flex items-center gap-1.5 text-sm bg-primary text-primary-foreground rounded-lg px-4 py-2 hover:opacity-90 transition font-medium"
           >
             <LayoutDashboard className="w-3.5 h-3.5" />
-            Dashboard
+            {t("goHome", "Dashboard")}
           </button>
         </div>
       </div>
