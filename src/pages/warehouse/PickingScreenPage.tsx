@@ -105,15 +105,15 @@ export default function PickingScreenPage() {
       showFeedback(
         "success",
         result.line_complete
-          ? `Line complete ✓ (${result.qty_scanned}/${result.qty_required})`
-          : `+1 scanned — ${result.remaining} remaining`
+          ? `${t("lineComplete", "Line complete")} ✓ (${result.qty_scanned}/${result.qty_required})`
+          : `+1 ${t("scanned", "scanned")} — ${result.remaining} ${t("remaining", "remaining")}`
       );
     } catch (e: any) {
       const code = (e as any).code as string | undefined;
-      if (code === "NOT_IN_INVOICE")  showFeedback("error", "Product not in this invoice");
-      else if (code === "OVER_SCAN")  showFeedback("error", "Already scanned full quantity for this item");
-      else if (code === "UNKNOWN_BARCODE") showFeedback("error", `Unknown barcode: ${b}`);
-      else showFeedback("error", e.message ?? "Scan failed");
+      if (code === "NOT_IN_INVOICE")  showFeedback("error", t("productNotInInvoice", "Product not in this invoice"));
+      else if (code === "OVER_SCAN")  showFeedback("error", t("alreadyScannedFullQty", "Already scanned full quantity for this item"));
+      else if (code === "UNKNOWN_BARCODE") showFeedback("error", `${t("unknownBarcode", "Unknown barcode")}: ${b}`);
+      else showFeedback("error", e.message ?? t("scanFailed", "Scan failed"));
     }
     setScanning(false);
     setTimeout(() => scanRef.current?.focus(), 50);
@@ -124,16 +124,16 @@ export default function PickingScreenPage() {
     setConfirming(true);
     try {
       await confirmPickingDone(invoiceId);
-      toast.success("Picking confirmed — invoice is now DONE");
+      toast.success(t("pickingConfirmed", "Picking confirmed — invoice is now DONE"));
       setSessionStatus("completed");
     } catch (e: any) {
       const code = (e as any).code as string | undefined;
       if (code === "INCOMPLETE") {
-        toast.error("Not all items scanned yet.");
+        toast.error(t("notAllItemsScanned", "Not all items scanned yet."));
       } else if (code === "INSUFFICIENT_STOCK") {
-        toast.error("Insufficient stock — check inventory batches before confirming.", { duration: 6000 });
+        toast.error(t("insufficientStock", "Insufficient stock — check inventory batches before confirming."), { duration: 6000 });
       } else {
-        toast.error(e.message ?? "Failed to confirm picking");
+        toast.error(e.message ?? t("failedToConfirmPicking", "Failed to confirm picking"));
       }
     }
     setConfirming(false);
@@ -168,11 +168,11 @@ export default function PickingScreenPage() {
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
               <span className="text-[15px] font-bold text-foreground">
-                Picking #{header?.invoice_number ?? invoiceId?.slice(0, 8)}
+                {t("pickingHashLabel", "Picking")} #{header?.invoice_number ?? invoiceId?.slice(0, 8)}
               </span>
               {sessionStatus === "completed" && (
                 <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded border text-emerald-400 bg-emerald-500/10 border-emerald-500/20">
-                  DONE
+                  {t("statusDone", "DONE")}
                 </span>
               )}
             </div>
@@ -181,7 +181,7 @@ export default function PickingScreenPage() {
           <button
             onClick={() => navigate(`/invoices/${invoiceId}`)}
             className="p-1.5 rounded-lg border border-border bg-muted/30 hover:bg-muted/50 transition"
-            title="Invoice details"
+            title={t("invoiceDetails", "Invoice details")}
           >
             <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />
           </button>
@@ -191,7 +191,7 @@ export default function PickingScreenPage() {
         <div className="max-w-2xl mx-auto px-4 pb-3 space-y-1.5">
           <div className="flex items-center justify-between text-[10px]">
             <span className="text-muted-foreground">
-              {completedLines}/{execLines.length} lines · {totalScanned}/{totalRequired} units
+              {completedLines}/{execLines.length} {t("lines", "lines")} · {totalScanned}/{totalRequired} {t("units", "units")}
             </span>
             <span className={`font-bold ${allComplete ? "text-emerald-400" : "text-amber-400"}`}>
               {Math.round(progressPct)}%
@@ -277,7 +277,7 @@ export default function PickingScreenPage() {
               {t("requiredItems", "Required Items")}
             </p>
             <p className="text-[10px] text-muted-foreground">
-              {completedLines}/{execLines.length} complete
+              {completedLines}/{execLines.length} {t("complete", "complete")}
             </p>
           </div>
           {execLines.map((line, i) => {
@@ -324,7 +324,7 @@ export default function PickingScreenPage() {
                     </span>
                   </div>
                   {!complete && remaining > 0 && (
-                    <p className="text-[10px] text-muted-foreground mt-0.5">{remaining} remaining</p>
+                    <p className="text-[10px] text-muted-foreground mt-0.5">{remaining} {t("remaining", "remaining")}</p>
                   )}
                 </div>
               </div>
@@ -348,7 +348,7 @@ export default function PickingScreenPage() {
             ) : allComplete ? (
               t("confirmPickingDone", "Confirm Picking Done →")
             ) : (
-              `${execLines.length - completedLines} line${execLines.length - completedLines !== 1 ? "s" : ""} remaining`
+              `${execLines.length - completedLines} ${t("linesRemaining", "lines remaining")}`
             )}
           </button>
         )}

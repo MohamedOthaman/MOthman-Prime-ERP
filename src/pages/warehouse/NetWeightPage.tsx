@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
+import { useLang } from "@/contexts/LanguageContext";
 import {
   ArrowLeft,
   BarChart3,
@@ -72,6 +73,7 @@ function fmtDate(d: string): string {
 
 export default function NetWeightPage() {
   const navigate = useNavigate();
+  const { t } = useLang();
   const [phase, setPhase] = useState<Phase>("landing");
 
   // Packing list
@@ -150,10 +152,10 @@ export default function NetWeightPage() {
         lastBarcodeRef.current = text;
         lastBarcodeTimeRef.current = now;
         setFBarcode(text);
-        toast.info(`Barcode: ${text}`, { duration: 1500 });
+        toast.info(`${t("barcodeDetected", "Barcode")}: ${text}`, { duration: 1500 });
       });
     } catch {
-      setCameraErr("Cannot access camera. Check browser permissions.");
+      setCameraErr(t("cameraError", "Cannot access camera. Check browser permissions."));
     }
   }, [stopCamera]);
 
@@ -175,7 +177,7 @@ export default function NetWeightPage() {
       await (track as any).applyConstraints({ advanced: [{ torch: !torchOn } as any] });
       setTorchOn((prev) => !prev);
     } catch {
-      toast.error("Torch not supported on this device");
+      toast.error(t("torchNotSupported", "Torch not supported on this device"));
     }
   };
 
@@ -188,7 +190,7 @@ export default function NetWeightPage() {
 
   const handlePlFile = async (file: File) => {
     setPlError(null);
-    setPlProgress("Reading file…");
+    setPlProgress(t("readingFile", "Reading file…"));
     const ext = file.name.split(".").pop()?.toLowerCase();
 
     if (ext === "xlsx" || ext === "xls") {
@@ -220,9 +222,9 @@ export default function NetWeightPage() {
         setPlBatches(batches.filter((b) => b.batchNo || b.cartonCount));
         setPlParsed(true);
         setPlProgress(null);
-        toast.success(`${batches.length} batch(es) read from Excel`);
+        toast.success(`${batches.length} ${t("batchesReadFromExcel", "batch(es) read from Excel")}`);
       } catch {
-        setPlError("Failed to read Excel file.");
+        setPlError(t("failedToReadExcel", "Failed to read Excel file."));
         setPlProgress(null);
       }
       return;
@@ -243,9 +245,9 @@ export default function NetWeightPage() {
       setPlBatches(batches);
       setPlParsed(true);
       setPlProgress(null);
-      toast.success(`${batches.length} batch(es) extracted from file`);
+      toast.success(`${batches.length} ${t("batchesExtractedFromFile", "batch(es) extracted from file")}`);
     } catch {
-      setPlError("Failed to process file.");
+      setPlError(t("failedToProcessFile", "Failed to process file."));
       setPlProgress(null);
     }
   };
@@ -255,7 +257,7 @@ export default function NetWeightPage() {
   const addCarton = useCallback(() => {
     const wt = parseFloat(fWeight.replace(",", "."));
     if (!fWeight || isNaN(wt) || wt <= 0) {
-      toast.error("Enter a valid net weight");
+      toast.error(t("enterValidNetWeight", "Enter a valid net weight"));
       return;
     }
 
@@ -278,7 +280,7 @@ export default function NetWeightPage() {
         recordedAt:     new Date().toISOString(),
       };
       if (isFirstOfBatch) {
-        toast.success(`★ Sample — Pallet ${activePallet + 1}, Position ${entry.seqInPallet}`, { duration: 4000 });
+        toast.success(`★ ${t("sampleLabel", "Sample")} — ${t("palletLabel", "Pallet")} ${activePallet + 1}, ${t("positionLabel", "Position")} ${entry.seqInPallet}`, { duration: 4000 });
       }
       return [...prev, entry];
     });
@@ -297,7 +299,7 @@ export default function NetWeightPage() {
     const newIdx = palletCount;
     setPalletCount((p) => p + 1);
     setActivePallet(newIdx);
-    toast.info(`Pallet ${newIdx + 1} started`);
+    toast.info(`${t("palletLabel", "Pallet")} ${newIdx + 1} ${t("palletStarted", "started")}`);
   };
 
   // ── Summaries ───────────────────────────────────────────────────────────────
@@ -332,7 +334,7 @@ export default function NetWeightPage() {
   // ── Export ──────────────────────────────────────────────────────────────────
 
   const exportExcelReport = async () => {
-    if (cartons.length === 0) { toast.info("No cartons recorded"); return; }
+    if (cartons.length === 0) { toast.info(t("noCartonsRecorded", "No cartons recorded")); return; }
     setExporting(true);
     try {
       const wb = new ExcelJS.Workbook();
@@ -340,21 +342,21 @@ export default function NetWeightPage() {
       wb.created = new Date();
 
       // Sheet 1 — All cartons
-      const ws = wb.addWorksheet("All Cartons");
+      const ws = wb.addWorksheet(t("sheetAllCartons", "All Cartons"));
       const COL = 8;
-      ws.addRow(["Net Weight Receiving Report"]);
+      ws.addRow([t("reportTitle", "Net Weight Receiving Report")]);
       ws.mergeCells(1, 1, 1, COL);
       const titleCell = ws.getRow(1).getCell(1);
       titleCell.font = { bold: true, size: 14 };
       titleCell.alignment = { vertical: "middle" };
       ws.getRow(1).height = 26;
 
-      ws.addRow([`Generated: ${new Date().toLocaleString()}`]);
+      ws.addRow([`${t("generated", "Generated")}: ${new Date().toLocaleString()}`]);
       ws.mergeCells(2, 1, 2, COL);
       ws.getRow(2).getCell(1).font = { size: 9, color: { argb: "FF888888" } };
       ws.addRow([]);
 
-      const hdrRow = ws.addRow(["#", "Pallet", "Seq", "Net Weight (kg)", "Prod. Date", "Expiry Date", "Batch / Lot", "Barcode"]);
+      const hdrRow = ws.addRow(["#", t("palletLabel", "Pallet"), t("seqLabel", "Seq"), t("netWeightKg", "Net Weight (kg)"), t("prodDate", "Prod. Date"), t("expiryDate", "Expiry Date"), t("batchLot", "Batch / Lot"), t("barcodeLabel", "Barcode")]);
       hdrRow.height = 20;
       hdrRow.eachCell((cell) => {
         cell.font = { bold: true, size: 9, color: { argb: "FFFFFFFF" } };
@@ -365,7 +367,7 @@ export default function NetWeightPage() {
       cartons.forEach((c, i) => {
         const row = ws.addRow([
           i + 1,
-          `Pallet ${c.palletIndex + 1}`,
+          `${t("palletLabel", "Pallet")} ${c.palletIndex + 1}`,
           c.seqInPallet,
           c.netWeight,
           c.productionDate || "—",
@@ -381,11 +383,11 @@ export default function NetWeightPage() {
 
         // Comment on weight cell with all carton details
         const noteLines = [
-          ...(c.isSample ? [{ font: { bold: true }, text: "★ SAMPLE CARTON\n" }] : []),
-          { text: `Prod:    ${c.productionDate || "—"}\n` },
-          { text: `Expiry:  ${c.expiryDate     || "—"}\n` },
-          { text: `Batch:   ${c.batchNo        || "—"}\n` },
-          { text: `Barcode: ${c.barcode        || "—"}` },
+          ...(c.isSample ? [{ font: { bold: true }, text: `★ ${t("sampleCarton", "SAMPLE CARTON")}\n` }] : []),
+          { text: `${t("prodDateShort", "Prod")}:    ${c.productionDate || "—"}\n` },
+          { text: `${t("expiryShort", "Expiry")}:  ${c.expiryDate     || "—"}\n` },
+          { text: `${t("batchShort", "Batch")}:   ${c.batchNo        || "—"}\n` },
+          { text: `${t("barcodeLabel", "Barcode")}: ${c.barcode        || "—"}` },
         ];
         (wCell as any).note = { texts: noteLines };
 
@@ -401,7 +403,7 @@ export default function NetWeightPage() {
       });
 
       // Total row
-      const totRow = ws.addRow(["", "", "TOTAL", grandTotal.weight, "", "", `${grandTotal.cartons} cartons`, ""]);
+      const totRow = ws.addRow(["", "", t("totalLabel", "TOTAL"), grandTotal.weight, "", "", `${grandTotal.cartons} ${t("cartonsUnit", "cartons")}`, ""]);
       totRow.getCell(3).font = { bold: true };
       totRow.getCell(4).font = { bold: true };
       totRow.getCell(4).numFmt = "0.000";
@@ -410,15 +412,15 @@ export default function NetWeightPage() {
       [5, 12, 6, 16, 14, 14, 18, 20].forEach((w, i) => { ws.getColumn(i + 1).width = w; });
 
       // Sheet 2 — Pallet summary
-      const ws2 = wb.addWorksheet("Pallet Summary");
-      const hdr2 = ws2.addRow(["Pallet", "Cartons", "Total Weight (kg)", "Batches", "Expiry Dates", "Samples (position)"]);
+      const ws2 = wb.addWorksheet(t("sheetPalletSummary", "Pallet Summary"));
+      const hdr2 = ws2.addRow([t("palletLabel", "Pallet"), t("cartonsLabel", "Cartons"), t("totalWeightKg", "Total Weight (kg)"), t("batchesLabel", "Batches"), t("expiryDatesLabel", "Expiry Dates"), t("samplesPosition", "Samples (position)")]);
       hdr2.eachCell((cell) => {
         cell.font = { bold: true, size: 9, color: { argb: "FFFFFFFF" } };
         cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF1a1a2e" } };
       });
       palletSummaries.forEach((p) => {
         ws2.addRow([
-          `Pallet ${p.index + 1}`,
+          `${t("palletLabel", "Pallet")} ${p.index + 1}`,
           p.cartonCount,
           p.totalWeight,
           p.batches.join(", ")      || "—",
@@ -426,7 +428,7 @@ export default function NetWeightPage() {
           p.samples.map((s) => `#${s.seqInPallet}`).join(", ") || "—",
         ]);
       });
-      const totRow2 = ws2.addRow(["GRAND TOTAL", grandTotal.cartons, grandTotal.weight, "", "", ""]);
+      const totRow2 = ws2.addRow([t("grandTotal", "GRAND TOTAL"), grandTotal.cartons, grandTotal.weight, "", "", ""]);
       totRow2.getCell(1).font = { bold: true };
       totRow2.getCell(2).font = { bold: true };
       totRow2.getCell(3).font = { bold: true };
@@ -434,15 +436,15 @@ export default function NetWeightPage() {
       [14, 10, 18, 28, 22, 22].forEach((w, i) => { ws2.getColumn(i + 1).width = w; });
 
       // Sheet 3 — Samples
-      const ws3 = wb.addWorksheet("Sample Cartons");
-      const hdr3 = ws3.addRow(["Pallet", "Position", "Batch / Lot", "Prod. Date", "Expiry Date", "Net Weight (kg)", "Barcode"]);
+      const ws3 = wb.addWorksheet(t("sheetSampleCartons", "Sample Cartons"));
+      const hdr3 = ws3.addRow([t("palletLabel", "Pallet"), t("positionLabel", "Position"), t("batchLot", "Batch / Lot"), t("prodDate", "Prod. Date"), t("expiryDate", "Expiry Date"), t("netWeightKg", "Net Weight (kg)"), t("barcodeLabel", "Barcode")]);
       hdr3.eachCell((cell) => {
         cell.font = { bold: true, size: 9, color: { argb: "FFFFFFFF" } };
         cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF92400E" } };
       });
       cartons.filter((c) => c.isSample).forEach((c) => {
         ws3.addRow([
-          `Pallet ${c.palletIndex + 1}`,
+          `${t("palletLabel", "Pallet")} ${c.palletIndex + 1}`,
           c.seqInPallet,
           c.batchNo        || "—",
           c.productionDate || "—",
@@ -458,33 +460,33 @@ export default function NetWeightPage() {
         new Blob([buf], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }),
         `net-weight-${new Date().toISOString().split("T")[0]}.xlsx`,
       );
-      toast.success("Excel report exported");
+      toast.success(t("excelReportExported", "Excel report exported"));
     } catch (err) {
       console.error(err);
-      toast.error("Excel export failed");
+      toast.error(t("excelExportFailed", "Excel export failed"));
     }
     setExporting(false);
   };
 
   const exportPdfReport = () => {
-    if (cartons.length === 0) { toast.info("No cartons recorded"); return; }
+    if (cartons.length === 0) { toast.info(t("noCartonsRecorded", "No cartons recorded")); return; }
     const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
 
     doc.setFontSize(15);
     doc.setFont("helvetica", "bold");
-    doc.text("Net Weight Receiving Report", 14, 15);
+    doc.text(t("reportTitle", "Net Weight Receiving Report"), 14, 15);
 
     doc.setFontSize(8);
     doc.setFont("helvetica", "normal");
     doc.setTextColor(120);
     doc.text(
-      `Generated: ${new Date().toLocaleString()}  |  ${grandTotal.cartons} cartons  |  ${grandTotal.weight.toFixed(3)} kg total`,
+      `${t("generated", "Generated")}: ${new Date().toLocaleString()}  |  ${grandTotal.cartons} ${t("cartonsUnit", "cartons")}  |  ${grandTotal.weight.toFixed(3)} kg ${t("totalLabel", "total")}`,
       14, 21,
     );
 
     autoTable(doc, {
       startY: 27,
-      head: [["#", "Pallet", "Net Wt (kg)", "Prod Date", "Expiry Date", "Batch / Lot", "Barcode", "★"]],
+      head: [["#", t("palletLabel", "Pallet"), t("netWtKg", "Net Wt (kg)"), t("prodDateShort", "Prod Date"), t("expiryDate", "Expiry Date"), t("batchLot", "Batch / Lot"), t("barcodeLabel", "Barcode"), "★"]],
       body: cartons.map((c, i) => [
         i + 1,
         `P${c.palletIndex + 1}`,
@@ -508,13 +510,13 @@ export default function NetWeightPage() {
     doc.setFontSize(11);
     doc.setFont("helvetica", "bold");
     doc.setTextColor(0);
-    doc.text("Pallet Summary", 14, finalY);
+    doc.text(t("palletSummaryTitle", "Pallet Summary"), 14, finalY);
 
     autoTable(doc, {
       startY: finalY + 4,
-      head: [["Pallet", "Cartons", "Total Weight (kg)", "Batches", "Samples"]],
+      head: [[t("palletLabel", "Pallet"), t("cartonsLabel", "Cartons"), t("totalWeightKg", "Total Weight (kg)"), t("batchesLabel", "Batches"), t("samplesLabel", "Samples")]],
       body: palletSummaries.map((p) => [
-        `Pallet ${p.index + 1}`,
+        `${t("palletLabel", "Pallet")} ${p.index + 1}`,
         p.cartonCount,
         p.totalWeight.toFixed(3),
         p.batches.join(", ") || "—",
@@ -527,7 +529,7 @@ export default function NetWeightPage() {
     });
 
     doc.save(`net-weight-${new Date().toISOString().split("T")[0]}.pdf`);
-    toast.success("PDF exported");
+    toast.success(t("pdfExported", "PDF exported"));
   };
 
   // ─────────────────────────────────────────────────────────────────────────────
@@ -549,7 +551,7 @@ export default function NetWeightPage() {
             </button>
             <div className="flex items-center gap-2">
               <Weight className="h-5 w-5 text-primary" />
-              <h1 className="text-lg font-semibold">Net Weight Tracking</h1>
+              <h1 className="text-lg font-semibold">{t("netWeightTracking", "Net Weight Tracking")}</h1>
             </div>
           </div>
         </header>
@@ -557,8 +559,8 @@ export default function NetWeightPage() {
         <div className="flex-1 flex flex-col items-center justify-center p-6 gap-4 max-w-sm mx-auto w-full">
           <div className="text-center mb-4">
             <Weight className="h-14 w-14 text-primary mx-auto mb-3 opacity-60" />
-            <h2 className="text-xl font-bold">Select Mode</h2>
-            <p className="text-sm text-muted-foreground mt-1">Meats &amp; Cheeses — Net Weight Recording</p>
+            <h2 className="text-xl font-bold">{t("selectMode", "Select Mode")}</h2>
+            <p className="text-sm text-muted-foreground mt-1">{t("meatsAndCheesesSubtitle", "Meats & Cheeses — Net Weight Recording")}</p>
           </div>
 
           {/* Receiving Shipments */}
@@ -571,8 +573,8 @@ export default function NetWeightPage() {
               <Truck className="h-6 w-6 text-primary" />
             </div>
             <div className="flex-1 min-w-0">
-              <div className="font-semibold text-foreground">Receiving Shipments</div>
-              <div className="text-xs text-muted-foreground mt-0.5">Record inbound carton weights &amp; batches per pallet</div>
+              <div className="font-semibold text-foreground">{t("receivingShipments", "Receiving Shipments")}</div>
+              <div className="text-xs text-muted-foreground mt-0.5">{t("receivingShipmentsDesc", "Record inbound carton weights & batches per pallet")}</div>
             </div>
             <ChevronRight className="h-5 w-5 text-muted-foreground shrink-0" />
           </button>
@@ -587,8 +589,8 @@ export default function NetWeightPage() {
               <SendHorizonal className="h-6 w-6 text-muted-foreground" />
             </div>
             <div className="flex-1 min-w-0">
-              <div className="font-semibold text-foreground">Dispatch / Order Prep</div>
-              <div className="text-xs text-muted-foreground mt-0.5">Coming soon</div>
+              <div className="font-semibold text-foreground">{t("dispatchOrderPrep", "Dispatch / Order Prep")}</div>
+              <div className="text-xs text-muted-foreground mt-0.5">{t("comingSoon", "Coming soon")}</div>
             </div>
           </button>
         </div>
@@ -610,7 +612,7 @@ export default function NetWeightPage() {
               <ArrowLeft className="h-4 w-4" />
             </button>
             <Truck className="h-5 w-5 text-primary" />
-            <h1 className="text-lg font-semibold">Receiving Shipments</h1>
+            <h1 className="text-lg font-semibold">{t("receivingShipments", "Receiving Shipments")}</h1>
           </div>
         </header>
 
@@ -619,11 +621,10 @@ export default function NetWeightPage() {
           <div className="rounded-xl border border-border bg-card p-5">
             <h2 className="font-semibold flex items-center gap-2 mb-1">
               <FileUp className="h-4 w-4 text-primary" />
-              Upload Packing List
+              {t("uploadPackingList", "Upload Packing List")}
             </h2>
             <p className="text-xs text-muted-foreground mb-4">
-              Upload the shipment packing list (PDF, Excel, or image). Batch info will be extracted and the
-              first carton of each batch will be automatically flagged as a sample.
+              {t("uploadPackingListDesc", "Upload the shipment packing list (PDF, Excel, or image). Batch info will be extracted and the first carton of each batch will be automatically flagged as a sample.")}
             </p>
 
             {plError && (
@@ -642,16 +643,16 @@ export default function NetWeightPage() {
             {plParsed && plBatches.length > 0 && (
               <div className="mb-4 rounded-lg bg-emerald-500/10 border border-emerald-500/20 p-3">
                 <div className="text-sm font-medium text-emerald-600 dark:text-emerald-400 mb-2">
-                  {plBatches.length} batch(es) found
+                  {plBatches.length} {t("batchesFound", "batch(es) found")}
                 </div>
                 <div className="space-y-1 max-h-44 overflow-y-auto pr-1">
                   {plBatches.map((b, i) => (
                     <div key={i} className="flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
-                      <span className="font-medium text-foreground">{b.batchNo || `Batch ${i + 1}`}</span>
-                      {b.cartonCount > 0 && <span>{b.cartonCount} cartons</span>}
+                      <span className="font-medium text-foreground">{b.batchNo || `${t("batchShort", "Batch")} ${i + 1}`}</span>
+                      {b.cartonCount > 0 && <span>{b.cartonCount} {t("cartonsUnit", "cartons")}</span>}
                       {b.totalWeight > 0 && <span>{b.totalWeight.toFixed(1)} kg</span>}
-                      {b.productionDate && <span>Prod: {b.productionDate}</span>}
-                      {b.expiryDate && <span>Exp: {b.expiryDate}</span>}
+                      {b.productionDate && <span>{t("prodDateShort", "Prod")}: {b.productionDate}</span>}
+                      {b.expiryDate && <span>{t("expiryShort", "Exp")}: {b.expiryDate}</span>}
                     </div>
                   ))}
                 </div>
@@ -672,7 +673,7 @@ export default function NetWeightPage() {
               className="w-full rounded-lg border-2 border-dashed border-primary/40 bg-primary/5 py-8 text-sm font-medium text-primary hover:bg-primary/10 active:scale-[0.99] transition disabled:opacity-50"
             >
               <FileUp className="h-7 w-7 mx-auto mb-1.5 opacity-70" />
-              {plParsed ? "Upload Different File" : "Choose File (PDF / Excel / Image)"}
+              {plParsed ? t("uploadDifferentFile", "Upload Different File") : t("chooseFilePdfExcelImage", "Choose File (PDF / Excel / Image)")}
             </button>
 
             {plParsed && (
@@ -681,7 +682,7 @@ export default function NetWeightPage() {
                 onClick={() => setPhase("scanning")}
                 className="mt-3 w-full rounded-lg bg-primary text-primary-foreground py-3 text-sm font-semibold hover:bg-primary/90 active:scale-[0.99] transition flex items-center justify-center gap-2"
               >
-                Start Recording Weights
+                {t("startRecordingWeights", "Start Recording Weights")}
                 <ChevronRight className="h-4 w-4" />
               </button>
             )}
@@ -691,18 +692,17 @@ export default function NetWeightPage() {
           <div className="rounded-xl border border-border bg-card p-5">
             <h2 className="font-semibold flex items-center gap-2 mb-1">
               <SkipForward className="h-4 w-4 text-muted-foreground" />
-              Skip — Start Now
+              {t("skipStartNow", "Skip — Start Now")}
             </h2>
             <p className="text-xs text-muted-foreground mb-4">
-              Start recording immediately. Sample detection still works — the first carton
-              of each batch encountered will be marked as sample.
+              {t("skipStartNowDesc", "Start recording immediately. Sample detection still works — the first carton of each batch encountered will be marked as sample.")}
             </p>
             <button
               type="button"
               onClick={() => setPhase("scanning")}
               className="w-full rounded-lg border border-border bg-secondary py-3 text-sm font-medium hover:bg-secondary/80 active:scale-[0.99] transition"
             >
-              Skip &amp; Start Recording
+              {t("skipAndStartRecording", "Skip & Start Recording")}
             </button>
           </div>
         </div>
@@ -725,7 +725,7 @@ export default function NetWeightPage() {
             </button>
             <div className="flex items-center gap-2 flex-1 min-w-0">
               <BarChart3 className="h-5 w-5 text-primary shrink-0" />
-              <h1 className="text-base font-semibold truncate">Shipment Report</h1>
+              <h1 className="text-base font-semibold truncate">{t("shipmentReport", "Shipment Report")}</h1>
             </div>
             <div className="flex gap-2 shrink-0">
               <button
@@ -753,10 +753,10 @@ export default function NetWeightPage() {
           {/* Grand totals */}
           <section className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             {[
-              { label: "Total Cartons",   value: grandTotal.cartons,                      color: "text-foreground" },
-              { label: "Total Net Weight", value: `${grandTotal.weight.toFixed(3)} kg`,   color: "text-primary" },
-              { label: "Pallets",          value: palletCount,                             color: "text-foreground" },
-              { label: "Samples Taken",    value: grandTotal.samples,                      color: "text-amber-500" },
+              { label: t("totalCartons", "Total Cartons"),     value: grandTotal.cartons,                    color: "text-foreground" },
+              { label: t("totalNetWeight", "Total Net Weight"), value: `${grandTotal.weight.toFixed(3)} kg`, color: "text-primary" },
+              { label: t("palletsLabel", "Pallets"),            value: palletCount,                          color: "text-foreground" },
+              { label: t("samplesTaken", "Samples Taken"),      value: grandTotal.samples,                   color: "text-amber-500" },
             ].map((s) => (
               <div key={s.label} className="rounded-lg border border-border bg-card p-4">
                 <div className="text-[11px] text-muted-foreground uppercase tracking-wide">{s.label}</div>
@@ -768,24 +768,24 @@ export default function NetWeightPage() {
           {/* Pallet summary */}
           <section className="rounded-lg border border-border bg-card overflow-hidden">
             <div className="px-4 py-3 border-b border-border bg-muted/30">
-              <h2 className="font-semibold text-sm">Pallet Summary</h2>
+              <h2 className="font-semibold text-sm">{t("palletSummaryTitle", "Pallet Summary")}</h2>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-sm min-w-[560px]">
                 <thead className="bg-secondary/50 text-[11px] uppercase tracking-wide text-muted-foreground">
                   <tr>
-                    <th className="px-3 py-2 text-left">Pallet</th>
-                    <th className="px-3 py-2 text-right">Cartons</th>
-                    <th className="px-3 py-2 text-right">Net Weight</th>
-                    <th className="px-3 py-2 text-left">Batches</th>
-                    <th className="px-3 py-2 text-left">Expiry Dates</th>
-                    <th className="px-3 py-2 text-left">Samples</th>
+                    <th className="px-3 py-2 text-left">{t("palletLabel", "Pallet")}</th>
+                    <th className="px-3 py-2 text-right">{t("cartonsLabel", "Cartons")}</th>
+                    <th className="px-3 py-2 text-right">{t("netWeightHeader", "Net Weight")}</th>
+                    <th className="px-3 py-2 text-left">{t("batchesLabel", "Batches")}</th>
+                    <th className="px-3 py-2 text-left">{t("expiryDatesLabel", "Expiry Dates")}</th>
+                    <th className="px-3 py-2 text-left">{t("samplesLabel", "Samples")}</th>
                   </tr>
                 </thead>
                 <tbody>
                   {palletSummaries.map((p) => (
                     <tr key={p.index} className="border-t border-border/60">
-                      <td className="px-3 py-2 font-medium">Pallet {p.index + 1}</td>
+                      <td className="px-3 py-2 font-medium">{t("palletLabel", "Pallet")} {p.index + 1}</td>
                       <td className="px-3 py-2 text-right font-mono">{p.cartonCount}</td>
                       <td className="px-3 py-2 text-right font-mono text-primary">{p.totalWeight.toFixed(3)} kg</td>
                       <td className="px-3 py-2 text-xs text-muted-foreground">{p.batches.join(", ") || "—"}</td>
@@ -794,7 +794,7 @@ export default function NetWeightPage() {
                     </tr>
                   ))}
                   <tr className="border-t-2 border-border bg-muted/20">
-                    <td className="px-3 py-2 font-bold text-sm">TOTAL</td>
+                    <td className="px-3 py-2 font-bold text-sm">{t("totalLabel", "TOTAL")}</td>
                     <td className="px-3 py-2 text-right font-bold font-mono">{grandTotal.cartons}</td>
                     <td className="px-3 py-2 text-right font-bold font-mono text-primary">{grandTotal.weight.toFixed(3)} kg</td>
                     <td colSpan={3} />
@@ -810,20 +810,20 @@ export default function NetWeightPage() {
               <div className="px-4 py-3 border-b border-amber-500/20 bg-amber-500/10">
                 <h2 className="font-semibold text-sm flex items-center gap-2">
                   <Star className="h-4 w-4 text-amber-500 fill-amber-500" />
-                  Sample Cartons
+                  {t("sampleCartonsTitle", "Sample Cartons")}
                 </h2>
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full text-sm min-w-[560px]">
                   <thead className="text-[11px] uppercase tracking-wide text-muted-foreground">
                     <tr>
-                      <th className="px-3 py-2 text-left">Pallet</th>
-                      <th className="px-3 py-2 text-left">Pos.</th>
-                      <th className="px-3 py-2 text-left">Batch / Lot</th>
-                      <th className="px-3 py-2 text-left">Prod. Date</th>
-                      <th className="px-3 py-2 text-left">Expiry</th>
-                      <th className="px-3 py-2 text-right">Net Wt</th>
-                      <th className="px-3 py-2 text-left">Barcode</th>
+                      <th className="px-3 py-2 text-left">{t("palletLabel", "Pallet")}</th>
+                      <th className="px-3 py-2 text-left">{t("positionShort", "Pos.")}</th>
+                      <th className="px-3 py-2 text-left">{t("batchLot", "Batch / Lot")}</th>
+                      <th className="px-3 py-2 text-left">{t("prodDate", "Prod. Date")}</th>
+                      <th className="px-3 py-2 text-left">{t("expiryShort", "Expiry")}</th>
+                      <th className="px-3 py-2 text-right">{t("netWtKg", "Net Wt")}</th>
+                      <th className="px-3 py-2 text-left">{t("barcodeLabel", "Barcode")}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -847,19 +847,19 @@ export default function NetWeightPage() {
           {/* All cartons */}
           <section className="rounded-lg border border-border bg-card overflow-hidden">
             <div className="px-4 py-3 border-b border-border bg-muted/30">
-              <h2 className="font-semibold text-sm">All Cartons ({grandTotal.cartons})</h2>
+              <h2 className="font-semibold text-sm">{t("allCartonsTitle", "All Cartons")} ({grandTotal.cartons})</h2>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-sm min-w-[560px]">
                 <thead className="bg-secondary/50 text-[11px] uppercase tracking-wide text-muted-foreground">
                   <tr>
                     <th className="px-3 py-2 text-left">#</th>
-                    <th className="px-3 py-2 text-left">Pallet</th>
-                    <th className="px-3 py-2 text-right">Net Wt</th>
-                    <th className="px-3 py-2 text-left">Prod</th>
-                    <th className="px-3 py-2 text-left">Expiry</th>
-                    <th className="px-3 py-2 text-left">Batch</th>
-                    <th className="px-3 py-2 text-left">Barcode</th>
+                    <th className="px-3 py-2 text-left">{t("palletLabel", "Pallet")}</th>
+                    <th className="px-3 py-2 text-right">{t("netWtKg", "Net Wt")}</th>
+                    <th className="px-3 py-2 text-left">{t("prodDateShort", "Prod")}</th>
+                    <th className="px-3 py-2 text-left">{t("expiryShort", "Expiry")}</th>
+                    <th className="px-3 py-2 text-left">{t("batchShort", "Batch")}</th>
+                    <th className="px-3 py-2 text-left">{t("barcodeLabel", "Barcode")}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -907,7 +907,7 @@ export default function NetWeightPage() {
 
           <div className="flex items-center gap-1 text-sm font-semibold shrink-0">
             <Weight className="h-4 w-4 text-primary" />
-            <span className="hidden xs:inline">Net Weight</span>
+            <span className="hidden xs:inline">{t("netWeightTracking", "Net Weight")}</span>
           </div>
 
           {/* Pallet tabs — scrollable */}
@@ -936,7 +936,7 @@ export default function NetWeightPage() {
               type="button"
               onClick={toggleCamera}
               className="h-8 w-8 rounded-md border border-border bg-card flex items-center justify-center"
-              title={cameraOpen ? "Hide camera" : "Show camera"}
+              title={cameraOpen ? t("hideCamera", "Hide camera") : t("showCamera", "Show camera")}
             >
               {cameraOpen ? <CameraOff className="h-4 w-4" /> : <Camera className="h-4 w-4" />}
             </button>
@@ -947,7 +947,7 @@ export default function NetWeightPage() {
                 className="h-8 px-3 rounded-md bg-primary text-primary-foreground text-xs font-semibold flex items-center gap-1"
               >
                 <BarChart3 className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">Report</span>
+                <span className="hidden sm:inline">{t("reportBtn", "Report")}</span>
               </button>
             )}
           </div>
@@ -956,15 +956,15 @@ export default function NetWeightPage() {
         {/* Stats bar */}
         <div className="flex items-center gap-3 px-3 py-1.5 border-t border-border/40 bg-muted/20 text-xs text-muted-foreground overflow-x-auto whitespace-nowrap">
           <span className="font-medium text-foreground">P{activePallet + 1}:</span>
-          <span>{activeSummary?.cartonCount ?? 0} cartons</span>
+          <span>{activeSummary?.cartonCount ?? 0} {t("cartonsUnit", "cartons")}</span>
           {(activeSummary?.totalWeight ?? 0) > 0 && (
             <span className="text-primary font-medium">{activeSummary.totalWeight.toFixed(3)} kg</span>
           )}
           {(activeSummary?.samples.length ?? 0) > 0 && (
-            <span className="text-amber-500">★ {activeSummary.samples.length} sample(s)</span>
+            <span className="text-amber-500">★ {activeSummary.samples.length} {t("samplesUnit", "sample(s)")}</span>
           )}
           <span className="ml-auto text-muted-foreground/70">
-            Total: {grandTotal.cartons} ctns | {grandTotal.weight.toFixed(3)} kg
+            {t("totalLabel", "Total")}: {grandTotal.cartons} {t("ctnsShort", "ctns")} | {grandTotal.weight.toFixed(3)} kg
           </span>
         </div>
       </header>
@@ -984,7 +984,7 @@ export default function NetWeightPage() {
                   onClick={() => void startCamera()}
                   className="mt-1 rounded-md border border-white/20 bg-white/10 px-3 py-1.5 text-xs text-white"
                 >
-                  Retry
+                  {t("retryCamera", "Retry")}
                 </button>
               </div>
             ) : (
@@ -1016,7 +1016,7 @@ export default function NetWeightPage() {
               </>
             )}
             <div className="absolute bottom-0 left-0 right-0 text-center text-[10px] text-white/30 pb-0.5 pointer-events-none">
-              Barcode auto-detected
+              {t("barcodeAutoDetected", "Barcode auto-detected")}
             </div>
           </div>
         )}
@@ -1029,7 +1029,7 @@ export default function NetWeightPage() {
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
               {/* Net weight — most important, bigger */}
               <div className="col-span-2 sm:col-span-1">
-                <label className="block text-xs text-muted-foreground mb-1">Net Weight (kg) *</label>
+                <label className="block text-xs text-muted-foreground mb-1">{t("netWeightKg", "Net Weight (kg)")} *</label>
                 <input
                   type="number"
                   step="0.001"
@@ -1045,7 +1045,7 @@ export default function NetWeightPage() {
               </div>
 
               <div>
-                <label className="block text-xs text-muted-foreground mb-1">Prod. Date</label>
+                <label className="block text-xs text-muted-foreground mb-1">{t("prodDate", "Prod. Date")}</label>
                 <input
                   type="date"
                   value={fProd}
@@ -1055,7 +1055,7 @@ export default function NetWeightPage() {
               </div>
 
               <div>
-                <label className="block text-xs text-muted-foreground mb-1">Expiry Date</label>
+                <label className="block text-xs text-muted-foreground mb-1">{t("expiryDate", "Expiry Date")}</label>
                 <input
                   type="date"
                   value={fExp}
@@ -1065,7 +1065,7 @@ export default function NetWeightPage() {
               </div>
 
               <div>
-                <label className="block text-xs text-muted-foreground mb-1">Batch / Lot</label>
+                <label className="block text-xs text-muted-foreground mb-1">{t("batchLot", "Batch / Lot")}</label>
                 <input
                   type="text"
                   value={fBatch}
@@ -1076,12 +1076,12 @@ export default function NetWeightPage() {
               </div>
 
               <div>
-                <label className="block text-xs text-muted-foreground mb-1">Carton Barcode</label>
+                <label className="block text-xs text-muted-foreground mb-1">{t("cartonBarcode", "Carton Barcode")}</label>
                 <input
                   type="text"
                   value={fBarcode}
                   onChange={(e) => setFBarcode(e.target.value)}
-                  placeholder="Scan or type"
+                  placeholder={t("scanOrType", "Scan or type")}
                   className="h-11 w-full rounded-md border border-border bg-background px-3 text-sm font-mono text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:ring-1 focus:ring-primary"
                 />
               </div>
@@ -1095,7 +1095,7 @@ export default function NetWeightPage() {
                 className="flex items-center gap-2 rounded-md bg-primary text-primary-foreground px-5 py-2.5 text-sm font-semibold hover:bg-primary/90 active:scale-[0.98] transition"
               >
                 <Plus className="h-4 w-4" />
-                Add Carton
+                {t("addCarton", "Add Carton")}
               </button>
 
               <label className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer select-none">
@@ -1105,7 +1105,7 @@ export default function NetWeightPage() {
                   onChange={(e) => setStickyDates(e.target.checked)}
                   className="rounded"
                 />
-                Keep dates
+                {t("keepDates", "Keep dates")}
               </label>
               <label className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer select-none">
                 <input
@@ -1114,12 +1114,12 @@ export default function NetWeightPage() {
                   onChange={(e) => setStickyBatch(e.target.checked)}
                   className="rounded"
                 />
-                Keep batch
+                {t("keepBatch", "Keep batch")}
               </label>
 
               <div className="ml-auto flex items-center gap-2">
                 <span className="text-xs text-muted-foreground hidden sm:inline">
-                  {activeSummary?.cartonCount ?? 0} ctns
+                  {activeSummary?.cartonCount ?? 0} {t("ctnsShort", "ctns")}
                   {(activeSummary?.totalWeight ?? 0) > 0 && (
                     <> · <span className="text-primary font-medium">{activeSummary.totalWeight.toFixed(3)} kg</span></>
                   )}
@@ -1130,7 +1130,7 @@ export default function NetWeightPage() {
                   className="flex items-center gap-1.5 rounded-md border border-border bg-secondary px-3 py-2 text-xs font-medium text-foreground hover:bg-secondary/70 active:scale-[0.97] transition"
                 >
                   <Layers className="h-3.5 w-3.5" />
-                  Next Pallet
+                  {t("nextPallet", "Next Pallet")}
                 </button>
               </div>
             </div>
@@ -1141,19 +1141,19 @@ export default function NetWeightPage() {
             {activeCartons.length === 0 ? (
               <div className="h-full flex flex-col items-center justify-center gap-2 text-muted-foreground min-h-[100px]">
                 <PackageCheck className="h-8 w-8 opacity-25" />
-                <p className="text-sm">Pallet {activePallet + 1} is empty</p>
-                <p className="text-xs opacity-50">Fill the form above and press "Add Carton"</p>
+                <p className="text-sm">{t("palletLabel", "Pallet")} {activePallet + 1} {t("palletIsEmpty", "is empty")}</p>
+                <p className="text-xs opacity-50">{t("palletEmptyHint", "Fill the form above and press \"Add Carton\"")}</p>
               </div>
             ) : (
               <table className="w-full text-sm min-w-[480px]">
                 <thead className="sticky top-0 bg-secondary/90 backdrop-blur text-[11px] uppercase tracking-wide text-muted-foreground">
                   <tr>
                     <th className="px-3 py-2 text-left w-10">#</th>
-                    <th className="px-3 py-2 text-right">Net Wt</th>
-                    <th className="px-3 py-2 text-left">Prod</th>
-                    <th className="px-3 py-2 text-left">Expiry</th>
-                    <th className="px-3 py-2 text-left">Batch</th>
-                    <th className="px-3 py-2 text-left hidden sm:table-cell">Barcode</th>
+                    <th className="px-3 py-2 text-right">{t("netWtKg", "Net Wt")}</th>
+                    <th className="px-3 py-2 text-left">{t("prodDateShort", "Prod")}</th>
+                    <th className="px-3 py-2 text-left">{t("expiryShort", "Expiry")}</th>
+                    <th className="px-3 py-2 text-left">{t("batchShort", "Batch")}</th>
+                    <th className="px-3 py-2 text-left hidden sm:table-cell">{t("barcodeLabel", "Barcode")}</th>
                     <th className="px-2 py-2 text-center w-8">★</th>
                     <th className="px-2 py-2 w-8" />
                   </tr>
@@ -1193,14 +1193,14 @@ export default function NetWeightPage() {
 
                   {/* Pallet total */}
                   <tr className="border-t-2 border-border bg-muted/20">
-                    <td className="px-3 py-2 text-xs text-muted-foreground font-bold">TOT</td>
+                    <td className="px-3 py-2 text-xs text-muted-foreground font-bold">{t("totShort", "TOT")}</td>
                     <td className="px-3 py-2 text-right font-bold font-mono text-primary">
                       {activeSummary?.totalWeight.toFixed(3)}
                     </td>
                     <td colSpan={6} className="px-3 py-2 text-xs text-muted-foreground">
-                      {activeSummary?.cartonCount} carton{activeSummary?.cartonCount !== 1 ? "s" : ""}
+                      {activeSummary?.cartonCount} {activeSummary?.cartonCount !== 1 ? t("cartonsUnit", "cartons") : t("cartonUnit", "carton")}
                       {(activeSummary?.samples.length ?? 0) > 0 && (
-                        <span className="ml-2 text-amber-500">★ {activeSummary.samples.length} sample(s)</span>
+                        <span className="ml-2 text-amber-500">★ {activeSummary.samples.length} {t("samplesUnit", "sample(s)")}</span>
                       )}
                     </td>
                   </tr>

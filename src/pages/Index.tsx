@@ -82,7 +82,7 @@ const Index = () => {
       { key: "storage", label: t("storage", "Storage"), options: sortValues(flatProducts.map((product) => product.storageType)) },
       { key: "section", label: t("section", "Section"), options: sortValues(flatProducts.map((product) => product.section)) },
     ],
-    [flatProducts]
+    [flatProducts, t]
   );
 
   const filteredProducts = useMemo(() => {
@@ -395,7 +395,7 @@ const Index = () => {
                           {row.name_en || row.name || row.item_code || row.code}
                         </div>
                         <div className="text-xs text-muted-foreground">
-                          {row.item_code || row.code || "-"} | {row.brand || row.category || "General"}
+                          {row.item_code || row.code || "-"} | {row.brand || row.category || t("general", "General")}
                         </div>
                       </td>
                       <td className="px-3 py-2 font-mono text-xs text-foreground">

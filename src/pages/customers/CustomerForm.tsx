@@ -1,14 +1,10 @@
 // src/pages/customers/CustomerForm.tsx
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/features/reports/hooks/useAuth";
+import { useLang } from "@/contexts/LanguageContext";
 import { Loader2, ArrowLeft, Save, AlertTriangle } from "lucide-react";
-
-const CUSTOMER_TYPES = [
-    "RESTAURANT", "HOTEL", "CATERING", "RETAIL",
-    "BAKERY", "CAFE", "SUPERMARKET", "OTHER",
-];
 
 interface SalesmanOption {
     id: string;
@@ -44,7 +40,19 @@ export default function CustomerForm() {
     const navigate = useNavigate();
     const { id } = useParams<{ id: string }>();
     const { user } = useAuth();
+    const { t } = useLang();
     const isEdit = Boolean(id && id !== "new");
+
+    const CUSTOMER_TYPES = useMemo(() => [
+        { value: "RESTAURANT",  label: t("typeRestaurant",  "RESTAURANT") },
+        { value: "HOTEL",       label: t("typeHotel",       "HOTEL") },
+        { value: "CATERING",    label: t("typeCatering",    "CATERING") },
+        { value: "RETAIL",      label: t("typeRetail",      "RETAIL") },
+        { value: "BAKERY",      label: t("typeBakery",      "BAKERY") },
+        { value: "CAFE",        label: t("typeCafe",        "CAFE") },
+        { value: "SUPERMARKET", label: t("typeSupermarket", "SUPERMARKET") },
+        { value: "OTHER",       label: t("typeOther",       "OTHER") },
+    ], [t]);
 
     const [form, setForm] = useState<CustomerFormData>(EMPTY_FORM);
     const [loading, setLoading] = useState(isEdit);
@@ -85,7 +93,7 @@ export default function CustomerForm() {
                 .single();
 
             if (err || !data) {
-                setError("Customer not found.");
+                setError(t("customerNotFound", "Customer not found."));
             } else {
                 setForm({
                     code: data.code ?? "",
@@ -107,7 +115,7 @@ export default function CustomerForm() {
             setLoading(false);
         }
         loadCustomer();
-    }, [id, isEdit]);
+    }, [id, isEdit, t]);
 
     const set = (field: keyof CustomerFormData, value: string | number | boolean) => {
         setForm((prev) => ({ ...prev, [field]: value }));
@@ -115,8 +123,8 @@ export default function CustomerForm() {
     };
 
     const handleSave = async () => {
-        if (!form.code.trim()) { setError("Customer code is required."); return; }
-        if (!form.name.trim()) { setError("Customer name is required."); return; }
+        if (!form.code.trim()) { setError(t("customerCodeRequired", "Customer code is required.")); return; }
+        if (!form.name.trim()) { setError(t("customerNameRequired", "Customer name is required.")); return; }
 
         setSaving(true);
         setError(null);
@@ -155,7 +163,7 @@ export default function CustomerForm() {
 
         if (err) {
             if (err.code === "23505") {
-                setError("This customer code already exists. Use a unique code.");
+                setError(t("customerCodeDuplicate", "This customer code already exists. Use a unique code."));
             } else {
                 setError(err.message);
             }
@@ -183,7 +191,7 @@ export default function CustomerForm() {
                         <ArrowLeft className="w-5 h-5 text-foreground" />
                     </button>
                     <h1 className="text-lg font-bold text-foreground tracking-tight">
-                        {isEdit ? "Edit Customer" : "New Customer"}
+                        {isEdit ? t("editCustomer", "Edit Customer") : t("newCustomer", "New Customer")}
                     </h1>
                     <button
                         onClick={handleSave}
@@ -195,7 +203,7 @@ export default function CustomerForm() {
                         ) : (
                             <Save className="w-4 h-4" />
                         )}
-                        Save
+                        {t("save", "Save")}
                     </button>
                 </div>
             </header>
@@ -210,13 +218,13 @@ export default function CustomerForm() {
 
                 <section className="space-y-4">
                     <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                        Basic Information
+                        {t("basicInformation", "Basic Information")}
                     </h2>
 
                     <div className="grid grid-cols-2 gap-3">
                         <div>
                             <label className="block text-xs text-muted-foreground mb-1">
-                                Code <span className="text-destructive">*</span>
+                                {t("code", "Code")} <span className="text-destructive">*</span>
                             </label>
                             <input
                                 value={form.code}
@@ -227,16 +235,16 @@ export default function CustomerForm() {
                         </div>
                         <div>
                             <label className="block text-xs text-muted-foreground mb-1">
-                                Type
+                                {t("type", "Type")}
                             </label>
                             <select
                                 value={form.type}
                                 onChange={(e) => set("type", e.target.value)}
                                 className="w-full bg-secondary border border-border rounded-md px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
                             >
-                                <option value="">— Select —</option>
-                                {CUSTOMER_TYPES.map((t) => (
-                                    <option key={t} value={t}>{t}</option>
+                                <option value="">{t("selectPlaceholder", "— Select —")}</option>
+                                {CUSTOMER_TYPES.map((ct) => (
+                                    <option key={ct.value} value={ct.value}>{ct.label}</option>
                                 ))}
                             </select>
                         </div>
@@ -244,7 +252,7 @@ export default function CustomerForm() {
 
                     <div>
                         <label className="block text-xs text-muted-foreground mb-1">
-                            Name (English) <span className="text-destructive">*</span>
+                            {t("nameEnglish", "Name (English)")} <span className="text-destructive">*</span>
                         </label>
                         <input
                             value={form.name}
@@ -256,7 +264,7 @@ export default function CustomerForm() {
 
                     <div>
                         <label className="block text-xs text-muted-foreground mb-1">
-                            Name (Arabic)
+                            {t("nameArabic", "Name (Arabic)")}
                         </label>
                         <input
                             value={form.name_ar}
@@ -270,7 +278,7 @@ export default function CustomerForm() {
                     <div className="grid grid-cols-2 gap-3">
                         <div>
                             <label className="block text-xs text-muted-foreground mb-1">
-                                Group
+                                {t("group", "Group")}
                             </label>
                             <input
                                 value={form.group_name}
@@ -281,7 +289,7 @@ export default function CustomerForm() {
                         </div>
                         <div>
                             <label className="block text-xs text-muted-foreground mb-1">
-                                Area / Region
+                                {t("areaRegion", "Area / Region")}
                             </label>
                             <input
                                 value={form.area}
@@ -294,20 +302,20 @@ export default function CustomerForm() {
 
                     <div>
                         <label className="block text-xs text-muted-foreground mb-1">
-                            Address
+                            {t("address", "Address")}
                         </label>
                         <textarea
                             value={form.address}
                             onChange={(e) => set("address", e.target.value)}
                             rows={2}
-                            placeholder="Full address..."
+                            placeholder={t("fullAddressPlaceholder", "Full address...")}
                             className="w-full bg-secondary border border-border rounded-md px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring resize-none"
                         />
                     </div>
 
                     <div>
                         <label className="block text-xs text-muted-foreground mb-1">
-                            Phone
+                            {t("phone", "Phone")}
                         </label>
                         <input
                             value={form.phone}
@@ -320,12 +328,12 @@ export default function CustomerForm() {
 
                 <section className="space-y-4">
                     <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                        Credit Terms
+                        {t("creditTerms", "Credit Terms")}
                     </h2>
                     <div className="grid grid-cols-2 gap-3">
                         <div>
                             <label className="block text-xs text-muted-foreground mb-1">
-                                Credit Days
+                                {t("creditDays", "Credit Days")}
                             </label>
                             <input
                                 type="number"
@@ -337,7 +345,7 @@ export default function CustomerForm() {
                         </div>
                         <div>
                             <label className="block text-xs text-muted-foreground mb-1">
-                                Credit Limit (KWD)
+                                {t("creditLimitKwd", "Credit Limit (KWD)")}
                             </label>
                             <input
                                 type="number"
@@ -352,23 +360,23 @@ export default function CustomerForm() {
 
                 <section className="space-y-4">
                     <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                        Assignment
+                        {t("assignment", "Assignment")}
                     </h2>
 
                     <div>
                         <label className="block text-xs text-muted-foreground mb-1">
-                            Salesman
+                            {t("salesman", "Salesman")}
                         </label>
 
                         {salesmenLoading ? (
                             <div className="flex items-center gap-2 bg-secondary border border-border rounded-md px-3 py-2">
                                 <Loader2 className="w-3.5 h-3.5 animate-spin text-muted-foreground" />
-                                <span className="text-sm text-muted-foreground">Loading salesmen...</span>
+                                <span className="text-sm text-muted-foreground">{t("loadingSalesmen", "Loading salesmen...")}</span>
                             </div>
                         ) : salesmen.length === 0 ? (
                             <div className="bg-secondary border border-border rounded-md px-3 py-2">
                                 <p className="text-xs text-muted-foreground">
-                                    No active salesmen found. Add salesmen first to assign one.
+                                    {t("noActiveSalesmenFound", "No active salesmen found. Add salesmen first to assign one.")}
                                 </p>
                             </div>
                         ) : (
@@ -377,7 +385,7 @@ export default function CustomerForm() {
                                 onChange={(e) => set("salesman_id", e.target.value)}
                                 className="w-full bg-secondary border border-border rounded-md px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
                             >
-                                <option value="">— No salesman —</option>
+                                <option value="">{t("noSalesman", "— No salesman —")}</option>
                                 {salesmen.map((s) => (
                                     <option key={s.id} value={s.id}>
                                         {s.code} — {s.name}
@@ -389,7 +397,7 @@ export default function CustomerForm() {
 
                     <div>
                         <label className="block text-xs text-muted-foreground mb-1">
-                            Notes
+                            {t("notes", "Notes")}
                         </label>
                         <textarea
                             value={form.notes}
@@ -409,7 +417,7 @@ export default function CustomerForm() {
                                 onChange={(e) => set("is_active", e.target.checked)}
                                 className="rounded border-border w-4 h-4"
                             />
-                            <span className="text-sm text-foreground">Customer is active</span>
+                            <span className="text-sm text-foreground">{t("customerIsActive", "Customer is active")}</span>
                         </label>
                     </section>
                 )}

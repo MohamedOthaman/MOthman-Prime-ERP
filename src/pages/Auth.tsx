@@ -1,6 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/features/reports/hooks/useAuth";
 import { AppBrand } from "@/components/AppBrand";
+import { useLang } from "@/contexts/LanguageContext";
 import type { LucideIcon } from "lucide-react";
 import {
   Crown, ShieldCheck, Building2, Settings2,
@@ -89,6 +90,7 @@ const DEPARTMENTS: DeptSection[] = [
 export default function Auth() {
   const { signInWithRole } = useAuth();
   const navigate = useNavigate();
+  const { t } = useLang();
 
   const handleSelect = (role: string) => {
     signInWithRole(role);
@@ -102,8 +104,8 @@ export default function Auth() {
         {/* Header */}
         <div className="text-center space-y-2">
           <AppBrand className="justify-center" showDeveloperCredit />
-          <h1 className="text-2xl font-bold text-foreground pt-3">اختر وظيفتك</h1>
-          <p className="text-sm text-muted-foreground">انقر على وظيفتك للدخول إلى لوحة التحكم الخاصة بك</p>
+          <h1 className="text-2xl font-bold text-foreground pt-3">{t("authSelectRole", "Select Your Role")}</h1>
+          <p className="text-sm text-muted-foreground">{t("authSelectRoleDesc", "Click on your role to access your dashboard")}</p>
         </div>
 
         {/* Role sections */}
@@ -145,7 +147,7 @@ export default function Auth() {
         ))}
 
         <p className="text-center text-xs text-muted-foreground">
-          بيئة تجريبية — كل وظيفة تُظهر صلاحياتها وبياناتها الخاصة
+          {t("authDemoNote", "Demo environment — each role shows its own permissions and data")}
         </p>
       </div>
     </div>

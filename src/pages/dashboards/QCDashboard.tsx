@@ -198,7 +198,7 @@ export default function QCDashboard() {
             <div className="mt-4 pt-3 border-t border-border">
               <AlertBanner
                 severity="warning"
-                message={`${data.grns.received} GRN${data.grns.received !== 1 ? "s" : ""} waiting for inspection`}
+                message={`${data.grns.received} ${data.grns.received !== 1 ? t("grnsPlural", "GRNs") : t("grnSingular", "GRN")} ${t("waitingForInspection", "waiting for inspection")}`}
                 onClick={() => {/* navigate handled by action grid */}}
               />
             </div>
@@ -209,7 +209,7 @@ export default function QCDashboard() {
               <AlertBanner
                 severity="info"
                 icon={UploadCloud}
-                message={`${data.qc.awaitingPosting} approved GRN${data.qc.awaitingPosting !== 1 ? "s" : ""} awaiting posting`}
+                message={`${data.qc.awaitingPosting} ${t("approved", "approved")} ${data.qc.awaitingPosting !== 1 ? t("grnsPlural", "GRNs") : t("grnSingular", "GRN")} ${t("awaitingPostingMsg", "awaiting posting")}`}
               />
             </div>
           )}

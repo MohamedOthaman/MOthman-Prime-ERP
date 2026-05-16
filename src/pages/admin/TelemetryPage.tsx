@@ -13,6 +13,7 @@ import { useTelemetrySnapshot } from "@/telemetry/useTelemetry";
 import { metrics } from "@/telemetry/metrics";
 import { useBootstrapCache } from "@/offline/useBootstrapCache";
 import { useOfflineStatus } from "@/offline/OfflineProvider";
+import { useLang } from "@/contexts/LanguageContext";
 
 function fmtBytes(n: number | null | undefined): string {
   if (n == null) return "—";
@@ -71,6 +72,7 @@ export default function TelemetryPage() {
   const offline = useOfflineStatus();
   const bootstrap = useBootstrapCache();
   const [forcing, setForcing] = useState(false);
+  const { t } = useLang();
 
   const handleForceRefresh = async () => {
     setForcing(true);
@@ -86,13 +88,13 @@ export default function TelemetryPage() {
       <header className="sticky top-11 z-40 border-b border-border bg-background/95 backdrop-blur-sm">
         <div className="max-w-5xl mx-auto px-4 py-3 flex items-center gap-3">
           <Activity className="w-5 h-5 text-blue-400 shrink-0" />
-          <h1 className="text-[15px] font-bold text-foreground flex-1">Sync &amp; Offline Telemetry</h1>
+          <h1 className="text-[15px] font-bold text-foreground flex-1">{t("syncOfflineTelemetry", "Sync & Offline Telemetry")}</h1>
           <button
             onClick={() => metrics.reset()}
             className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border border-border bg-muted/30 text-muted-foreground hover:bg-muted/50 transition"
           >
             <Trash2 className="w-3.5 h-3.5" />
-            Reset counters
+            {t("resetCounters", "Reset counters")}
           </button>
         </div>
       </header>
@@ -100,28 +102,28 @@ export default function TelemetryPage() {
       <main className="max-w-5xl mx-auto px-4 py-4 space-y-5">
         {/* Connectivity */}
         <section>
-          <h2 className="text-[11px] uppercase tracking-wider text-muted-foreground mb-2">Connectivity</h2>
+          <h2 className="text-[11px] uppercase tracking-wider text-muted-foreground mb-2">{t("connectivity", "Connectivity")}</h2>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <StatCard
-              label="Network"
-              value={offline.isOnline ? "Online" : "Offline"}
+              label={t("network", "Network")}
+              value={offline.isOnline ? t("online", "Online") : t("offline", "Offline")}
               tone={offline.isOnline ? "green" : "red"}
               icon={offline.isOnline ? CheckCircle2 : AlertTriangle}
             />
             <StatCard
-              label="Supabase reachable"
-              value={offline.supabaseReachable ? "Yes" : "No"}
+              label={t("supabaseReachable", "Supabase reachable")}
+              value={offline.supabaseReachable ? t("yes", "Yes") : t("no", "No")}
               tone={offline.supabaseReachable ? "green" : "amber"}
               icon={offline.supabaseReachable ? CheckCircle2 : AlertTriangle}
               hint={`Checked ${fmtAgo(offline.lastCheckedAt)}`}
             />
             <StatCard
-              label="Last online"
+              label={t("lastOnline", "Last online")}
               value={fmtAgo(offline.lastOnlineAt)}
               icon={Clock}
             />
             <StatCard
-              label="Session uptime"
+              label={t("sessionUptime", "Session uptime")}
               value={`${Math.floor(snap.uptimeMs / 60_000)}m`}
               icon={Clock}
             />
@@ -130,28 +132,28 @@ export default function TelemetryPage() {
 
         {/* Outbox */}
         <section>
-          <h2 className="text-[11px] uppercase tracking-wider text-muted-foreground mb-2">Outbox</h2>
+          <h2 className="text-[11px] uppercase tracking-wider text-muted-foreground mb-2">{t("outbox", "Outbox")}</h2>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <StatCard
-              label="Pending"
+              label={t("pending", "Pending")}
               value={outbox.pending}
               icon={Clock}
               tone={outbox.pending > 0 ? "amber" : "muted"}
             />
             <StatCard
-              label="In flight"
+              label={t("inFlight", "In flight")}
               value={outbox.inFlight}
               icon={RefreshCw}
               tone={outbox.inFlight > 0 ? "blue" : "muted"}
             />
             <StatCard
-              label="Failed permanent"
+              label={t("failedPermanent", "Failed permanent")}
               value={outbox.failedPermanent}
               icon={AlertTriangle}
               tone={outbox.failedPermanent > 0 ? "red" : "muted"}
             />
             <StatCard
-              label="Succeeded (history)"
+              label={t("succeededHistory", "Succeeded (history)")}
               value={outbox.succeeded}
               icon={CheckCircle2}
               tone="green"
@@ -161,25 +163,25 @@ export default function TelemetryPage() {
 
         {/* Sync latency */}
         <section>
-          <h2 className="text-[11px] uppercase tracking-wider text-muted-foreground mb-2">Sync latency</h2>
+          <h2 className="text-[11px] uppercase tracking-wider text-muted-foreground mb-2">{t("syncLatency", "Sync latency")}</h2>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <StatCard
-              label="Samples"
+              label={t("samples", "Samples")}
               value={snap.syncLatency.sampleCount}
               icon={Activity}
             />
             <StatCard
-              label="Avg"
+              label={t("avg", "Avg")}
               value={snap.syncLatency.avgMs != null ? `${snap.syncLatency.avgMs} ms` : "—"}
               icon={Activity}
             />
             <StatCard
-              label="p50"
+              label={t("p50", "p50")}
               value={snap.syncLatency.p50Ms != null ? `${snap.syncLatency.p50Ms} ms` : "—"}
               icon={Activity}
             />
             <StatCard
-              label="p95"
+              label={t("p95", "p95")}
               value={snap.syncLatency.p95Ms != null ? `${snap.syncLatency.p95Ms} ms` : "—"}
               icon={Activity}
               tone={
@@ -193,15 +195,15 @@ export default function TelemetryPage() {
 
         {/* Counters */}
         <section>
-          <h2 className="text-[11px] uppercase tracking-wider text-muted-foreground mb-2">Counters</h2>
+          <h2 className="text-[11px] uppercase tracking-wider text-muted-foreground mb-2">{t("counters", "Counters")}</h2>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <StatCard label="Enqueued" value={snap.counters.outboxEnqueued} icon={Activity} />
-            <StatCard label="Drained" value={snap.counters.outboxDrained} icon={CheckCircle2} tone="green" />
-            <StatCard label="Permanent failures" value={snap.counters.outboxFailedPermanent} icon={AlertTriangle} tone={snap.counters.outboxFailedPermanent > 0 ? "red" : "muted"} />
-            <StatCard label="Bootstrap runs" value={snap.counters.bootstrapRuns} icon={RefreshCw} />
-            <StatCard label="Sync cycles" value={`${snap.counters.syncCyclesCompleted}/${snap.counters.syncCyclesStarted}`} icon={Activity} />
-            <StatCard label="Realtime messages" value={snap.counters.realtimeMessages} icon={Activity} />
-            <StatCard label="Realtime invalidations" value={snap.counters.realtimeInvalidations} icon={Activity} />
+            <StatCard label={t("enqueued", "Enqueued")} value={snap.counters.outboxEnqueued} icon={Activity} />
+            <StatCard label={t("drained", "Drained")} value={snap.counters.outboxDrained} icon={CheckCircle2} tone="green" />
+            <StatCard label={t("permanentFailures", "Permanent failures")} value={snap.counters.outboxFailedPermanent} icon={AlertTriangle} tone={snap.counters.outboxFailedPermanent > 0 ? "red" : "muted"} />
+            <StatCard label={t("bootstrapRuns", "Bootstrap runs")} value={snap.counters.bootstrapRuns} icon={RefreshCw} />
+            <StatCard label={t("syncCycles", "Sync cycles")} value={`${snap.counters.syncCyclesCompleted}/${snap.counters.syncCyclesStarted}`} icon={Activity} />
+            <StatCard label={t("realtimeMessages", "Realtime messages")} value={snap.counters.realtimeMessages} icon={Activity} />
+            <StatCard label={t("realtimeInvalidations", "Realtime invalidations")} value={snap.counters.realtimeInvalidations} icon={Activity} />
           </div>
         </section>
 
@@ -209,21 +211,21 @@ export default function TelemetryPage() {
         <section>
           <h2 className="text-[11px] uppercase tracking-wider text-muted-foreground mb-2 flex items-center gap-2">
             <Database className="w-3.5 h-3.5" />
-            Local database
+            {t("localDatabase", "Local database")}
           </h2>
           <div className="rounded-xl border border-border bg-card overflow-hidden">
             <table className="w-full text-xs">
               <thead className="bg-muted/30 text-muted-foreground">
                 <tr>
-                  <th className="text-left px-4 py-2 font-medium">Table</th>
-                  <th className="text-right px-4 py-2 font-medium">Rows</th>
+                  <th className="text-left px-4 py-2 font-medium">{t("table", "Table")}</th>
+                  <th className="text-right px-4 py-2 font-medium">{t("rows", "Rows")}</th>
                 </tr>
               </thead>
               <tbody>
-                {tableCounts.map((t) => (
-                  <tr key={t.table} className="border-t border-border">
-                    <td className="px-4 py-2 font-mono text-foreground">{t.table}</td>
-                    <td className="px-4 py-2 text-right text-foreground">{t.rowCount.toLocaleString()}</td>
+                {tableCounts.map((tc) => (
+                  <tr key={tc.table} className="border-t border-border">
+                    <td className="px-4 py-2 font-mono text-foreground">{tc.table}</td>
+                    <td className="px-4 py-2 text-right text-foreground">{tc.rowCount.toLocaleString()}</td>
                   </tr>
                 ))}
               </tbody>
@@ -234,7 +236,7 @@ export default function TelemetryPage() {
             <HardDrive className="w-5 h-5 text-muted-foreground" />
             <div className="flex-1">
               <div className="text-xs text-foreground">
-                Storage: {fmtBytes(storage.usageBytes)} / {fmtBytes(storage.quotaBytes)}
+                {t("storage", "Storage")}: {fmtBytes(storage.usageBytes)} / {fmtBytes(storage.quotaBytes)}
                 {storage.percent != null && (
                   <span className="text-muted-foreground"> ({storage.percent}%)</span>
                 )}
@@ -254,31 +256,31 @@ export default function TelemetryPage() {
         {/* Bootstrap */}
         <section>
           <h2 className="text-[11px] uppercase tracking-wider text-muted-foreground mb-2 flex items-center gap-2">
-            Bootstrap cache
+            {t("bootstrapCache", "Bootstrap cache")}
             <button
               onClick={handleForceRefresh}
               disabled={forcing || !offline.isOnline}
               className="ml-auto flex items-center gap-1.5 text-[10px] px-2 py-1 rounded border border-border bg-muted/30 hover:bg-muted/50 transition disabled:opacity-40"
             >
               <RefreshCw className={`w-3 h-3 ${forcing ? "animate-spin" : ""}`} />
-              Force full refresh
+              {t("forceFullRefresh", "Force full refresh")}
             </button>
           </h2>
           <div className="rounded-xl border border-border bg-card overflow-hidden">
             <table className="w-full text-xs">
               <thead className="bg-muted/30 text-muted-foreground">
                 <tr>
-                  <th className="text-left px-4 py-2 font-medium">Table</th>
-                  <th className="text-right px-4 py-2 font-medium">Rows</th>
-                  <th className="text-right px-4 py-2 font-medium">Last synced</th>
+                  <th className="text-left px-4 py-2 font-medium">{t("table", "Table")}</th>
+                  <th className="text-right px-4 py-2 font-medium">{t("rows", "Rows")}</th>
+                  <th className="text-right px-4 py-2 font-medium">{t("lastSynced", "Last synced")}</th>
                 </tr>
               </thead>
               <tbody>
-                {bootstrap.tableStatus.map((t) => (
-                  <tr key={t.table} className="border-t border-border">
-                    <td className="px-4 py-2 font-mono text-foreground">{t.table}</td>
-                    <td className="px-4 py-2 text-right text-foreground">{t.rowCount.toLocaleString()}</td>
-                    <td className="px-4 py-2 text-right text-muted-foreground">{fmtAgo(t.lastSyncedAt)}</td>
+                {bootstrap.tableStatus.map((tc) => (
+                  <tr key={tc.table} className="border-t border-border">
+                    <td className="px-4 py-2 font-mono text-foreground">{tc.table}</td>
+                    <td className="px-4 py-2 text-right text-foreground">{tc.rowCount.toLocaleString()}</td>
+                    <td className="px-4 py-2 text-right text-muted-foreground">{fmtAgo(tc.lastSyncedAt)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -286,7 +288,7 @@ export default function TelemetryPage() {
           </div>
           {bootstrap.results.length > 0 && (
             <div className="mt-2 text-[11px] text-muted-foreground">
-              Last run: {bootstrap.status} —{" "}
+              {t("lastRun", "Last run")}: {bootstrap.status} —{" "}
               {bootstrap.results.map((r) => `${r.table}:${r.fetched}`).join("  ")}
             </div>
           )}
@@ -295,15 +297,15 @@ export default function TelemetryPage() {
         {/* Recent retries */}
         {snap.recentRetries.length > 0 && (
           <section>
-            <h2 className="text-[11px] uppercase tracking-wider text-muted-foreground mb-2">Recent retries</h2>
+            <h2 className="text-[11px] uppercase tracking-wider text-muted-foreground mb-2">{t("recentRetries", "Recent retries")}</h2>
             <div className="rounded-xl border border-border bg-card overflow-hidden">
               <table className="w-full text-xs">
                 <thead className="bg-muted/30 text-muted-foreground">
                   <tr>
-                    <th className="text-left px-4 py-2 font-medium">When</th>
-                    <th className="text-left px-4 py-2 font-medium">Entity</th>
-                    <th className="text-right px-4 py-2 font-medium">Attempt</th>
-                    <th className="text-left px-4 py-2 font-medium">Reason</th>
+                    <th className="text-left px-4 py-2 font-medium">{t("when", "When")}</th>
+                    <th className="text-left px-4 py-2 font-medium">{t("entity", "Entity")}</th>
+                    <th className="text-right px-4 py-2 font-medium">{t("attempt", "Attempt")}</th>
+                    <th className="text-left px-4 py-2 font-medium">{t("reason", "Reason")}</th>
                   </tr>
                 </thead>
                 <tbody>

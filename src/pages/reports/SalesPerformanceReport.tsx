@@ -51,7 +51,7 @@ export default function SalesPerformanceReport() {
       const data = await getSalesPerformance(from || undefined, to || undefined);
       setRows(data);
     } catch (e: any) {
-      setError(e.message ?? "Failed to load");
+      setError(e.message ?? t("failedToLoad", "Failed to load"));
     } finally {
       setLoading(false);
     }
@@ -155,7 +155,16 @@ export default function SalesPerformanceReport() {
             <table className="w-full">
               <thead>
                 <tr className="border-b border-border">
-                  {["#", "Salesman", "Code", "Invoices", "Done", "Revenue (KWD)", "Avg", "Share"].map(h => (
+                  {[
+                    t("colRank", "#"),
+                    t("salesman", "Salesman"),
+                    t("colCode", "Code"),
+                    t("invoices", "Invoices"),
+                    t("colDone", "Done"),
+                    t("revenueKwd", "Revenue (KWD)"),
+                    t("colAvg", "Avg"),
+                    t("colShare", "Share"),
+                  ].map(h => (
                     <th key={h} className="pb-2 text-left text-[10px] font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap px-2 first:px-0">
                       {h}
                     </th>
@@ -185,7 +194,7 @@ export default function SalesPerformanceReport() {
               </tbody>
               <tfoot>
                 <tr className="border-t border-border bg-muted/20">
-                  <td className="py-2 px-0 text-[10px] font-semibold text-muted-foreground uppercase" colSpan={3}>Total</td>
+                  <td className="py-2 px-0 text-[10px] font-semibold text-muted-foreground uppercase" colSpan={3}>{t("total", "Total")}</td>
                   <td className="py-2 px-2 text-sm font-bold text-foreground">{totalInvoices}</td>
                   <td className="py-2 px-2 text-xs text-emerald-400">{rows.reduce((s, r) => s + r.doneInvoices, 0)}</td>
                   <td className="py-2 px-2 text-sm font-bold text-foreground">{totalRevenue.toFixed(3)}</td>

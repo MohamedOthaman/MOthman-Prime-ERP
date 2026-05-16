@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { ArrowLeft, Loader2, Printer } from "lucide-react";
+import { useLang } from "@/contexts/LanguageContext";
 
 interface HeaderRow {
   grn_no: string;
@@ -56,6 +57,7 @@ export default function GRNPrintPage() {
   const [loading, setLoading] = useState(true);
   const [header, setHeader] = useState<HeaderRow | null>(null);
   const [lines, setLines] = useState<LineRow[]>([]);
+  const { t } = useLang();
 
   useEffect(() => {
     async function load() {
@@ -85,7 +87,7 @@ export default function GRNPrintPage() {
   if (!header) {
     return (
       <div className="min-h-screen bg-background p-6 text-foreground">
-        Unable to load GRN print view.
+        {t("grnLoadError", "Unable to load GRN print view.")}
       </div>
     );
   }
@@ -102,38 +104,38 @@ export default function GRNPrintPage() {
       <div className="print-hide sticky top-0 z-10 flex items-center gap-2 border-b border-border bg-background/95 px-4 py-3 backdrop-blur">
         <button onClick={() => navigate(-1)} className="rounded-md border border-border bg-secondary px-3 py-1.5 text-sm text-foreground">
           <ArrowLeft className="mr-1 inline h-4 w-4" />
-          Back
+          {t("back", "Back")}
         </button>
         <button onClick={() => window.print()} className="rounded-md bg-primary px-3 py-1.5 text-sm font-semibold text-primary-foreground">
           <Printer className="mr-1 inline h-4 w-4" />
-          Print
+          {t("print", "Print")}
         </button>
       </div>
 
       <main className="mx-auto max-w-[1200px] p-6 print:max-w-none print:p-6">
         <div className="rounded-lg border border-border bg-card p-6 print:border-black print:bg-white">
           <div className="mb-6 border-b border-border pb-4 print:border-black">
-            <h1 className="text-2xl font-bold text-foreground print:text-black">Food Choice ERP</h1>
-            <p className="text-sm text-muted-foreground print:text-black">Goods Receipt Note / Receiving Checklist</p>
+            <h1 className="text-2xl font-bold text-foreground print:text-black">{t("companyName", "Food Choice ERP")}</h1>
+            <p className="text-sm text-muted-foreground print:text-black">{t("grnTitle", "Goods Receipt Note / Receiving Checklist")}</p>
           </div>
 
           <div className="grid gap-3 md:grid-cols-4 print:text-black">
-            <div><div className="text-[11px] uppercase text-muted-foreground print:text-black">GRN No</div><div className="font-semibold">{header.grn_no}</div></div>
-            <div><div className="text-[11px] uppercase text-muted-foreground print:text-black">GRV No</div><div>{header.grv_no || "-"}</div></div>
-            <div><div className="text-[11px] uppercase text-muted-foreground print:text-black">GRN Date</div><div>{header.grn_date || "-"}</div></div>
-            <div><div className="text-[11px] uppercase text-muted-foreground print:text-black">Transaction Date</div><div>{header.transaction_date || "-"}</div></div>
-            <div><div className="text-[11px] uppercase text-muted-foreground print:text-black">PO / LPO</div><div>{header.po_no || "-"} / {header.lpo_no || "-"}</div></div>
-            <div><div className="text-[11px] uppercase text-muted-foreground print:text-black">Supplier</div><div>{header.supplier_code || "-"} {header.supplier_name || "-"}</div></div>
-            <div><div className="text-[11px] uppercase text-muted-foreground print:text-black">Manual Invoice</div><div>{header.manual_invoice_no || "-"}</div></div>
-            <div><div className="text-[11px] uppercase text-muted-foreground print:text-black">Manual Ref</div><div>{header.manual_ref_no || "-"}</div></div>
-            <div><div className="text-[11px] uppercase text-muted-foreground print:text-black">Shipment</div><div>{header.shipment_by || "-"} / {header.shipment_condition || "-"}</div></div>
-            <div><div className="text-[11px] uppercase text-muted-foreground print:text-black">BL / AWB</div><div>{header.bl_no || "-"} / {header.airway_bill_no || "-"}</div></div>
-            <div><div className="text-[11px] uppercase text-muted-foreground print:text-black">Container</div><div>{header.container_no || "-"} / {header.size || "-"}</div></div>
-            <div><div className="text-[11px] uppercase text-muted-foreground print:text-black">Branch</div><div>{header.branch || "-"}</div></div>
-            <div><div className="text-[11px] uppercase text-muted-foreground print:text-black">Pallet / CTN</div><div>{header.total_pallet ?? "-"} / {header.total_ctn ?? "-"}</div></div>
-            <div><div className="text-[11px] uppercase text-muted-foreground print:text-black">Weight</div><div>G {header.gross_weight ?? "-"} / N {header.net_weight ?? "-"}</div></div>
-            <div><div className="text-[11px] uppercase text-muted-foreground print:text-black">Temp</div><div>{header.temp_type || "-"} / {header.temperature ?? "-"}</div></div>
-            <div><div className="text-[11px] uppercase text-muted-foreground print:text-black">Status</div><div>{header.status}</div></div>
+            <div><div className="text-[11px] uppercase text-muted-foreground print:text-black">{t("grnNo", "GRN No")}</div><div className="font-semibold">{header.grn_no}</div></div>
+            <div><div className="text-[11px] uppercase text-muted-foreground print:text-black">{t("grvNo", "GRV No")}</div><div>{header.grv_no || "-"}</div></div>
+            <div><div className="text-[11px] uppercase text-muted-foreground print:text-black">{t("grnDate", "GRN Date")}</div><div>{header.grn_date || "-"}</div></div>
+            <div><div className="text-[11px] uppercase text-muted-foreground print:text-black">{t("transactionDate", "Transaction Date")}</div><div>{header.transaction_date || "-"}</div></div>
+            <div><div className="text-[11px] uppercase text-muted-foreground print:text-black">{t("poLpo", "PO / LPO")}</div><div>{header.po_no || "-"} / {header.lpo_no || "-"}</div></div>
+            <div><div className="text-[11px] uppercase text-muted-foreground print:text-black">{t("supplier", "Supplier")}</div><div>{header.supplier_code || "-"} {header.supplier_name || "-"}</div></div>
+            <div><div className="text-[11px] uppercase text-muted-foreground print:text-black">{t("manualInvoice", "Manual Invoice")}</div><div>{header.manual_invoice_no || "-"}</div></div>
+            <div><div className="text-[11px] uppercase text-muted-foreground print:text-black">{t("manualRef", "Manual Ref")}</div><div>{header.manual_ref_no || "-"}</div></div>
+            <div><div className="text-[11px] uppercase text-muted-foreground print:text-black">{t("shipment", "Shipment")}</div><div>{header.shipment_by || "-"} / {header.shipment_condition || "-"}</div></div>
+            <div><div className="text-[11px] uppercase text-muted-foreground print:text-black">{t("blAwb", "BL / AWB")}</div><div>{header.bl_no || "-"} / {header.airway_bill_no || "-"}</div></div>
+            <div><div className="text-[11px] uppercase text-muted-foreground print:text-black">{t("container", "Container")}</div><div>{header.container_no || "-"} / {header.size || "-"}</div></div>
+            <div><div className="text-[11px] uppercase text-muted-foreground print:text-black">{t("branch", "Branch")}</div><div>{header.branch || "-"}</div></div>
+            <div><div className="text-[11px] uppercase text-muted-foreground print:text-black">{t("palletCtn", "Pallet / CTN")}</div><div>{header.total_pallet ?? "-"} / {header.total_ctn ?? "-"}</div></div>
+            <div><div className="text-[11px] uppercase text-muted-foreground print:text-black">{t("weight", "Weight")}</div><div>G {header.gross_weight ?? "-"} / N {header.net_weight ?? "-"}</div></div>
+            <div><div className="text-[11px] uppercase text-muted-foreground print:text-black">{t("temp", "Temp")}</div><div>{header.temp_type || "-"} / {header.temperature ?? "-"}</div></div>
+            <div><div className="text-[11px] uppercase text-muted-foreground print:text-black">{t("status", "Status")}</div><div>{header.status}</div></div>
           </div>
 
           <div className="mt-6 overflow-hidden rounded border border-border print:border-black">
@@ -141,17 +143,17 @@ export default function GRNPrintPage() {
               <thead>
                 <tr className="bg-muted/40 print:bg-white">
                   <th className="border-b border-border px-2 py-2 text-left print:border-black">#</th>
-                  <th className="border-b border-border px-2 py-2 text-left print:border-black">Item</th>
-                  <th className="border-b border-border px-2 py-2 text-left print:border-black">Store</th>
-                  <th className="border-b border-border px-2 py-2 text-left print:border-black">UOM</th>
-                  <th className="border-b border-border px-2 py-2 text-left print:border-black">PO</th>
-                  <th className="border-b border-border px-2 py-2 text-left print:border-black">Shipped</th>
-                  <th className="border-b border-border px-2 py-2 text-left print:border-black">Short/Excess</th>
-                  <th className="border-b border-border px-2 py-2 text-left print:border-black">Received</th>
-                  <th className="border-b border-border px-2 py-2 text-left print:border-black">Batch</th>
-                  <th className="border-b border-border px-2 py-2 text-left print:border-black">Prod</th>
-                  <th className="border-b border-border px-2 py-2 text-left print:border-black">Exp</th>
-                  <th className="border-b border-border px-2 py-2 text-left print:border-black">Reason</th>
+                  <th className="border-b border-border px-2 py-2 text-left print:border-black">{t("item", "Item")}</th>
+                  <th className="border-b border-border px-2 py-2 text-left print:border-black">{t("store", "Store")}</th>
+                  <th className="border-b border-border px-2 py-2 text-left print:border-black">{t("uom", "UOM")}</th>
+                  <th className="border-b border-border px-2 py-2 text-left print:border-black">{t("po", "PO")}</th>
+                  <th className="border-b border-border px-2 py-2 text-left print:border-black">{t("shipped", "Shipped")}</th>
+                  <th className="border-b border-border px-2 py-2 text-left print:border-black">{t("shortExcess", "Short/Excess")}</th>
+                  <th className="border-b border-border px-2 py-2 text-left print:border-black">{t("received", "Received")}</th>
+                  <th className="border-b border-border px-2 py-2 text-left print:border-black">{t("batch", "Batch")}</th>
+                  <th className="border-b border-border px-2 py-2 text-left print:border-black">{t("prod", "Prod")}</th>
+                  <th className="border-b border-border px-2 py-2 text-left print:border-black">{t("exp", "Exp")}</th>
+                  <th className="border-b border-border px-2 py-2 text-left print:border-black">{t("reason", "Reason")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -181,16 +183,16 @@ export default function GRNPrintPage() {
 
           <div className="mt-6 grid gap-4 md:grid-cols-2">
             <div>
-              <div className="text-[11px] uppercase text-muted-foreground print:text-black">Remarks</div>
+              <div className="text-[11px] uppercase text-muted-foreground print:text-black">{t("remarks", "Remarks")}</div>
               <div className="mt-2 min-h-20 rounded border border-border p-3 text-sm print:border-black">{header.remarks || "-"}</div>
             </div>
             <div>
-              <div className="text-[11px] uppercase text-muted-foreground print:text-black">Signatures</div>
+              <div className="text-[11px] uppercase text-muted-foreground print:text-black">{t("signatures", "Signatures")}</div>
               <div className="mt-2 grid grid-cols-2 gap-3 text-sm">
-                <div className="min-h-20 rounded border border-border p-3 print:border-black">Prepared By</div>
-                <div className="min-h-20 rounded border border-border p-3 print:border-black">Checked By</div>
-                <div className="min-h-20 rounded border border-border p-3 print:border-black">Warehouse</div>
-                <div className="min-h-20 rounded border border-border p-3 print:border-black">Approved By</div>
+                <div className="min-h-20 rounded border border-border p-3 print:border-black">{t("preparedBy", "Prepared By")}</div>
+                <div className="min-h-20 rounded border border-border p-3 print:border-black">{t("checkedBy", "Checked By")}</div>
+                <div className="min-h-20 rounded border border-border p-3 print:border-black">{t("warehouse", "Warehouse")}</div>
+                <div className="min-h-20 rounded border border-border p-3 print:border-black">{t("approvedBy", "Approved By")}</div>
               </div>
             </div>
           </div>

@@ -305,7 +305,7 @@ export default function WarehouseDashboard() {
             <AlertBanner
               severity="success"
               icon={ScanLine}
-              message={`${picking!.readyInvoices} invoice${picking!.readyInvoices !== 1 ? "s" : ""} ready to pick`}
+              message={`${picking!.readyInvoices} ${picking!.readyInvoices !== 1 ? t("invoicesPlural", "invoices") : t("invoiceSingular", "invoice")} ${t("readyToPick2", "ready to pick")}`}
               onClick={() => navigate("/warehouse/picking")}
             />
           )}
@@ -313,21 +313,21 @@ export default function WarehouseDashboard() {
             <AlertBanner
               severity="info"
               icon={RotateCcw}
-              message={`${returns!.draft} return${returns!.draft !== 1 ? "s" : ""} waiting for processing`}
+              message={`${returns!.draft} ${returns!.draft !== 1 ? t("returnsPlural", "returns") : t("returnSingular", "return")} ${t("waitingForProcessing", "waiting for processing")}`}
               onClick={() => navigate("/returns")}
             />
           )}
           {(base?.expiry.expired ?? 0) > 0 && (
             <AlertBanner
               severity="danger"
-              message={`${base!.expiry.expired} SKU${base!.expiry.expired !== 1 ? "s" : ""} past expiry date — review stock`}
+              message={`${base!.expiry.expired} ${base!.expiry.expired !== 1 ? t("skusPlural", "SKUs") : t("skuSingular", "SKU")} ${t("pastExpiryReviewStock", "past expiry date — review stock")}`}
               onClick={() => navigate("/stock")}
             />
           )}
           {(base?.pendingInspection ?? 0) > 0 && (
             <AlertBanner
               severity="warning"
-              message={`${base!.pendingInspection} GRN${base!.pendingInspection !== 1 ? "s" : ""} pending QC inspection`}
+              message={`${base!.pendingInspection} ${base!.pendingInspection !== 1 ? t("grnsPlural", "GRNs") : t("grnSingular", "GRN")} ${t("pendingQcInspection", "pending QC inspection")}`}
               onClick={() => navigate("/grn")}
             />
           )}
@@ -364,7 +364,7 @@ export default function WarehouseDashboard() {
                       {grn.grn_no ?? `GRN #${grn.id?.slice(0, 8)}`}
                     </p>
                     <p className="text-[10px] text-muted-foreground truncate">
-                      {grn.supplier_name ?? "Unknown supplier"}
+                      {grn.supplier_name ?? t("unknownSupplier", "Unknown supplier")}
                     </p>
                   </div>
                   <StatusPill status={grn.status ?? "draft"} />

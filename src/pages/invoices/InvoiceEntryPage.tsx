@@ -121,8 +121,8 @@ function normalizeLookupSearch(value: string) {
   return value.trim().toLowerCase();
 }
 
-function formatExpiryDate(value: string | null) {
-  if (!value) return "No expiry";
+function formatExpiryDate(value: string | null, noExpiryLabel = "No expiry") {
+  if (!value) return noExpiryLabel;
 
   const parsed = new Date(value);
   if (Number.isNaN(parsed.getTime())) return value;
@@ -147,7 +147,7 @@ function useDebounce<T extends (...args: any[]) => any>(fn: T, delay: number): T
 export default function InvoiceEntryPage() {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
-  const { lang } = useLang();
+  const { lang, t } = useLang();
   const isNew = !id;
   const printRef = useRef<HTMLDivElement>(null);
   const offlineSaveDraft = useOfflineSaveDraft();
@@ -806,14 +806,14 @@ export default function InvoiceEntryPage() {
             >
               <ArrowLeft className="h-5 w-5 text-foreground" />
             </button>
-            <h1 className="text-lg font-bold tracking-tight text-foreground">Sales Invoice Entry</h1>
+            <h1 className="text-lg font-bold tracking-tight text-foreground">{t("salesInvoiceEntry", "Sales Invoice Entry")}</h1>
           </div>
         </header>
 
         <main className="mx-auto max-w-7xl px-4 py-6">
           <div className="flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3">
             <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
-            <p className="text-sm text-destructive">{error ?? "Sales invoice not found."}</p>
+            <p className="text-sm text-destructive">{error ?? t("salesInvoiceNotFound", "Sales invoice not found.")}</p>
           </div>
         </main>
       </div>
@@ -834,7 +834,7 @@ export default function InvoiceEntryPage() {
             <ArrowLeft className="h-4 w-4 text-foreground" />
           </button>
 
-          <h1 className="text-sm font-bold tracking-tight text-foreground">Invoice Entry</h1>
+          <h1 className="text-sm font-bold tracking-tight text-foreground">{t("invoiceEntry", "Invoice Entry")}</h1>
 
           <div className="ml-auto flex items-center gap-2">
             <span
@@ -862,12 +862,12 @@ export default function InvoiceEntryPage() {
         {/* Sales Master — classic ERP fieldset */}
         <section className="rounded-sm border border-border bg-secondary/40 px-2 pt-1 pb-2">
           <div className="-mt-2.5 mb-1 inline-block bg-background px-1 text-[11px] font-semibold text-foreground/80">
-            Sales Master
+            {t("salesMaster", "Sales Master")}
           </div>
 
           <div className="grid grid-cols-12 gap-x-2 gap-y-1.5">
             <div className="col-span-3 flex items-center gap-1.5">
-              <label className={`${fieldLabelClass} w-[70px]`}>Invoice No</label>
+              <label className={`${fieldLabelClass} w-[70px]`}>{t("invoiceNo", "Invoice No")}</label>
               <input
                 value={invoiceNo}
                 onChange={(e) => setInvoiceNo(e.target.value)}
@@ -876,7 +876,7 @@ export default function InvoiceEntryPage() {
               />
             </div>
             <div className="col-span-3 flex items-center gap-1.5">
-              <label className={`${fieldLabelClass} w-[80px]`}>Invoice Date</label>
+              <label className={`${fieldLabelClass} w-[80px]`}>{t("invoiceDate", "Invoice Date")}</label>
               <input
                 type="date"
                 value={invoiceDate}
@@ -886,16 +886,16 @@ export default function InvoiceEntryPage() {
               />
             </div>
             <div className="col-span-3 flex items-center gap-1.5">
-              <label className={`${fieldLabelClass} w-[90px]`}>Payment Type</label>
+              <label className={`${fieldLabelClass} w-[90px]`}>{t("paymentType", "Payment Type")}</label>
               <input value="CREDIT" readOnly className={lineInputClass} />
             </div>
             <div className="col-span-3 flex items-center gap-1.5">
-              <label className={`${fieldLabelClass} w-[70px]`}>Status</label>
+              <label className={`${fieldLabelClass} w-[70px]`}>{t("status", "Status")}</label>
               <input value={status} readOnly className={`${lineInputClass} capitalize`} />
             </div>
 
             <div className="col-span-3 flex items-center gap-1.5">
-              <label className={`${fieldLabelClass} w-[70px]`}>Cust. Code</label>
+              <label className={`${fieldLabelClass} w-[70px]`}>{t("custCode", "Cust. Code")}</label>
               <input
                 value={selectedCustomer?.code ?? ""}
                 readOnly
@@ -904,28 +904,28 @@ export default function InvoiceEntryPage() {
               />
             </div>
             <div className="col-span-6 flex items-center gap-1.5">
-              <label className={`${fieldLabelClass} w-[80px]`}>Cust. Name</label>
+              <label className={`${fieldLabelClass} w-[80px]`}>{t("custName", "Cust. Name")}</label>
               <div className="flex-1">
                 <InvoiceLookupSelect
                   value={customerId}
                   options={customerOptions}
-                  placeholder="Select customer"
-                  searchPlaceholder="Search by code or name..."
-                  emptyText="No customer found."
+                  placeholder={t("selectCustomer", "Select customer")}
+                  searchPlaceholder={t("searchByCodeOrName", "Search by code or name...")}
+                  emptyText={t("noCustomerFound", "No customer found.")}
                   disabled={isReadOnly}
                   onSelect={handleCustomerChange}
                 />
               </div>
             </div>
             <div className="col-span-3 flex items-center gap-1.5">
-              <label className={`${fieldLabelClass} w-[70px]`}>Salesman</label>
+              <label className={`${fieldLabelClass} w-[70px]`}>{t("salesman", "Salesman")}</label>
               <div className="flex-1">
                 <InvoiceLookupSelect
                   value={salesmanId}
                   options={salesmanOptions}
-                  placeholder="Select salesman"
-                  searchPlaceholder="Search salesman..."
-                  emptyText="No salesman found."
+                  placeholder={t("selectSalesman", "Select salesman")}
+                  searchPlaceholder={t("searchSalesman", "Search salesman...")}
+                  emptyText={t("noSalesmanFound", "No salesman found.")}
                   disabled={isReadOnly}
                   onSelect={handleSalesmanSelect}
                 />
@@ -933,13 +933,13 @@ export default function InvoiceEntryPage() {
             </div>
 
             <div className="col-span-12 flex items-center gap-1.5">
-              <label className={`${fieldLabelClass} w-[70px]`}>Comments</label>
+              <label className={`${fieldLabelClass} w-[70px]`}>{t("comments", "Comments")}</label>
               <input
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 readOnly={isReadOnly}
                 className={lineInputClass}
-                placeholder="Invoice notes..."
+                placeholder={t("invoiceNotesPlaceholder", "Invoice notes...")}
               />
             </div>
           </div>
@@ -949,7 +949,7 @@ export default function InvoiceEntryPage() {
         <section className="rounded-sm border border-border bg-secondary/40 px-2 pt-1 pb-2">
           <div className="-mt-2.5 mb-1 flex items-center justify-between">
             <span className="inline-block bg-background px-1 text-[11px] font-semibold text-foreground/80">
-              Sales Detail
+              {t("salesDetail", "Sales Detail")}
             </span>
           </div>
 
@@ -957,15 +957,15 @@ export default function InvoiceEntryPage() {
             <table className="w-full border-separate border-spacing-0 text-[11px]">
               <thead>
                 <tr className="bg-muted/40 text-center text-[10.5px] font-semibold uppercase tracking-wide text-foreground/70">
-                  <th className="w-10 border border-border px-1 py-1">SNo</th>
-                  <th className="w-24 border border-border px-1 py-1 text-red-500">Item Code</th>
-                  <th className="border border-border px-1 py-1">Item Name</th>
-                  <th className="w-16 border border-border px-1 py-1">Uom</th>
-                  <th className="w-20 border border-border px-1 py-1">Qty</th>
-                  <th className="w-24 border border-border px-1 py-1">Unit Price</th>
-                  <th className="w-16 border border-border px-1 py-1">Disc(%)</th>
-                  <th className="w-24 border border-border px-1 py-1">Total Price</th>
-                  <th className="w-16 border border-border px-1 py-1">Act</th>
+                  <th className="w-10 border border-border px-1 py-1">{t("sNo", "SNo")}</th>
+                  <th className="w-24 border border-border px-1 py-1 text-red-500">{t("itemCode", "Item Code")}</th>
+                  <th className="border border-border px-1 py-1">{t("itemName", "Item Name")}</th>
+                  <th className="w-16 border border-border px-1 py-1">{t("uom", "Uom")}</th>
+                  <th className="w-20 border border-border px-1 py-1">{t("qty", "Qty")}</th>
+                  <th className="w-24 border border-border px-1 py-1">{t("unitPrice", "Unit Price")}</th>
+                  <th className="w-16 border border-border px-1 py-1">{t("discPct", "Disc(%)")}</th>
+                  <th className="w-24 border border-border px-1 py-1">{t("totalPrice", "Total Price")}</th>
+                  <th className="w-16 border border-border px-1 py-1">{t("act", "Act")}</th>
                 </tr>
               </thead>
 
@@ -1010,7 +1010,7 @@ export default function InvoiceEntryPage() {
                             onBlur={() => void resolveManualProductLookup(index, "code")}
                             onKeyDown={(e) => handleLineKeyDown(e, index, "product_code")}
                             readOnly={isReadOnly}
-                            placeholder="Code"
+                            placeholder={t("code", "Code")}
                             className={`${lineInputClass} font-mono`}
                           />
                         </td>
@@ -1036,7 +1036,7 @@ export default function InvoiceEntryPage() {
                                     !line.product_id && "text-muted-foreground"
                                   )}
                                 >
-                                  {line.product_name || "Select item"}
+                                  {line.product_name || t("selectItem", "Select item")}
                                 </span>
                                 <ChevronsUpDown className="ml-1 h-3 w-3 shrink-0 opacity-50" />
                               </Button>
@@ -1044,9 +1044,9 @@ export default function InvoiceEntryPage() {
 
                             <PopoverContent className="w-[460px] p-0" align="start">
                               <Command shouldFilter>
-                                <CommandInput placeholder="Search by item code, barcode, or name..." />
+                                <CommandInput placeholder={t("searchByItemCodeBarcodeOrName", "Search by item code, barcode, or name...")} />
                                 <CommandList>
-                                  <CommandEmpty>No product found.</CommandEmpty>
+                                  <CommandEmpty>{t("noProductFound", "No product found.")}</CommandEmpty>
                                   <CommandGroup>
                                     {productOptions.map((option) => {
                                       const product = productsById.get(option.id);
@@ -1069,7 +1069,7 @@ export default function InvoiceEntryPage() {
                                               {option.label}
                                             </span>
                                             <span className="block truncate text-[11px] text-muted-foreground">
-                                              {option.meta ?? "No barcode"}
+                                              {option.meta ?? t("noBarcode", "No barcode")}
                                             </span>
                                           </span>
                                         </CommandItem>
@@ -1170,7 +1170,7 @@ export default function InvoiceEntryPage() {
                             <div>
                               <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[10.5px]">
                                 <span className="text-muted-foreground">
-                                  Available:{" "}
+                                  {t("available", "Available")}:{" "}
                                   <span
                                     className={cn(
                                       "font-medium",
@@ -1185,10 +1185,10 @@ export default function InvoiceEntryPage() {
                                   <span className="text-muted-foreground">
                                     FEFO:{" "}
                                     <span className="font-medium text-foreground">
-                                      {compactAllocation.batch_no || "No batch"}
+                                      {compactAllocation.batch_no || t("noBatch", "No batch")}
                                     </span>
                                     {" • "}
-                                    {formatExpiryDate(compactAllocation.expiry_date)}
+                                    {formatExpiryDate(compactAllocation.expiry_date, t("noExpiry", "No expiry"))}
                                     {" • "}
                                     {compactAllocation.allocated_qty.toFixed(3)}
                                   </span>
@@ -1201,26 +1201,26 @@ export default function InvoiceEntryPage() {
                                     className="text-primary underline"
                                   >
                                     {line.fefo_preview_open
-                                      ? "Hide FEFO"
-                                      : `Show FEFO (${line.fefo_preview.length} batches)`}
+                                      ? t("hideFefo", "Hide FEFO")
+                                      : `${t("showFefo", "Show FEFO")} (${line.fefo_preview.length} ${t("batches", "batches")})`}
                                   </button>
                                 )}
 
                                 {hasPartialAllocation && (
                                   <span className="text-destructive">
-                                    FEFO covers {allocatedQty.toFixed(3)} / {requestedQty.toFixed(3)}
+                                    {t("fefoCovers", "FEFO covers")} {allocatedQty.toFixed(3)} / {requestedQty.toFixed(3)}
                                   </span>
                                 )}
 
                                 {showNoAllocationMessage && (
                                   <span className="text-muted-foreground">
-                                    No FEFO allocation preview available
+                                    {t("noFefoAllocationPreview", "No FEFO allocation preview available")}
                                   </span>
                                 )}
 
                                 {exceedsStock && (
                                   <span className="font-medium text-destructive">
-                                    Requested quantity exceeds available stock
+                                    {t("requestedQtyExceedsStock", "Requested quantity exceeds available stock")}
                                   </span>
                                 )}
                               </div>
@@ -1233,10 +1233,10 @@ export default function InvoiceEntryPage() {
                                       className="grid grid-cols-[1.2fr_1fr_0.7fr] gap-3 rounded-sm border border-border/60 px-2 py-0.5 text-[10.5px]"
                                     >
                                       <span className="font-mono text-foreground">
-                                        {allocation.batch_no || "No batch"}
+                                        {allocation.batch_no || t("noBatch", "No batch")}
                                       </span>
                                       <span className="text-muted-foreground">
-                                        {formatExpiryDate(allocation.expiry_date)}
+                                        {formatExpiryDate(allocation.expiry_date, t("noExpiry", "No expiry"))}
                                       </span>
                                       <span className="text-right font-medium text-foreground">
                                         {allocation.allocated_qty.toFixed(3)}
@@ -1262,16 +1262,16 @@ export default function InvoiceEntryPage() {
         <section className="flex flex-wrap items-center justify-between gap-2 rounded-sm border border-border bg-secondary/40 px-2 py-1.5">
           <div className="flex items-center gap-3 text-[11px]">
             <span className="text-muted-foreground">
-              Lines: <span className="font-semibold text-foreground">{activeLineCount}</span>
+              {t("lines", "Lines")}: <span className="font-semibold text-foreground">{activeLineCount}</span>
             </span>
             <span className="text-muted-foreground">
-              Subtotal: <span className="font-semibold text-foreground">{subtotalAmount.toFixed(3)}</span>
+              {t("subtotal", "Subtotal")}: <span className="font-semibold text-foreground">{subtotalAmount.toFixed(3)}</span>
             </span>
             <span className="text-muted-foreground">
-              Disc: <span className="font-semibold text-foreground">{discountTotal.toFixed(3)}</span>
+              {t("disc", "Disc")}: <span className="font-semibold text-foreground">{discountTotal.toFixed(3)}</span>
             </span>
             <span className="rounded-sm border border-primary/30 bg-primary/10 px-2 py-0.5 text-[12px]">
-              Gross Tot: <span className="font-bold text-foreground">{grandTotal.toFixed(3)}</span>
+              {t("grossTot", "Gross Tot")}: <span className="font-bold text-foreground">{grandTotal.toFixed(3)}</span>
             </span>
           </div>
           <div className="flex items-center gap-1.5">
@@ -1280,7 +1280,7 @@ export default function InvoiceEntryPage() {
               onClick={handlePrint}
               className="inline-flex h-7 items-center gap-1 rounded-sm border border-border bg-background px-2.5 text-[11.5px] font-medium text-foreground hover:bg-secondary"
             >
-              <Printer className="h-3 w-3" /> Print
+              <Printer className="h-3 w-3" /> {t("print", "Print")}
             </button>
             <button
               type="button"
@@ -1289,7 +1289,7 @@ export default function InvoiceEntryPage() {
               className="inline-flex h-7 items-center gap-1 rounded-sm border border-border bg-background px-2.5 text-[11.5px] font-medium text-foreground hover:bg-secondary disabled:opacity-60"
             >
               {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
-              Save
+              {t("save", "Save")}
             </button>
             <button
               type="button"
@@ -1298,7 +1298,7 @@ export default function InvoiceEntryPage() {
               className="inline-flex h-7 items-center gap-1 rounded-sm bg-primary px-2.5 text-[11.5px] font-semibold text-primary-foreground hover:opacity-90 disabled:opacity-60"
             >
               {posting ? <Loader2 className="h-3 w-3 animate-spin" /> : <CheckCircle2 className="h-3 w-3" />}
-              Post Invoice
+              {t("postInvoice", "Post Invoice")}
             </button>
           </div>
         </section>

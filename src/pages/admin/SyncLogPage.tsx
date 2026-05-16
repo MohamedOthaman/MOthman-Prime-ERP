@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Activity,
   RefreshCw,
@@ -12,13 +12,7 @@ import { useDatabase } from "@/database/DatabaseProvider";
 import { discard, listAll, retryNow } from "@/sync/outbox";
 import type { OutboxRecord } from "@/database/types";
 import { toast } from "sonner";
-
-const STATUS_PILL: Record<OutboxRecord["status"], { label: string; cls: string; icon: React.ComponentType<{ className?: string }> }> = {
-  pending:          { label: "Pending",   cls: "bg-amber-500/10 text-amber-400 border-amber-500/20", icon: Clock },
-  in_flight:        { label: "Syncing",   cls: "bg-blue-500/10 text-blue-400 border-blue-500/20",     icon: RefreshCw },
-  succeeded:        { label: "Synced",    cls: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20", icon: CheckCircle2 },
-  failed_permanent: { label: "Failed",    cls: "bg-red-500/10 text-red-400 border-red-500/20",       icon: AlertTriangle },
-};
+import { useLang } from "@/contexts/LanguageContext";
 
 function fmtDateTime(ms: number) {
   return new Date(ms).toLocaleString("en-GB", { hour12: false });
@@ -26,9 +20,25 @@ function fmtDateTime(ms: number) {
 
 export default function SyncLogPage() {
   const db = useDatabase();
+  const { t } = useLang();
   const [rows, setRows] = useState<OutboxRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<OutboxRecord["status"] | "all">("all");
+
+  const STATUS_PILL: Record<OutboxRecord["status"], { label: string; cls: string; icon: React.ComponentType<{ className?: string }> }> = useMemo(() => ({
+    pending:          { label: t("pending",       "Pending"),  cls: "bg-amber-500/10 text-amber-400 border-amber-500/20",       icon: Clock },
+    in_flight:        { label: t("syncing",        "Syncing"),  cls: "bg-blue-500/10 text-blue-400 border-blue-500/20",           icon: RefreshCw },
+    succeeded:        { label: t("synced",         "Synced"),   cls: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20", icon: CheckCircle2 },
+    failed_permanent: { label: t("failed",         "Failed"),   cls: "bg-red-500/10 text-red-400 border-red-500/20",             icon: AlertTriangle },
+  }), [t]);
+
+  const FILTER_LABELS: Record<OutboxRecord["status"] | "all", string> = useMemo(() => ({
+    all:              t("all",              "All"),
+    pending:          t("pending",          "Pending"),
+    in_flight:        t("inFlight",         "In flight"),
+    succeeded:        t("succeeded",        "Succeeded"),
+    failed_permanent: t("failedPermanent",  "Failed permanent"),
+  }), [t]);
 
   const refresh = async () => {
     setLoading(true);
@@ -36,7 +46,7 @@ export default function SyncLogPage() {
       const all = await listAll(db);
       setRows(all);
     } catch (e: any) {
-      toast.error(e.message ?? "Failed to load outbox");
+      toast.error(e.message ?? t("failedLoadOutbox", "Failed to load outbox"));
     }
     setLoading(false);
   };
@@ -46,14 +56,14 @@ export default function SyncLogPage() {
   const handleRetry = async (id: string) => {
     await retryNow(db, id);
     await refresh();
-    toast.success("Queued for immediate retry");
+    toast.success(t("queuedForRetry", "Queued for immediate retry"));
   };
 
   const handleDiscard = async (id: string) => {
-    if (!confirm("Discard this sync entry? This cannot be undone.")) return;
+    if (!confirm(t("discardConfirm", "Discard this sync entry? This cannot be undone."))) return;
     await discard(db, id);
     await refresh();
-    toast.success("Discarded");
+    toast.success(t("discarded", "Discarded"));
   };
 
   const visible = filter === "all" ? rows : rows.filter((r) => r.status === filter);
@@ -63,7 +73,7 @@ export default function SyncLogPage() {
       <header className="sticky top-11 z-40 border-b border-border bg-background/95 backdrop-blur-sm">
         <div className="max-w-5xl mx-auto px-4 py-3 flex items-center gap-3">
           <Activity className="w-5 h-5 text-violet-400 shrink-0" />
-          <h1 className="text-[15px] font-bold text-foreground flex-1">Sync Log</h1>
+          <h1 className="text-[15px] font-bold text-foreground flex-1">{t("syncLog", "Sync Log")}</h1>
           <button
             onClick={refresh}
             disabled={loading}
@@ -83,7 +93,7 @@ export default function SyncLogPage() {
                   : "bg-transparent text-muted-foreground border-transparent hover:bg-muted/30"
               }`}
             >
-              {s === "all" ? "All" : STATUS_PILL[s].label}
+              {FILTER_LABELS[s]}
             </button>
           ))}
         </div>
@@ -92,7 +102,7 @@ export default function SyncLogPage() {
       <main className="max-w-5xl mx-auto px-4 py-4 space-y-2">
         {visible.length === 0 ? (
           <div className="text-center py-16 text-muted-foreground text-sm">
-            No outbox entries.
+            {t("noOutboxEntries", "No outbox entries.")}
           </div>
         ) : (
           visible.map((r) => {
@@ -127,14 +137,14 @@ export default function SyncLogPage() {
                       className="text-[10px] px-2 py-1 rounded border border-blue-500/30 bg-blue-500/10 text-blue-400 font-medium hover:bg-blue-500/20 transition inline-flex items-center gap-1"
                     >
                       <RotateCcw className="w-3 h-3" />
-                      Retry now
+                      {t("retryNow", "Retry now")}
                     </button>
                     <button
                       onClick={() => handleDiscard(r.id)}
                       className="text-[10px] px-2 py-1 rounded border border-red-500/30 bg-red-500/10 text-red-400 font-medium hover:bg-red-500/20 transition inline-flex items-center gap-1"
                     >
                       <Trash2 className="w-3 h-3" />
-                      Discard
+                      {t("discard", "Discard")}
                     </button>
                   </div>
                 )}

@@ -14,6 +14,7 @@ import {
   Snowflake,
   ListChecks,
   Shield,
+  FolderUp,
   type LucideIcon,
 } from "lucide-react";
 import type { Permissions } from "@/hooks/usePermissions";
@@ -260,6 +261,14 @@ export const sidebarConfig: SidebarSectionConfig[] = [
         icon: Activity,
         path: "/audit",
         permissions: ["isAdmin", "isOwner"],
+      },
+      {
+        id: "upload-center",
+        labelKey: "sidebar:item.uploadCenter",
+        fallbackLabel: "Upload Center",
+        icon: FolderUp,
+        path: "/admin/upload-center",
+        permissions: ["isOwner"],
       },
     ],
   },

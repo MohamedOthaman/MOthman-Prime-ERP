@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   ArrowLeft, Search, Loader2, AlertCircle, CheckCircle2, Info,
@@ -8,6 +8,7 @@ import { fetchExecutionSummary } from "@/features/invoices/pickingService";
 import { fetchInvoiceReturnSummary, createDraftReturn, addReturnLines, type ReturnCondition } from "@/features/invoices/returnsService";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { useLang } from "@/contexts/LanguageContext";
 
 type InvoiceDetail  = Awaited<ReturnType<typeof fetchInvoiceDetail>>;
 type ExecSummary    = Awaited<ReturnType<typeof fetchExecutionSummary>>;
@@ -33,16 +34,17 @@ interface DraftLine {
   reason: string;
 }
 
-const CONDITION_OPTS: { value: ReturnCondition; label: string; cls: string }[] = [
-  { value: "OK",     label: "OK",     cls: "text-emerald-400 border-emerald-500/30 bg-emerald-500/10" },
-  { value: "DMG",    label: "DMG",    cls: "text-amber-400 border-amber-500/30 bg-amber-500/10" },
-  { value: "EXPIRY", label: "EXP",    cls: "text-red-400 border-red-500/30 bg-red-500/10" },
-];
-
 export default function ReturnIntakePage() {
   const navigate = useNavigate();
+  const { t } = useLang();
   const [params] = useSearchParams();
   const presetInvoiceId = params.get("invoiceId");
+
+  const CONDITION_OPTS = useMemo(() => [
+    { value: "OK"     as ReturnCondition, label: t("conditionOk",     "OK"),  cls: "text-emerald-400 border-emerald-500/30 bg-emerald-500/10" },
+    { value: "DMG"    as ReturnCondition, label: t("conditionDmg",    "DMG"), cls: "text-amber-400 border-amber-500/30 bg-amber-500/10" },
+    { value: "EXPIRY" as ReturnCondition, label: t("conditionExpiry", "EXP"), cls: "text-red-400 border-red-500/30 bg-red-500/10" },
+  ], [t]);
 
   const [invoiceSearch, setInvoiceSearch] = useState("");
   const [searchLoading, setSearchLoading] = useState(false);
@@ -70,7 +72,7 @@ export default function ReturnIntakePage() {
       ]);
 
       if (d.status !== "fulfilled") {
-        toast.error((d.reason as Error)?.message ?? "Invoice not found");
+        toast.error((d.reason as Error)?.message ?? t("invoiceNotFound", "Invoice not found"));
         setInvoiceId(null);
         setLoading(false);
         return;
@@ -136,7 +138,7 @@ export default function ReturnIntakePage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     if (presetInvoiceId) void loadInvoice(presetInvoiceId);
@@ -178,12 +180,12 @@ export default function ReturnIntakePage() {
 
   const handleSave = async () => {
     if (!invoiceId || !detail) return;
-    if (!activeLines.length) { toast.error("Add at least one return line"); return; }
+    if (!activeLines.length) { toast.error(t("addAtLeastOneReturnLine", "Add at least one return line")); return; }
 
     // Validate qtys
     for (const l of activeLines) {
       if (l.qty > l.max_returnable) {
-        toast.error(`${l.product_name}: qty exceeds max returnable (${l.max_returnable})`);
+        toast.error(`${l.product_name}: ${t("qtyExceedsMaxReturnable", "qty exceeds max returnable")} (${l.max_returnable})`);
         return;
       }
     }
@@ -202,7 +204,7 @@ export default function ReturnIntakePage() {
         batch_no:                   l.batch_no || null,
         expiry_date:                l.expiry_date || null,
       })));
-      toast.success("Return document created");
+      toast.success(t("returnDocumentCreated", "Return document created"));
       navigate(`/returns/${returnId}`);
     } catch (e: any) {
       toast.error(e.message);
@@ -219,17 +221,17 @@ export default function ReturnIntakePage() {
             <button onClick={() => navigate(-1)} className="p-1.5 rounded-lg border border-border bg-muted/30 hover:bg-muted/50 transition">
               <ArrowLeft className="w-3.5 h-3.5 text-muted-foreground" />
             </button>
-            <h1 className="text-[15px] font-bold text-foreground">New Return</h1>
+            <h1 className="text-[15px] font-bold text-foreground">{t("newReturn", "New Return")}</h1>
           </div>
         </header>
         <main className="max-w-2xl mx-auto px-4 py-6 space-y-4">
-          <p className="text-xs text-muted-foreground">Search for the original invoice to return against.</p>
+          <p className="text-xs text-muted-foreground">{t("searchOriginalInvoiceHint", "Search for the original invoice to return against.")}</p>
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
             {searchLoading && <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 animate-spin text-muted-foreground" />}
             <input
               type="text"
-              placeholder="Invoice number (DONE or RECEIVED)..."
+              placeholder={t("invoiceSearchPlaceholder", "Invoice number (DONE or RECEIVED)...")}
               value={invoiceSearch}
               onChange={(e) => handleInvoiceSearch(e.target.value)}
               autoFocus
@@ -278,12 +280,12 @@ export default function ReturnIntakePage() {
             <ArrowLeft className="w-3.5 h-3.5 text-muted-foreground" />
           </button>
           <div className="flex-1">
-            <p className="text-[15px] font-bold text-foreground">Return Against #{header?.invoice_number ?? "—"}</p>
+            <p className="text-[15px] font-bold text-foreground">{t("returnAgainst", "Return Against")} #{header?.invoice_number ?? "—"}</p>
             <p className="text-[10px] text-muted-foreground">{header?.customer_name ?? "—"}</p>
           </div>
           <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded border ${
             activeLines.length > 0 ? "text-amber-400 bg-amber-500/10 border-amber-500/20" : "text-muted-foreground bg-muted/20 border-border"
-          }`}>{activeLines.length} line{activeLines.length !== 1 ? "s" : ""}</span>
+          }`}>{activeLines.length} {activeLines.length !== 1 ? t("lines", "lines") : t("line", "line")}</span>
         </div>
       </header>
 
@@ -302,19 +304,19 @@ export default function ReturnIntakePage() {
                     {line.item_code ? `[${line.item_code}] ` : ""}{line.product_name}
                   </p>
                   <div className="flex items-center gap-3 mt-0.5 text-[10px] text-muted-foreground flex-wrap">
-                    <span>Orig: {line.original_qty} {line.uom ?? ""}</span>
+                    <span>{t("orig", "Orig")}: {line.original_qty} {line.uom ?? ""}</span>
                     {line.already_returned > 0 && (
-                      <span className="text-amber-400">Returned: {line.already_returned}</span>
+                      <span className="text-amber-400">{t("returned", "Returned")}: {line.already_returned}</span>
                     )}
                     <span className={line.max_returnable === 0 ? "text-muted-foreground/50" : "text-foreground"}>
-                      Max: <strong>{line.max_returnable}</strong>
+                      {t("max", "Max")}: <strong>{line.max_returnable}</strong>
                     </span>
                   </div>
                   {(line.batch_no || line.expiry_date) && (
                     <p className="text-[10px] text-muted-foreground mt-0.5">
-                      {line.batch_no ? `Batch: ${line.batch_no}` : ""}
+                      {line.batch_no ? `${t("batch", "Batch")}: ${line.batch_no}` : ""}
                       {line.batch_no && line.expiry_date ? " · " : ""}
-                      {line.expiry_date ? `Exp: ${line.expiry_date}` : ""}
+                      {line.expiry_date ? `${t("exp", "Exp")}: ${line.expiry_date}` : ""}
                     </p>
                   )}
                 </div>
@@ -369,8 +371,7 @@ export default function ReturnIntakePage() {
                     <div className="flex items-start gap-1.5 text-[10px] text-muted-foreground">
                       <Info className="w-3 h-3 shrink-0 mt-0.5" />
                       <span>
-                        Outbound used {line.allocation_count} batches — return qty will be
-                        auto-allocated across them in FIFO order.
+                        {t("multiBatchNotice", "Outbound used {count} batches — return qty will be auto-allocated across them in FIFO order.").replace("{count}", String(line.allocation_count))}
                       </span>
                     </div>
                   )}
@@ -379,7 +380,9 @@ export default function ReturnIntakePage() {
                   {line.qty > 0 && line.condition !== "OK" && (
                     <div className="flex items-center gap-1.5 text-[10px] text-amber-400">
                       <AlertCircle className="w-3 h-3 shrink-0" />
-                      {line.condition === "DMG" ? "Damaged goods will not be restocked." : "Expired goods will not be restocked."}
+                      {line.condition === "DMG"
+                        ? t("damagedGoodsWarning", "Damaged goods will not be restocked.")
+                        : t("expiredGoodsWarning", "Expired goods will not be restocked.")}
                     </div>
                   )}
 
@@ -387,7 +390,7 @@ export default function ReturnIntakePage() {
                   {line.qty > 0 && (
                     <input
                       type="text"
-                      placeholder="Reason / notes (optional)"
+                      placeholder={t("reasonPlaceholder", "Reason / notes (optional)")}
                       value={line.reason}
                       onChange={(e) => setLineField(idx, "reason", e.target.value)}
                       className="w-full bg-background border border-border rounded-lg px-3 py-1.5 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
@@ -397,7 +400,7 @@ export default function ReturnIntakePage() {
               )}
 
               {exhausted && (
-                <p className="text-[10px] text-muted-foreground">All units already returned.</p>
+                <p className="text-[10px] text-muted-foreground">{t("allUnitsReturned", "All units already returned.")}</p>
               )}
             </div>
           );
@@ -405,11 +408,11 @@ export default function ReturnIntakePage() {
 
         {/* Notes */}
         <div className="rounded-xl border border-border bg-card p-4 space-y-2">
-          <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Return Notes</p>
+          <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">{t("returnNotes", "Return Notes")}</p>
           <textarea
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
-            placeholder="Optional notes for this return..."
+            placeholder={t("returnNotesPlaceholder", "Optional notes for this return...")}
             rows={2}
             className="w-full bg-background border border-border rounded-lg px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary resize-none"
           />
@@ -428,7 +431,9 @@ export default function ReturnIntakePage() {
                 : "bg-muted/30 text-muted-foreground cursor-not-allowed"
             }`}
           >
-            {saving ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : `Create Return (${activeLines.length} line${activeLines.length !== 1 ? "s" : ""})`}
+            {saving
+              ? <Loader2 className="w-5 h-5 animate-spin mx-auto" />
+              : `${t("createReturn", "Create Return")} (${activeLines.length} ${activeLines.length !== 1 ? t("lines", "lines") : t("line", "line")})`}
           </button>
         </div>
       </div>

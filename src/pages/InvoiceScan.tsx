@@ -4,6 +4,7 @@ import {
   FileText, Upload, RotateCcw, Edit3, Ban, ChevronRight, Camera, Loader2, CalendarIcon
 } from "lucide-react";
 import { useStockContext } from "@/contexts/StockContext";
+import { useLang } from "@/contexts/LanguageContext";
 import { Invoice, InvoiceItem, MarketReturn } from "@/data/stockData";
 import { toast } from "sonner";
 import { BrowserMultiFormatReader, DecodeHintType, BarcodeFormat } from "@zxing/library";
@@ -30,6 +31,7 @@ export default function InvoiceScan() {
     stock, invoices, findProduct, findProductByBarcode,
     deductFIFO, addInvoice, updateInvoice, restoreStock, addReturn
   } = useStockContext();
+  const { t } = useLang();
 
   const [view, setView] = useState<View>("main");
   const [invoiceNo, setInvoiceNo] = useState("");
@@ -96,7 +98,7 @@ export default function InvoiceScan() {
     await new Promise(r => setTimeout(r, 200));
     const videoEl = videoRef.current;
     if (!videoEl) {
-      toast.error("Camera element not ready");
+      toast.error(t("cameraNotReady", "Camera element not ready"));
       return;
     }
     try {
@@ -130,7 +132,7 @@ export default function InvoiceScan() {
       });
     } catch (e) {
       console.error("Camera error:", e);
-      toast.error("Cannot access camera");
+      toast.error(t("cannotAccessCamera", "Cannot access camera"));
     }
   }, [stopCamera]);
 
@@ -141,7 +143,7 @@ export default function InvoiceScan() {
     try {
       await (track as any).applyConstraints({ advanced: [{ torch: !torchOn } as any] });
       setTorchOn(!torchOn);
-    } catch { toast.error("Torch not supported"); }
+    } catch { toast.error(t("torchNotSupported", "Torch not supported")); }
   };
 
   // --- INVOICE INPUT ---
@@ -160,7 +162,7 @@ export default function InvoiceScan() {
         return;
       }
       setInvoiceNo(barcode);
-      toast.success(`Invoice: ${barcode}`);
+      toast.success(`${t("invoice", "Invoice")}: ${barcode}`);
       stopCamera();
     });
   };
@@ -177,7 +179,7 @@ export default function InvoiceScan() {
         nearestExpiry: nearestBatch?.expiryDate || it.expiryDate || "", scannedQty: 0,
       };
     }));
-    toast.success(`تم تحميل فاتورة ${inv.invoiceNo} - ${inv.items.length} منتج`);
+    toast.success(`${t("invoiceLoaded", "Invoice loaded")}: ${inv.invoiceNo} - ${inv.items.length} ${t("products", "products")}`);
     setView("details");
   };
 
@@ -210,7 +212,7 @@ export default function InvoiceScan() {
         qty: 1, unit: foundAsProduct.product.batches[0]?.unit || "PCS",
         nearestExpiry: nearestBatch?.expiryDate || "", scannedQty: 0,
       }]);
-      toast.success(`Added ${foundAsProduct.product.name}`);
+      toast.success(`${t("added", "Added")} ${foundAsProduct.product.name}`);
       setView("details");
       return;
     }
@@ -258,22 +260,22 @@ export default function InvoiceScan() {
               scannedQty: 0,
             };
           }));
-          toast.success(`Found ${result.invoices.length} invoice(s), ${inv.items.length} items`);
+          toast.success(`${t("foundInvoices", "Found")} ${result.invoices.length} ${t("invoicesCount", "invoice(s)")}, ${inv.items.length} ${t("itemsCount", "items")}`);
           if (result.invoices.length > 1) {
-            toast.info(`${result.invoices.length - 1} more invoice(s) can be imported from IO page`);
+            toast.info(`${result.invoices.length - 1} ${t("moreInvoicesHint", "more invoice(s) can be imported from IO page")}`);
           }
           setView("details");
         } else {
-          toast.error("No invoices found in the PDF");
+          toast.error(t("noInvoicesInPdf", "No invoices found in the PDF"));
         }
       } else {
         // For images, fall back to text-based parsing
         parseInvoiceText("");
-        toast.info("For best results, upload PDF files");
+        toast.info(t("uploadPdfForBestResults", "For best results, upload PDF files"));
       }
     } catch (err: any) {
       console.error("PDF parse error:", err);
-      toast.error(err.message || "Failed to process file");
+      toast.error(err.message || t("failedToProcessFile", "Failed to process file"));
     }
     setProcessing(false);
     e.target.value = "";
@@ -319,9 +321,9 @@ export default function InvoiceScan() {
     }
     setItems(detected);
     if (detected.length > 0) {
-      toast.success(`Found ${detected.length} product(s)`);
+      toast.success(`${t("foundProducts", "Found")} ${detected.length} ${t("productsCount", "product(s)")}`);
     } else {
-      toast.info("No products detected. Add manually.");
+      toast.info(t("noProductsDetected", "No products detected. Add manually."));
     }
     setView("details");
   };
@@ -330,7 +332,7 @@ export default function InvoiceScan() {
   const addProductToInvoice = (code: string) => {
     const trimmed = code.trim();
     const found = findProductByBarcode(trimmed) || findProduct(trimmed.toUpperCase()) || findProduct(trimmed);
-    if (!found) { toast.error(`منتج غير موجود: ${trimmed}`); return; }
+    if (!found) { toast.error(`${t("productNotFound", "Product not found")}: ${trimmed}`); return; }
     const existing = items.findIndex(i => i.productCode === found.product.code);
     if (existing >= 0) {
       setItems(prev => prev.map((item, i) => i === existing ? { ...item, qty: item.qty + 1 } : item));
@@ -358,12 +360,12 @@ export default function InvoiceScan() {
     setView("scanning");
     startScanning((barcode) => {
       const found = findProductByBarcode(barcode) || findProduct(barcode.toUpperCase());
-      if (!found) { toast.error(`Unknown: ${barcode}`); return; }
+      if (!found) { toast.error(`${t("unknownBarcode", "Unknown")}: ${barcode}`); return; }
       setItems(prev => {
         const idx = prev.findIndex(i => i.productCode === found.product.code);
-        if (idx < 0) { toast("Product not in invoice"); return prev; }
+        if (idx < 0) { toast(t("productNotInInvoice", "Product not in invoice")); return prev; }
         const item = prev[idx];
-        if (item.scannedQty >= item.qty) { toast.info(`${found.product.name} already fully scanned`); return prev; }
+        if (item.scannedQty >= item.qty) { toast.info(`${found.product.name} ${t("alreadyFullyScanned", "already fully scanned")}`); return prev; }
         toast.success(`✔ ${found.product.name} (${item.scannedQty + 1}/${item.qty})`);
         return prev.map((it, i) => i === idx ? { ...it, scannedQty: it.scannedQty + 1 } : it);
       });
@@ -375,7 +377,7 @@ export default function InvoiceScan() {
   // --- CONFIRM / DONE ---
   const confirmInvoice = async (scanned: boolean) => {
     if (items.length === 0) {
-      toast.error("No items");
+      toast.error(t("noItems", "No items"));
       return;
     }
 
@@ -433,7 +435,7 @@ export default function InvoiceScan() {
         invoiceItems
       );
 
-      toast.success(`Invoice ${invoiceNo} → ${nextStatus.toUpperCase()} ✔`);
+      toast.success(`${t("invoice", "Invoice")} ${invoiceNo} → ${nextStatus.toUpperCase()} ✔`);
     } else {
       const now = new Date();
       await addInvoice({
@@ -446,7 +448,7 @@ export default function InvoiceScan() {
         status: "done",
         deductionLog: allDeductions,
       });
-      toast.success(`Invoice ${invoiceNo} completed`);
+      toast.success(`${t("invoice", "Invoice")} ${invoiceNo} ${t("completed", "completed")}`);
     }
 
     setLastActedInvoiceNo(invoiceNo);
@@ -483,7 +485,7 @@ export default function InvoiceScan() {
     }
     await updateInvoice(activeInvoice.invoiceNo, inv => ({ ...inv, status: "cancelled" }));
     setLastActedInvoiceNo(activeInvoice.invoiceNo);
-    toast.success(`Invoice ${activeInvoice.invoiceNo} cancelled. Stock restored.`);
+    toast.success(`${t("invoice", "Invoice")} ${activeInvoice.invoiceNo} ${t("invoiceCancelledStockRestored", "cancelled. Stock restored.")}`);
     setActiveInvoice(null);
     setView("main");
   };
@@ -492,26 +494,26 @@ export default function InvoiceScan() {
   const addReturnProduct = () => {
     if (!returnManualCode.trim()) return;
     const found = findProductByBarcode(returnManualCode.trim()) || findProduct(returnManualCode.trim().toUpperCase());
-    if (!found) { toast.error("Product not found"); return; }
+    if (!found) { toast.error(t("productNotFound", "Product not found")); return; }
     setReturnItems(prev => [...prev, {
       productCode: found.product.code, productName: found.product.name,
       qty: returnQty, unit: found.product.batches[0]?.unit || "PCS", expiryDate: returnExpiry,
     }]);
     setReturnManualCode("");
     setReturnQty(1);
-    toast.success(`Added ${found.product.name}`);
+    toast.success(`${t("added", "Added")} ${found.product.name}`);
   };
 
   const startReturnScanning = () => {
     setReturnScanning(true);
     startScanning((barcode) => {
       const found = findProductByBarcode(barcode) || findProduct(barcode.toUpperCase());
-      if (!found) { toast.error(`Product not found: ${barcode}`); return; }
+      if (!found) { toast.error(`${t("productNotFound", "Product not found")}: ${barcode}`); return; }
       setReturnItems(prev => [...prev, {
         productCode: found.product.code, productName: found.product.name,
         qty: returnQty, unit: found.product.batches[0]?.unit || "PCS", expiryDate: returnExpiry,
       }]);
-      toast.success(`Scanned: ${found.product.name}`);
+      toast.success(`${t("scanned", "Scanned")}: ${found.product.name}`);
     });
   };
 
@@ -521,7 +523,7 @@ export default function InvoiceScan() {
   };
 
   const confirmReturn = async () => {
-    if (returnItems.length === 0) { toast.error("No items to return"); return; }
+    if (returnItems.length === 0) { toast.error(t("noItemsToReturn", "No items to return")); return; }
     const now = new Date();
     const ret: MarketReturn = {
       id: crypto.randomUUID(), date: now.toISOString().split("T")[0], time: now.toLocaleTimeString(),
@@ -534,7 +536,7 @@ export default function InvoiceScan() {
       await restoreStock(item.productCode, item.qty, item.unit, item.batchNo, item.expiryDate, "return", ret.id, true);
     }
     await addReturn(ret);
-    toast.success("Return processed. Stock restored.");
+    toast.success(t("returnProcessedStockRestored", "Return processed. Stock restored."));
     setReturnCustomer(""); setReturnDriver(""); setReturnVoucher(""); setReturnItems([]);
     setView("main");
   };
@@ -551,10 +553,10 @@ export default function InvoiceScan() {
       <header className="sticky top-0 z-10 bg-background/95 backdrop-blur border-b border-border px-4 py-3">
         <div className="max-w-3xl mx-auto flex items-center gap-2">
           <ScanLine className="w-5 h-5 text-primary" />
-          <h1 className="text-lg font-bold text-foreground tracking-tight">Invoice Scan</h1>
+          <h1 className="text-lg font-bold text-foreground tracking-tight">{t("invoiceScanTitle", "Invoice Scan")}</h1>
           {view !== "main" && (
             <button onClick={() => { stopCamera(); resetForm(); }} className="ml-auto text-xs text-muted-foreground">
-              ← Back
+              ← {t("back", "Back")}
             </button>
           )}
         </div>
@@ -570,8 +572,8 @@ export default function InvoiceScan() {
           >
             <Check className="w-5 h-5 text-success shrink-0" />
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-foreground">Last: {lastCompletedInvoice.invoiceNo}</p>
-              <p className="text-xs text-muted-foreground truncate">{lastCompletedInvoice.customerName || "No customer"} · {lastCompletedInvoice.date}</p>
+              <p className="text-sm font-semibold text-foreground">{t("lastInvoice", "Last")}: {lastCompletedInvoice.invoiceNo}</p>
+              <p className="text-xs text-muted-foreground truncate">{lastCompletedInvoice.customerName || t("noCustomer", "No customer")} · {lastCompletedInvoice.date}</p>
             </div>
             <ChevronRight className="w-4 h-4 text-muted-foreground" />
           </button>
@@ -595,36 +597,36 @@ export default function InvoiceScan() {
 
             <button onClick={handleInvoiceBarcodeScan}
               className="w-full bg-primary text-primary-foreground font-semibold py-3 rounded-md text-sm flex items-center justify-center gap-2">
-              <Camera className="w-4 h-4" /> Scan Invoice Barcode
+              <Camera className="w-4 h-4" /> {t("scanInvoiceBarcode", "Scan Invoice Barcode")}
             </button>
 
             <div className="bg-card border border-border rounded-lg p-4 space-y-3">
-              <label className="text-sm font-semibold text-foreground block">Or Enter Manually</label>
+              <label className="text-sm font-semibold text-foreground block">{t("orEnterManually", "Or Enter Manually")}</label>
               <input type="text" value={invoiceNo} onChange={e => setInvoiceNo(e.target.value)}
                 onKeyDown={e => e.key === "Enter" && handleManualInvoiceSubmit()}
-                placeholder="رقم الفاتورة أو كود المنتج..."
+                placeholder={t("invoiceNumberOrProductCode", "Invoice number or product code...")}
                 className="w-full bg-secondary text-foreground text-sm rounded-md px-3 py-2.5 border border-border focus:outline-none focus:ring-1 focus:ring-ring placeholder:text-muted-foreground font-mono" />
               <button onClick={handleManualInvoiceSubmit}
                 className="w-full bg-secondary text-secondary-foreground font-semibold py-2.5 rounded-md text-sm">
-                Continue →
+                {t("continueBtn", "Continue")} →
               </button>
             </div>
 
             <div className="bg-card border border-border rounded-lg p-4">
               <label className="text-sm font-semibold text-foreground block mb-2">
-                <Upload className="w-4 h-4 inline mr-1" /> Upload Invoice PDF / Image
+                <Upload className="w-4 h-4 inline mr-1" /> {t("uploadInvoicePdfImage", "Upload Invoice PDF / Image")}
               </label>
               <input ref={fileRef} type="file" accept="image/*,.pdf" onChange={handlePDFUpload} className="hidden" />
               <button onClick={() => fileRef.current?.click()}
                 className="w-full bg-secondary text-secondary-foreground font-semibold py-2.5 rounded-md text-sm">
-                Select File
+                {t("selectFile", "Select File")}
               </button>
             </div>
 
             {processing && (
               <div className="bg-card border border-border rounded-lg p-6 text-center">
                 <Loader2 className="w-8 h-8 animate-spin mx-auto mb-2 text-primary" />
-                <p className="text-sm text-foreground">Processing... {ocrProgress}%</p>
+                <p className="text-sm text-foreground">{t("processing", "Processing...")} {ocrProgress}%</p>
                 <div className="w-full bg-secondary rounded-full h-2 mt-2">
                   <div className="bg-primary h-2 rounded-full transition-all" style={{ width: `${ocrProgress}%` }} />
                 </div>
@@ -635,8 +637,8 @@ export default function InvoiceScan() {
               className="w-full bg-card border border-border rounded-lg p-4 text-left flex items-center gap-3 hover:bg-row-hover transition-colors">
               <RotateCcw className="w-6 h-6 text-storage-chilled" />
               <div>
-                <p className="text-sm font-semibold text-foreground">Market Returns</p>
-                <p className="text-xs text-muted-foreground">Process returned products</p>
+                <p className="text-sm font-semibold text-foreground">{t("marketReturns", "Market Returns")}</p>
+                <p className="text-xs text-muted-foreground">{t("marketReturnsDesc", "Process returned products")}</p>
               </div>
               <ChevronRight className="w-4 h-4 text-muted-foreground ml-auto" />
             </button>
@@ -648,11 +650,11 @@ export default function InvoiceScan() {
           <div className="space-y-3">
             <div className="bg-card border border-border rounded-lg p-4 space-y-2">
               <div className="flex items-center justify-between">
-                <span className="text-xs text-muted-foreground uppercase tracking-wide">Invoice</span>
+                <span className="text-xs text-muted-foreground uppercase tracking-wide">{t("invoice", "Invoice")}</span>
                 <span className="font-mono text-sm text-primary font-bold">{invoiceNo}</span>
               </div>
               <input type="text" value={customerName} onChange={e => setCustomerName(e.target.value)}
-                placeholder="Customer name (optional)"
+                placeholder={t("customerNameOptional", "Customer name (optional)")}
                 className="w-full bg-secondary text-foreground text-sm rounded-md px-3 py-2 border border-border focus:outline-none focus:ring-1 focus:ring-ring placeholder:text-muted-foreground" />
               <p className="text-xs text-muted-foreground">{new Date().toLocaleDateString()}</p>
             </div>
@@ -661,11 +663,11 @@ export default function InvoiceScan() {
             <div className="bg-card border border-border rounded-lg overflow-hidden">
               <div className="px-3 py-2 bg-brand-header border-b border-border flex items-center justify-between">
                 <span className="text-xs font-semibold text-foreground uppercase tracking-wide">
-                  Products ({items.length})
+                  {t("products", "Products")} ({items.length})
                 </span>
               </div>
               {items.length === 0 && (
-                <div className="px-3 py-6 text-center text-sm text-muted-foreground">No products yet. Add below.</div>
+                <div className="px-3 py-6 text-center text-sm text-muted-foreground">{t("noProductsYet", "No products yet. Add below.")}</div>
               )}
               {items.map((item, idx) => (
                 <div key={idx} className="px-3 py-2.5 border-b border-border/50 flex items-center gap-2">
@@ -689,21 +691,21 @@ export default function InvoiceScan() {
             <div className="flex gap-2">
               <input type="text" value={manualCode} onChange={e => setManualCode(e.target.value)}
                 onKeyDown={e => { if (e.key === "Enter" && manualCode.trim()) { addProductToInvoice(manualCode.trim()); setManualCode(""); } }}
-                placeholder="Product code or barcode..."
+                placeholder={t("productCodeOrBarcode", "Product code or barcode...")}
                 className="flex-1 bg-secondary text-foreground text-sm rounded-md px-3 py-2 border border-border focus:outline-none focus:ring-1 focus:ring-ring placeholder:text-muted-foreground font-mono" />
               <button onClick={() => { if (manualCode.trim()) { addProductToInvoice(manualCode.trim()); setManualCode(""); } }}
-                className="bg-primary text-primary-foreground px-4 py-2 rounded-md text-sm font-semibold">Add</button>
+                className="bg-primary text-primary-foreground px-4 py-2 rounded-md text-sm font-semibold">{t("addBtn", "Add")}</button>
             </div>
 
             {/* Action buttons */}
             <div className="flex gap-2">
               <button onClick={startProductScanning}
                 className="flex-1 bg-success text-primary-foreground font-semibold py-3 rounded-md text-sm flex items-center justify-center gap-2">
-                <ScanLine className="w-4 h-4" /> Scan Products
+                <ScanLine className="w-4 h-4" /> {t("scanProducts", "Scan Products")}
               </button>
               <button onClick={() => confirmInvoice(false)}
                 className="flex-1 bg-primary text-primary-foreground font-semibold py-3 rounded-md text-sm flex items-center justify-center gap-2">
-                <Check className="w-4 h-4" /> Done
+                <Check className="w-4 h-4" /> {t("doneBtn", "Done")}
               </button>
             </div>
           </div>
@@ -729,7 +731,7 @@ export default function InvoiceScan() {
 
             <div className="bg-card border border-border rounded-lg overflow-hidden">
               <div className="px-3 py-2 bg-brand-header border-b border-border">
-                <span className="text-xs font-semibold text-foreground uppercase tracking-wide">Scan Progress</span>
+                <span className="text-xs font-semibold text-foreground uppercase tracking-wide">{t("scanProgress", "Scan Progress")}</span>
               </div>
               {items.map((item, idx) => {
                 const complete = item.scannedQty >= item.qty;
@@ -748,13 +750,13 @@ export default function InvoiceScan() {
             {allScanned && (
               <button onClick={() => confirmInvoice(true)}
                 className="w-full bg-success text-primary-foreground font-semibold py-3 rounded-md text-sm flex items-center justify-center gap-2 animate-slide-up">
-                <Check className="w-5 h-5" /> All Scanned — Done
+                <Check className="w-5 h-5" /> {t("allScannedDone", "All Scanned — Done")}
               </button>
             )}
 
             <button onClick={() => { stopCamera(); setView("details"); }}
               className="w-full bg-secondary text-secondary-foreground font-semibold py-2.5 rounded-md text-sm">
-              ← Back to Details
+              ← {t("backToDetails", "Back to Details")}
             </button>
           </div>
         )}
@@ -764,7 +766,7 @@ export default function InvoiceScan() {
           <div className="space-y-3">
             <div className="bg-card border border-border rounded-lg p-4 space-y-1">
               <div className="flex items-center justify-between">
-                <span className="text-xs text-muted-foreground uppercase">Invoice</span>
+                <span className="text-xs text-muted-foreground uppercase">{t("invoice", "Invoice")}</span>
                 <span className={`text-xs font-bold px-2 py-0.5 rounded ${
                   activeInvoice.status === "done" ? "bg-success/20 text-success" :
                   activeInvoice.status === "edited" ? "bg-warning/20 text-warning" :
@@ -780,7 +782,7 @@ export default function InvoiceScan() {
 
             <div className="bg-card border border-border rounded-lg overflow-hidden">
               <div className="px-3 py-2 bg-brand-header border-b border-border">
-                <span className="text-xs font-semibold text-foreground uppercase tracking-wide">Items ({activeInvoice.items.length})</span>
+                <span className="text-xs font-semibold text-foreground uppercase tracking-wide">{t("items", "Items")} ({activeInvoice.items.length})</span>
               </div>
               {activeInvoice.items.map((item, idx) => (
                 <div key={idx} className="px-3 py-2 border-b border-border/50 flex items-center gap-2">
@@ -795,18 +797,18 @@ export default function InvoiceScan() {
               <div className="space-y-2">
                 <button onClick={handleEditInvoice}
                   className="w-full bg-warning/20 text-warning font-semibold py-2.5 rounded-md text-sm flex items-center justify-center gap-2">
-                  <Edit3 className="w-4 h-4" /> Edit Quantities
+                  <Edit3 className="w-4 h-4" /> {t("editQuantities", "Edit Quantities")}
                 </button>
                 <button onClick={handleCancelInvoice}
                   className="w-full bg-destructive/20 text-destructive font-semibold py-2.5 rounded-md text-sm flex items-center justify-center gap-2">
-                  <Ban className="w-4 h-4" /> Cancel Invoice
+                  <Ban className="w-4 h-4" /> {t("cancelInvoice", "Cancel Invoice")}
                 </button>
               </div>
             )}
 
             <button onClick={() => { setActiveInvoice(null); setView("main"); }}
               className="w-full bg-secondary text-secondary-foreground font-semibold py-2.5 rounded-md text-sm flex items-center justify-center gap-2">
-              <X className="w-4 h-4" /> Close
+              <X className="w-4 h-4" /> {t("close", "Close")}
             </button>
           </div>
         )}
@@ -815,25 +817,25 @@ export default function InvoiceScan() {
         {view === "returns" && (
           <div className="space-y-3">
             <div className="bg-card border border-border rounded-lg p-4 space-y-3">
-              <h2 className="text-sm font-semibold text-foreground uppercase tracking-wide">Market Returns</h2>
+              <h2 className="text-sm font-semibold text-foreground uppercase tracking-wide">{t("marketReturns", "Market Returns")}</h2>
               <input type="text" value={returnCustomer} onChange={e => setReturnCustomer(e.target.value)}
-                placeholder="Customer / Market Name"
+                placeholder={t("customerMarketName", "Customer / Market Name")}
                 className="w-full bg-secondary text-foreground text-sm rounded-md px-3 py-2 border border-border focus:outline-none focus:ring-1 focus:ring-ring placeholder:text-muted-foreground" />
               <input type="text" value={returnDriver} onChange={e => setReturnDriver(e.target.value)}
-                placeholder="Driver Name"
+                placeholder={t("driverName", "Driver Name")}
                 className="w-full bg-secondary text-foreground text-sm rounded-md px-3 py-2 border border-border focus:outline-none focus:ring-1 focus:ring-ring placeholder:text-muted-foreground" />
               <input type="text" value={returnVoucher} onChange={e => setReturnVoucher(e.target.value)}
-                placeholder="Return Voucher Number"
+                placeholder={t("returnVoucherNumber", "Return Voucher Number")}
                 className="w-full bg-secondary text-foreground text-sm rounded-md px-3 py-2 border border-border focus:outline-none focus:ring-1 focus:ring-ring placeholder:text-muted-foreground" />
-              <p className="text-xs text-muted-foreground">Date & time recorded automatically</p>
+              <p className="text-xs text-muted-foreground">{t("dateTimeAutoRecorded", "Date & time recorded automatically")}</p>
             </div>
 
             <div className="bg-card border border-border rounded-lg p-4 space-y-3">
               <div className="flex items-center justify-between">
-                <h3 className="text-xs font-semibold text-foreground uppercase tracking-wide">Add Returned Products</h3>
+                <h3 className="text-xs font-semibold text-foreground uppercase tracking-wide">{t("addReturnedProducts", "Add Returned Products")}</h3>
                 <button onClick={returnScanning ? stopReturnScanning : startReturnScanning}
                   className={`text-xs font-semibold px-2.5 py-1.5 rounded-md flex items-center gap-1 ${returnScanning ? "bg-destructive/20 text-destructive" : "bg-primary/20 text-primary"}`}>
-                  <Camera className="w-3 h-3" /> {returnScanning ? "Stop Scan" : "Scan Barcode"}
+                  <Camera className="w-3 h-3" /> {returnScanning ? t("stopScan", "Stop Scan") : t("scanBarcode", "Scan Barcode")}
                 </button>
               </div>
 
@@ -847,28 +849,28 @@ export default function InvoiceScan() {
               )}
 
               <input type="text" value={returnManualCode} onChange={e => setReturnManualCode(e.target.value)}
-                placeholder="Or enter code manually..."
+                placeholder={t("orEnterCodeManually", "Or enter code manually...")}
                 className="w-full bg-secondary text-foreground text-sm rounded-md px-3 py-2 border border-border focus:outline-none focus:ring-1 focus:ring-ring placeholder:text-muted-foreground font-mono" />
 
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="text-xs text-muted-foreground block mb-1">Quantity</label>
+                  <label className="text-xs text-muted-foreground block mb-1">{t("quantity", "Quantity")}</label>
                   <input type="number" value={returnQty} onChange={e => setReturnQty(Math.max(1, parseInt(e.target.value) || 1))}
                     min="1"
                     className="w-full bg-secondary text-foreground text-sm rounded-md px-3 py-2 border border-border focus:outline-none focus:ring-1 focus:ring-ring" />
                 </div>
                 <div>
-                  <label className="text-xs text-muted-foreground block mb-1">Expiry Date</label>
+                  <label className="text-xs text-muted-foreground block mb-1">{t("colExpiry", "Expiry Date")}</label>
                   <Drawer>
                     <DrawerTrigger asChild>
                       <Button variant="outline" className={cn("w-full justify-start text-left text-sm font-normal h-10 bg-secondary border-border", !returnExpiry && "text-muted-foreground")}>
                         <CalendarIcon className="mr-1.5 h-3.5 w-3.5 opacity-60" />
-                        {returnExpiry ? format(new Date(returnExpiry), "dd/MM/yyyy") : "Select"}
+                        {returnExpiry ? format(new Date(returnExpiry), "dd/MM/yyyy") : t("selectDate", "Select")}
                       </Button>
                     </DrawerTrigger>
                     <DrawerContent className="px-4 pb-8">
                       <div className="mt-4">
-                        <DateWheel value={returnExpiry || format(new Date(), "yyyy-MM-dd")} onChange={v => setReturnExpiry(v)} label="Expiry Date" />
+                        <DateWheel value={returnExpiry || format(new Date(), "yyyy-MM-dd")} onChange={v => setReturnExpiry(v)} label={t("colExpiry", "Expiry Date")} />
                       </div>
                     </DrawerContent>
                   </Drawer>
@@ -877,14 +879,14 @@ export default function InvoiceScan() {
 
               <button onClick={addReturnProduct}
                 className="w-full bg-primary text-primary-foreground font-semibold py-2.5 rounded-md text-sm">
-                + Add Product
+                + {t("addProduct", "Add Product")}
               </button>
             </div>
 
             {returnItems.length > 0 && (
               <div className="bg-card border border-border rounded-lg overflow-hidden">
                 <div className="px-3 py-2 bg-brand-header border-b border-border">
-                  <span className="text-xs font-semibold text-foreground uppercase tracking-wide">Return Items ({returnItems.length})</span>
+                  <span className="text-xs font-semibold text-foreground uppercase tracking-wide">{t("returnItems", "Return Items")} ({returnItems.length})</span>
                 </div>
                 {returnItems.map((item, idx) => (
                   <div key={idx} className="px-3 py-2 border-b border-border/50 flex items-center gap-2">
@@ -901,7 +903,7 @@ export default function InvoiceScan() {
                 <div className="p-3">
                   <button onClick={confirmReturn}
                     className="w-full bg-success text-primary-foreground font-semibold py-2.5 rounded-md text-sm flex items-center justify-center gap-2">
-                    <Check className="w-4 h-4" /> Confirm Return
+                    <Check className="w-4 h-4" /> {t("confirmReturn", "Confirm Return")}
                   </button>
                 </div>
               </div>

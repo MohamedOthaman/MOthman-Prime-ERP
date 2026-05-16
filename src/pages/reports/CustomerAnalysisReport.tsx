@@ -10,6 +10,7 @@ import { Building2, Users, AlertTriangle, DollarSign, Search, Download, UserSqua
 import { useNavigate } from "react-router-dom";
 import { getCustomerAnalysis, type CustomerAnalysisRow } from "@/features/services/reportService";
 import { exportExcel } from "@/lib/exportUtils";
+import { useLang } from "@/contexts/LanguageContext";
 import {
   DashboardShell,
   KpiGrid,
@@ -31,6 +32,7 @@ function fmtDate(iso: string | null) {
 
 export default function CustomerAnalysisReport() {
   const navigate = useNavigate();
+  const { t } = useLang();
 
   const [rows, setRows]       = useState<CustomerAnalysisRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -46,7 +48,7 @@ export default function CustomerAnalysisReport() {
         const data = await getCustomerAnalysis();
         setRows(data);
       } catch (e: any) {
-        setError(e.message ?? "Failed to load");
+        setError(e.message ?? t("failedToLoad", "Failed to load"));
       } finally {
         setLoading(false);
       }
@@ -87,10 +89,10 @@ export default function CustomerAnalysisReport() {
   const totalRevenue = rows.reduce((s, r) => s + r.totalRevenue, 0);
 
   const kpis: KpiItem[] = [
-    { label: "Total Customers", value: loading ? "—" : rows.length, icon: Building2, color: "text-blue-400", bg: "bg-blue-500/8", border: "border-blue-500/20", loading },
-    { label: "With Invoices", value: loading ? "—" : withInvoices, icon: DollarSign, color: "text-emerald-400", bg: "bg-emerald-500/8", border: "border-emerald-500/20", loading },
-    { label: "Unassigned", value: loading ? "—" : unassigned, icon: AlertTriangle, color: "text-amber-400", bg: "bg-amber-500/8", border: "border-amber-500/20", loading, trend: unassigned > 0 ? "down" : "neutral" },
-    { label: "Total Revenue (KWD)", value: loading ? "—" : totalRevenue.toFixed(0), icon: DollarSign, color: "text-violet-400", bg: "bg-violet-500/8", border: "border-violet-500/20", loading },
+    { label: t("totalCustomers", "Total Customers"), value: loading ? "—" : rows.length, icon: Building2, color: "text-blue-400", bg: "bg-blue-500/8", border: "border-blue-500/20", loading },
+    { label: t("withInvoices", "With Invoices"), value: loading ? "—" : withInvoices, icon: DollarSign, color: "text-emerald-400", bg: "bg-emerald-500/8", border: "border-emerald-500/20", loading },
+    { label: t("unassigned", "Unassigned"), value: loading ? "—" : unassigned, icon: AlertTriangle, color: "text-amber-400", bg: "bg-amber-500/8", border: "border-amber-500/20", loading, trend: unassigned > 0 ? "down" : "neutral" },
+    { label: t("totalRevenueKwd", "Total Revenue (KWD)"), value: loading ? "—" : totalRevenue.toFixed(0), icon: DollarSign, color: "text-violet-400", bg: "bg-violet-500/8", border: "border-violet-500/20", loading },
   ];
 
   function handleExport() {
@@ -101,7 +103,7 @@ export default function CustomerAnalysisReport() {
         Name_AR:          r.name_ar ?? "",
         Area:             r.area ?? "",
         Type:             r.type ?? "",
-        Salesman:         r.salesmanName ?? "Unassigned",
+        Salesman:         r.salesmanName ?? t("unassigned", "Unassigned"),
         Invoices:         r.invoiceCount,
         Revenue_KWD:      r.totalRevenue.toFixed(3),
         Last_Invoice:     fmtDate(r.lastInvoiceDate),
@@ -113,28 +115,28 @@ export default function CustomerAnalysisReport() {
   return (
     <DashboardShell
       icon={Building2}
-      title="Customer Analysis"
-      subtitle="Revenue, invoice history, and salesman assignments"
+      title={t("pageTitleCustomerAnalysis", "Customer Analysis")}
+      subtitle={t("customerAnalysisDesc", "Revenue, invoice history, and salesman assignments")}
       accent="blue"
       headerAction={
         <button
           onClick={handleExport}
           className="flex items-center gap-1.5 rounded-lg border border-border bg-muted/30 px-3 py-1.5 text-xs font-medium text-foreground hover:bg-muted/60 transition"
         >
-          <Download className="w-3.5 h-3.5" /> Export
+          <Download className="w-3.5 h-3.5" /> {t("export", "Export")}
         </button>
       }
     >
       <KpiGrid items={kpis} />
 
       {/* Filters */}
-      <SectionCard title="Search & Filter" icon={Search} iconClass="text-blue-400">
+      <SectionCard title={t("searchAndFilter", "Search & Filter")} icon={Search} iconClass="text-blue-400">
         <div className="flex flex-wrap gap-3">
           <div className="flex items-center gap-2 flex-1 min-w-[200px] rounded-lg border border-border bg-background px-3 py-1.5">
             <Search className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
             <input
               type="text"
-              placeholder="Search name, code, area..."
+              placeholder={t("searchNameCodeArea", "Search name, code, area...")}
               value={search}
               onChange={e => setSearch(e.target.value)}
               className="flex-1 bg-transparent text-xs text-foreground placeholder:text-muted-foreground focus:outline-none"
@@ -145,8 +147,8 @@ export default function CustomerAnalysisReport() {
             onChange={e => setFilterSalesman(e.target.value)}
             className="rounded-lg border border-border bg-background px-3 py-1.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
           >
-            <option value="">All Salesmen</option>
-            <option value="__none__">Unassigned</option>
+            <option value="">{t("allSalesmen", "All Salesmen")}</option>
+            <option value="__none__">{t("unassigned", "Unassigned")}</option>
             {salesmenOptions.map(s => (
               <option key={s.id} value={s.id}>{s.name}</option>
             ))}
@@ -156,7 +158,7 @@ export default function CustomerAnalysisReport() {
 
       {/* Table */}
       <SectionCard
-        title={`Customers (${filtered.length})`}
+        title={`${t("customers", "Customers")} (${filtered.length})`}
         icon={Users}
         iconClass="text-blue-400"
       >
@@ -165,13 +167,21 @@ export default function CustomerAnalysisReport() {
         ) : loading ? (
           <LoadingRows rows={8} />
         ) : filtered.length === 0 ? (
-          <EmptyState icon={Building2} message="No customers match the filter" />
+          <EmptyState icon={Building2} message={t("noCustomersMatchFilter", "No customers match the filter")} />
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
                 <tr className="border-b border-border">
-                  {["Code", "Customer", "Area", "Salesman", "Invoices", "Revenue (KWD)", "Last Invoice"].map(h => (
+                  {[
+                    t("colCode", "Code"),
+                    t("customer", "Customer"),
+                    t("colArea", "Area"),
+                    t("salesman", "Salesman"),
+                    t("invoices", "Invoices"),
+                    t("revenueKwd", "Revenue (KWD)"),
+                    t("lastInvoice", "Last Invoice"),
+                  ].map(h => (
                     <th key={h} className="pb-2 text-left text-[10px] font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap px-2 first:px-0">
                       {h}
                     </th>
@@ -194,7 +204,7 @@ export default function CustomerAnalysisReport() {
                     <td className="py-2.5 px-2">
                       {r.salesmanName
                         ? <span className="text-xs text-foreground">{r.salesmanName}</span>
-                        : <span className="text-xs text-amber-400">Unassigned</span>
+                        : <span className="text-xs text-amber-400">{t("unassigned", "Unassigned")}</span>
                       }
                     </td>
                     <td className="py-2.5 px-2 text-sm text-foreground">{r.invoiceCount}</td>

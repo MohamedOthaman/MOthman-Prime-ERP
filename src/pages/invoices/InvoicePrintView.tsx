@@ -2,6 +2,7 @@
 // Print-optimized invoice layout for 3-copy dot-matrix / colored paper
 
 import { forwardRef } from "react";
+import { useLang } from "@/contexts/LanguageContext";
 
 export interface PrintLineItem {
   line_no: number;
@@ -27,37 +28,39 @@ export interface InvoicePrintData {
 
 const InvoicePrintView = forwardRef<HTMLDivElement, { data: InvoicePrintData }>(
   ({ data }, ref) => {
+    const { t } = useLang();
+
     return (
       <div ref={ref} className="invoice-print-root">
         {/* Company Header */}
         <div className="invoice-print-company">
-          <h1>FOOD CHOICE</h1>
-          <p>General Trading & Food Stuff Co.</p>
+          <h1>{t("companyNameShort", "FOOD CHOICE")}</h1>
+          <p>{t("companyTagline", "General Trading & Food Stuff Co.")}</p>
         </div>
 
-        <h2 className="invoice-print-title">SALES INVOICE</h2>
+        <h2 className="invoice-print-title">{t("salesInvoice", "SALES INVOICE")}</h2>
 
         {/* Header Info */}
         <div className="invoice-print-header">
           <div className="invoice-print-header-left">
             <div className="invoice-print-field">
-              <span className="invoice-print-label">Invoice No:</span>
+              <span className="invoice-print-label">{t("invoiceNo", "Invoice No")}:</span>
               <span className="invoice-print-value">{data.invoice_no}</span>
             </div>
             <div className="invoice-print-field">
-              <span className="invoice-print-label">Date:</span>
+              <span className="invoice-print-label">{t("date", "Date")}:</span>
               <span className="invoice-print-value">{data.invoice_date}</span>
             </div>
           </div>
           <div className="invoice-print-header-right">
             <div className="invoice-print-field">
-              <span className="invoice-print-label">Customer:</span>
+              <span className="invoice-print-label">{t("customer", "Customer")}:</span>
               <span className="invoice-print-value">
                 {data.customer_code} — {data.customer_name}
               </span>
             </div>
             <div className="invoice-print-field">
-              <span className="invoice-print-label">Salesman:</span>
+              <span className="invoice-print-label">{t("salesman", "Salesman")}:</span>
               <span className="invoice-print-value">
                 {data.salesman_code ? `${data.salesman_code} — ${data.salesman_name}` : data.salesman_name || "—"}
               </span>
@@ -70,12 +73,12 @@ const InvoicePrintView = forwardRef<HTMLDivElement, { data: InvoicePrintData }>(
           <thead>
             <tr>
               <th className="invoice-print-th-no">#</th>
-              <th className="invoice-print-th-code">Code</th>
-              <th className="invoice-print-th-desc">Description</th>
-              <th className="invoice-print-th-qty">Qty</th>
-              <th className="invoice-print-th-price">Price</th>
-              <th className="invoice-print-th-disc">Disc.</th>
-              <th className="invoice-print-th-total">Total</th>
+              <th className="invoice-print-th-code">{t("code", "Code")}</th>
+              <th className="invoice-print-th-desc">{t("description", "Description")}</th>
+              <th className="invoice-print-th-qty">{t("qty", "Qty")}</th>
+              <th className="invoice-print-th-price">{t("price", "Price")}</th>
+              <th className="invoice-print-th-disc">{t("disc", "Disc.")}</th>
+              <th className="invoice-print-th-total">{t("total", "Total")}</th>
             </tr>
           </thead>
           <tbody>
@@ -96,7 +99,7 @@ const InvoicePrintView = forwardRef<HTMLDivElement, { data: InvoicePrintData }>(
         {/* Totals */}
         <div className="invoice-print-totals">
           <div className="invoice-print-totals-row">
-            <span className="invoice-print-totals-label">Total Amount:</span>
+            <span className="invoice-print-totals-label">{t("totalAmount", "Total Amount")}:</span>
             <span className="invoice-print-totals-value">{data.total_amount.toFixed(3)} KWD</span>
           </div>
         </div>
@@ -104,7 +107,7 @@ const InvoicePrintView = forwardRef<HTMLDivElement, { data: InvoicePrintData }>(
         {/* Notes */}
         {data.notes && (
           <div className="invoice-print-notes">
-            <span className="invoice-print-label">Notes:</span> {data.notes}
+            <span className="invoice-print-label">{t("notes", "Notes")}:</span> {data.notes}
           </div>
         )}
 
@@ -112,15 +115,15 @@ const InvoicePrintView = forwardRef<HTMLDivElement, { data: InvoicePrintData }>(
         <div className="invoice-print-footer">
           <div className="invoice-print-sig">
             <div className="invoice-print-sig-line"></div>
-            <span>Prepared By</span>
+            <span>{t("preparedBy", "Prepared By")}</span>
           </div>
           <div className="invoice-print-sig">
             <div className="invoice-print-sig-line"></div>
-            <span>Received By</span>
+            <span>{t("receivedBy", "Received By")}</span>
           </div>
           <div className="invoice-print-sig">
             <div className="invoice-print-sig-line"></div>
-            <span>Driver</span>
+            <span>{t("driver", "Driver")}</span>
           </div>
         </div>
       </div>

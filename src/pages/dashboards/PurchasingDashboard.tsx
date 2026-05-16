@@ -226,7 +226,7 @@ export default function PurchasingDashboard() {
                   <AlertBanner
                     severity="info"
                     icon={UploadCloud}
-                    message={`${data.qc.awaitingPosting} approved GRN${data.qc.awaitingPosting !== 1 ? "s" : ""} ready to post to inventory`}
+                    message={`${data.qc.awaitingPosting} ${t("approvedGrn", "approved GRN")}${data.qc.awaitingPosting !== 1 ? t("pluralSuffix", "s") : ""} ${t("readyToPostInventory", "ready to post to inventory")}`}
                     onClick={() => {/* navigates via GRN list */}}
                   />
                 </div>

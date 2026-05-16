@@ -5,7 +5,7 @@
  * a clear hierarchy. Every section connects to real Supabase data.
  *
  * Sections:
- *  1. Welcome header (personalised, role + date)
+ *  1. Unified glass hero (sticky, merged header + welcome)
  *  2. KPI strip (live counts)
  *  3. A  Stock Reports  |  B  SKU Capacity rings  |  C  Invoices & Returns
  *  4. D  Shipment Details                         |  E  Business Alerts
@@ -13,9 +13,10 @@
  *  6. Quick Actions
  */
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Building2,
+  Camera,
   Package,
   Truck,
   Users,
@@ -52,6 +53,10 @@ const STORAGE_COLORS: Record<string, { hex: string; label: string; icon: typeof 
   Dry: { hex: "#f59e0b",    label: "Dry",     icon: Flame },
 };
 
+// ─── Avatar storage key ───────────────────────────────────────────────────────
+
+const AVATAR_KEY = "exec_avatar_url";
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function getInitials(fullName?: string, email?: string): string {
@@ -66,14 +71,6 @@ function getInitials(fullName?: string, email?: string): string {
 function getGreeting(t: (key: string, fallback: string) => string): string {
   const h = new Date().getHours();
   return h < 12 ? t("goodMorning", "Good Morning") : h < 17 ? t("goodAfternoon", "Good Afternoon") : t("goodEvening", "Good Evening");
-}
-
-function fmtDate(iso: string): string {
-  try {
-    return new Date(iso).toLocaleString("en-GB", {
-      day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit",
-    });
-  } catch { return "—"; }
 }
 
 function fmtToday(): string {
@@ -392,6 +389,64 @@ function deriveAlerts(data: DashboardData, t: (key: string, fallback: string, ..
   return alerts;
 }
 
+// ─── Executive Avatar sub-component ──────────────────────────────────────────
+
+interface ExecutiveAvatarProps {
+  initials: string;
+  avatarUrl: string | null;
+  onUpload: (url: string) => void;
+}
+
+function ExecutiveAvatar({ initials, avatarUrl, onUpload }: ExecutiveAvatarProps) {
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const url = ev.target?.result as string;
+      if (url) {
+        localStorage.setItem(AVATAR_KEY, url);
+        onUpload(url);
+      }
+    };
+    reader.readAsDataURL(file);
+  }
+
+  return (
+    <div className="relative group shrink-0">
+      <div
+        className="w-14 h-14 rounded-2xl ring-2 ring-amber-500/40 ring-offset-2 ring-offset-background overflow-hidden flex items-center justify-center cursor-pointer"
+        onClick={() => fileRef.current?.click()}
+        role="button"
+        tabIndex={0}
+        onKeyDown={(e) => e.key === "Enter" && fileRef.current?.click()}
+        aria-label="Upload avatar"
+      >
+        {avatarUrl ? (
+          <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
+        ) : (
+          <div className="w-full h-full bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center">
+            <span className="text-lg font-bold text-amber-950">{initials}</span>
+          </div>
+        )}
+        {/* Camera overlay on hover */}
+        <div className="absolute inset-0 bg-black/40 rounded-2xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-150">
+          <Camera className="w-5 h-5 text-white" />
+        </div>
+      </div>
+      <input
+        ref={fileRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={handleFileChange}
+      />
+    </div>
+  );
+}
+
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function ExecutiveDashboard() {
@@ -401,11 +456,16 @@ export default function ExecutiveDashboard() {
   const { role } = usePermissions();
   const { data, loading } = useExecutiveData();
 
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(() => localStorage.getItem(AVATAR_KEY));
+
   const fullName = user?.user_metadata?.full_name as string | undefined;
   const initials = getInitials(fullName, user?.email);
+  const firstName = fullName ? fullName.trim().split(/\s+/)[0] : "Marwan";
+  const displayName = `Mr. ${firstName}`;
   const roleLabel = role === "ceo" ? t("roleCeo", "CEO") : role === "gm" ? t("roleGm", "General Manager") : role.replace(/_/g, " ");
   const greeting = getGreeting(t);
   const alerts = data ? deriveAlerts(data, t) : [];
+  const isCeo = role === "ceo";
 
   // ── SKU capacity rings — top 3 storage types ──
   const capacityRings = (() => {
@@ -416,7 +476,6 @@ export default function ExecutiveDashboard() {
         { type: "Chilled", pct: 0, label: "Chilled", sublabel: "—",  color: STORAGE_COLORS.Chilled.hex },
       ];
     }
-    // Map known types, fill unknowns with 0
     const byType: Record<string, number> = {};
     for (const d of data.skuDist) byType[d.type] = d.pct;
 
@@ -430,54 +489,69 @@ export default function ExecutiveDashboard() {
   })();
 
   return (
-    <div className="min-h-screen bg-background pb-24">
-      {/* ── Sticky page header ──────────────────────────────────── */}
-      <header className="sticky top-11 z-40 border-b border-border bg-background/95 backdrop-blur-sm">
-        <div className="max-w-7xl mx-auto px-4 py-3 flex items-center gap-3">
-          <div className="flex items-center justify-center w-9 h-9 rounded-xl bg-amber-500/10 border border-amber-500/20 shrink-0">
-            <Building2 className="w-4 h-4 text-amber-400" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <h1 className="text-[15px] font-bold text-foreground leading-tight">{t("executiveDashboard", "Executive Dashboard")}</h1>
-            <p className="text-[11px] text-muted-foreground leading-tight">{roleLabel} · {t("companyOverview", "Company Overview")}</p>
-          </div>
-          <button
-            onClick={() => navigate("/admin/preview-as")}
-            className="flex items-center gap-1.5 text-xs border border-amber-500/25 bg-amber-500/10 text-amber-400 px-3 py-1.5 rounded-lg font-medium hover:bg-amber-500/20 transition shrink-0"
-          >
-            <Eye className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">{t("viewAsUser", "View As")}</span>
-          </button>
-        </div>
-      </header>
+    <div className="min-h-screen bg-background pb-20">
 
-      <main className="max-w-7xl mx-auto px-4 py-4 space-y-4">
-
-        {/* ═══════════════════════════════════════════════════════════════
-            SECTION 1 — Welcome card
-        ═══════════════════════════════════════════════════════════════ */}
-        <div className="rounded-xl border border-amber-500/20 bg-gradient-to-r from-amber-500/5 to-transparent p-4 flex items-center gap-4">
+      {/* ═══════════════════════════════════════════════════════════════
+          UNIFIED GLASS HERO — sticky header + welcome merged
+      ═══════════════════════════════════════════════════════════════ */}
+      <div className="sticky top-11 z-40 bg-gradient-to-r from-amber-500/8 via-background/95 to-background/95 backdrop-blur-md border-b border-amber-500/20">
+        <div className="max-w-7xl mx-auto px-4 py-2.5 flex items-center gap-3">
           {/* Avatar */}
-          <div className="w-12 h-12 rounded-2xl bg-amber-500 text-amber-950 flex items-center justify-center text-lg font-bold shrink-0">
-            {initials}
-          </div>
+          <ExecutiveAvatar
+            initials={initials}
+            avatarUrl={avatarUrl}
+            onUpload={setAvatarUrl}
+          />
+
+          {/* Identity block */}
           <div className="flex-1 min-w-0">
-            <p className="text-xs text-amber-400/80 font-medium">{greeting}</p>
-            <h2 className="text-lg font-bold text-foreground truncate">
-              {fullName ? `Mr. / Ms. ${fullName}` : t("welcomeBack", "Welcome back")}
-            </h2>
-            <p className="text-[11px] text-muted-foreground">{fmtToday()}</p>
+            {/* Page label */}
+            <div className="flex items-center gap-1.5 mb-0.5">
+              <Building2 className="w-3 h-3 text-amber-400 shrink-0" />
+              <span className="text-[10px] text-amber-400 font-medium leading-none">
+                {t("executiveDashboard", "Executive Dashboard")} · {t("companyOverview", "Company Overview")}
+              </span>
+            </div>
+            {/* Greeting + Name */}
+            <div className="flex items-baseline gap-1.5 flex-wrap">
+              <span className="text-[11px] text-muted-foreground leading-tight">{greeting},</span>
+              <span className="text-base font-bold text-foreground leading-tight">{displayName}</span>
+            </div>
+            {/* Date */}
+            <p className="text-[10px] text-muted-foreground/70 leading-tight mt-0.5">{fmtToday()}</p>
           </div>
-          <div className="hidden md:flex items-center gap-1.5 rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1">
-            <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-            <span className="text-[11px] font-semibold text-amber-400 uppercase tracking-wide">{roleLabel}</span>
+
+          {/* Right pills */}
+          <div className="flex items-center gap-2 shrink-0">
+            {/* Live pill */}
+            <div className="flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1">
+              <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              <span className="text-[10px] font-semibold text-emerald-400 uppercase tracking-wide">Live</span>
+            </div>
+            {/* Role pill */}
+            <div className="hidden sm:flex items-center rounded-full border border-amber-500/30 bg-amber-500/10 px-2.5 py-1">
+              <span className="text-[10px] font-semibold text-amber-400 uppercase tracking-wide">{roleLabel}</span>
+            </div>
+            {/* View As — hidden for CEO */}
+            {!isCeo && (
+              <button
+                onClick={() => navigate("/admin/preview-as")}
+                className="flex items-center gap-1.5 text-xs border border-amber-500/25 bg-amber-500/10 text-amber-400 px-3 py-1.5 rounded-lg font-medium hover:bg-amber-500/20 transition shrink-0"
+              >
+                <Eye className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">{t("viewAsUser", "View As")}</span>
+              </button>
+            )}
           </div>
         </div>
+      </div>
+
+      <main className="max-w-7xl mx-auto px-4 py-3 space-y-3">
 
         {/* ═══════════════════════════════════════════════════════════════
             SECTION 2 — KPI strip
         ═══════════════════════════════════════════════════════════════ */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5">
           {[
             {
               label: t("activeSkus", "Active SKUs"),
@@ -514,10 +588,12 @@ export default function ExecutiveDashboard() {
           ].map((k) => {
             const Icon = k.icon;
             return (
-              <div key={k.label} className={`rounded-xl border ${k.border} ${k.bg} p-3.5 flex flex-col gap-1`}>
-                <Icon className={`w-4 h-4 ${k.color}`} />
-                <p className="text-xl font-bold text-foreground mt-0.5">{k.value}</p>
-                <p className="text-xs text-muted-foreground">{k.label}</p>
+              <div key={k.label} className={`rounded-xl border ${k.border} ${k.bg} p-3 flex items-center gap-3`}>
+                <Icon className={`w-5 h-5 ${k.color} shrink-0`} />
+                <div className="min-w-0">
+                  <p className="text-xl font-bold text-foreground leading-tight">{k.value}</p>
+                  <p className="text-xs text-muted-foreground leading-tight">{k.label}</p>
+                </div>
               </div>
             );
           })}
@@ -526,14 +602,14 @@ export default function ExecutiveDashboard() {
         {/* ═══════════════════════════════════════════════════════════════
             SECTION 3 — Three-panel row: Reports | SKU Capacity | Invoices
         ═══════════════════════════════════════════════════════════════ */}
-        <div className="grid md:grid-cols-3 gap-4">
+        <div className="grid md:grid-cols-3 gap-3">
 
           {/* ── A: Stock Reports ──────────────────────────────── */}
-          <div className="rounded-xl border border-border bg-card p-4 flex flex-col gap-1">
+          <div className="rounded-xl border border-border bg-card p-3 flex flex-col gap-1">
             <div className="flex items-center gap-2 mb-2">
               <Package className="w-4 h-4 text-emerald-400" />
               <h2 className="text-sm font-semibold text-foreground">{t("stockReport", "Stock Reports")}</h2>
-              <span className="ml-auto text-[10px] font-mono text-muted-foreground">
+              <span className="ms-auto text-[10px] font-mono text-muted-foreground">
                 {loading ? "…" : `${data?.activeSkus ?? 0} ${t("activeSkus", "active SKUs")}`}
               </span>
             </div>
@@ -590,8 +666,8 @@ export default function ExecutiveDashboard() {
           </div>
 
           {/* ── B: SKU Capacity rings ─────────────────────────── */}
-          <div className="rounded-xl border border-border bg-card p-4">
-            <div className="flex items-center gap-2 mb-4">
+          <div className="rounded-xl border border-border bg-card p-3">
+            <div className="flex items-center gap-2 mb-2">
               <Activity className="w-4 h-4 text-amber-400" />
               <h2 className="text-sm font-semibold text-foreground">{t("skuDistribution", "SKU Distribution")}</h2>
             </div>
@@ -605,14 +681,14 @@ export default function ExecutiveDashboard() {
                   label={ring.label}
                   sublabel={loading ? "…" : ring.sublabel}
                   color={ring.color}
-                  size={76}
-                  strokeWidth={7}
+                  size={66}
+                  strokeWidth={6}
                 />
               ))}
             </div>
 
             {/* Legend */}
-            <div className="mt-4 pt-3 border-t border-border flex items-center justify-center gap-4 flex-wrap">
+            <div className="mt-3 pt-3 border-t border-border flex items-center justify-center gap-4 flex-wrap">
               {(["Frozen", "Dry", "Chilled"] as const).map((t) => (
                 <LegendDot
                   key={t}
@@ -623,7 +699,7 @@ export default function ExecutiveDashboard() {
             </div>
 
             {/* Total */}
-            <div className="mt-3 text-center">
+            <div className="mt-2 text-center">
               <p className="text-[10px] text-muted-foreground">
                 {loading ? t("loading", "Loading...") : `${data?.activeSkus ?? 0} ${t("totalActiveSkus", "total active SKUs in stock")}`}
               </p>
@@ -631,13 +707,13 @@ export default function ExecutiveDashboard() {
           </div>
 
           {/* ── C: Invoice & Returns ──────────────────────────── */}
-          <div className="rounded-xl border border-border bg-card p-4 flex flex-col">
-            <div className="flex items-center gap-2 mb-3">
+          <div className="rounded-xl border border-border bg-card p-3 flex flex-col">
+            <div className="flex items-center gap-2 mb-2">
               <FileText className="w-4 h-4 text-blue-400" />
               <h2 className="text-sm font-semibold text-foreground">{t("latestInvoices", "Latest Invoices")}</h2>
               <button
                 onClick={() => navigate("/invoice-entry")}
-                className="ml-auto text-[10px] text-primary font-medium hover:underline"
+                className="ms-auto text-[10px] text-primary font-medium hover:underline"
               >
                 {t("viewAll", "View all →")}
               </button>
@@ -652,7 +728,7 @@ export default function ExecutiveDashboard() {
                 {data.invoices.slice(0, 5).map((inv) => (
                   <div
                     key={inv.id}
-                    className="flex items-center gap-2.5 rounded-lg bg-muted/30 px-3 py-2"
+                    className="flex items-center gap-2.5 rounded-lg bg-muted/30 px-3 py-1.5"
                   >
                     <div className="w-1 h-8 rounded-full bg-blue-400/60 shrink-0" />
                     <div className="flex-1 min-w-0">
@@ -679,7 +755,7 @@ export default function ExecutiveDashboard() {
             )}
 
             {/* Returns placeholder */}
-            <div className="mt-3 pt-3 border-t border-border">
+            <div className="mt-2 pt-2 border-t border-border">
               <p className="text-[10px] text-muted-foreground/50 text-center">
                 {t("returnsModuleNextPhase", "Returns module connects in next phase")}
               </p>
@@ -690,16 +766,16 @@ export default function ExecutiveDashboard() {
         {/* ═══════════════════════════════════════════════════════════════
             SECTION 4 — Shipment Details | Business Alerts
         ═══════════════════════════════════════════════════════════════ */}
-        <div className="grid md:grid-cols-2 gap-4">
+        <div className="grid md:grid-cols-2 gap-3">
 
           {/* ── D: Shipment Details ───────────────────────────── */}
-          <div className="rounded-xl border border-border bg-card p-4">
-            <div className="flex items-center gap-2 mb-3">
+          <div className="rounded-xl border border-border bg-card p-3">
+            <div className="flex items-center gap-2 mb-2">
               <Truck className="w-4 h-4 text-blue-400" />
               <h2 className="text-sm font-semibold text-foreground">{t("shipmentDetails", "Shipment Details")}</h2>
               <button
                 onClick={() => navigate("/grn")}
-                className="ml-auto text-[10px] text-primary font-medium hover:underline"
+                className="ms-auto text-[10px] text-primary font-medium hover:underline"
               >
                 {t("viewAll", "View all →")}
               </button>
@@ -713,10 +789,10 @@ export default function ExecutiveDashboard() {
               <>
                 {/* Received group */}
                 <div className="mb-2">
-                  <p className="text-[10px] font-semibold text-blue-400 uppercase tracking-widest mb-1.5">
+                  <p className="text-[10px] font-semibold text-blue-400 uppercase tracking-widest mb-1">
                     {t("received", "Received")}
                   </p>
-                  <div className="space-y-1.5">
+                  <div className="space-y-1">
                     {data.grns
                       .filter((g) => g.status === "received" || g.status === "approved")
                       .slice(0, 3)
@@ -724,7 +800,7 @@ export default function ExecutiveDashboard() {
                         <button
                           key={grn.id}
                           onClick={() => navigate(`/grn/${grn.id}`)}
-                          className="w-full flex items-center gap-3 rounded-lg bg-muted/25 hover:bg-muted/40 px-3 py-2 transition text-left"
+                          className="w-full flex items-center gap-3 rounded-lg bg-muted/25 hover:bg-muted/40 px-3 py-1.5 transition text-left"
                         >
                           <div className="w-1.5 h-1.5 rounded-full bg-blue-400 shrink-0" />
                           <div className="flex-1 min-w-0">
@@ -743,11 +819,11 @@ export default function ExecutiveDashboard() {
 
                 {/* In transit / pending */}
                 {data.grns.filter((g) => g.status === "draft" || g.status === "inspected").length > 0 && (
-                  <div className="mt-3 pt-2 border-t border-border">
-                    <p className="text-[10px] font-semibold text-amber-400 uppercase tracking-widest mb-1.5">
+                  <div className="mt-2 pt-2 border-t border-border">
+                    <p className="text-[10px] font-semibold text-amber-400 uppercase tracking-widest mb-1">
                       {t("inProgress", "In Progress")}
                     </p>
-                    <div className="space-y-1.5">
+                    <div className="space-y-1">
                       {data.grns
                         .filter((g) => g.status === "draft" || g.status === "inspected")
                         .slice(0, 3)
@@ -755,7 +831,7 @@ export default function ExecutiveDashboard() {
                           <button
                             key={grn.id}
                             onClick={() => navigate(`/grn/${grn.id}`)}
-                            className="w-full flex items-center gap-3 rounded-lg bg-muted/25 hover:bg-muted/40 px-3 py-2 transition text-left"
+                            className="w-full flex items-center gap-3 rounded-lg bg-muted/25 hover:bg-muted/40 px-3 py-1.5 transition text-left"
                           >
                             <div className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse shrink-0" />
                             <div className="flex-1 min-w-0">
@@ -777,12 +853,12 @@ export default function ExecutiveDashboard() {
           </div>
 
           {/* ── E: Business Alerts ────────────────────────────── */}
-          <div className="rounded-xl border border-border bg-card p-4">
-            <div className="flex items-center gap-2 mb-3">
+          <div className="rounded-xl border border-border bg-card p-3">
+            <div className="flex items-center gap-2 mb-2">
               <Bell className="w-4 h-4 text-amber-400" />
               <h2 className="text-sm font-semibold text-foreground">{t("businessAlerts", "Alerts")}</h2>
               {!loading && alerts.filter((a) => a.type !== "info").length > 0 && (
-                <span className="ml-auto inline-flex items-center justify-center w-5 h-5 rounded-full bg-amber-500/20 text-amber-400 text-[10px] font-bold">
+                <span className="ms-auto inline-flex items-center justify-center w-5 h-5 rounded-full bg-amber-500/20 text-amber-400 text-[10px] font-bold">
                   {alerts.filter((a) => a.type !== "info").length}
                 </span>
               )}
@@ -791,7 +867,7 @@ export default function ExecutiveDashboard() {
             {loading ? (
               <LoadingRows count={3} />
             ) : (
-              <div className="space-y-2">
+              <div className="space-y-1.5">
                 {alerts.map((alert) => {
                   const Icon = alert.icon;
                   const cls =
@@ -806,7 +882,7 @@ export default function ExecutiveDashboard() {
                       key={alert.id}
                       onClick={() => alert.path && navigate(alert.path)}
                       disabled={!alert.path}
-                      className={`w-full text-left flex items-start gap-3 rounded-lg border px-3 py-2.5 transition ${cls} ${alert.path ? "hover:opacity-80" : "cursor-default"}`}
+                      className={`w-full text-left flex items-start gap-3 rounded-lg border px-3 py-2 transition ${cls} ${alert.path ? "hover:opacity-80" : "cursor-default"}`}
                     >
                       <Icon className="w-3.5 h-3.5 shrink-0 mt-0.5" />
                       <div className="flex-1 min-w-0">
@@ -824,14 +900,14 @@ export default function ExecutiveDashboard() {
         {/* ═══════════════════════════════════════════════════════════════
             SECTION 5 — Salesman Performance
         ═══════════════════════════════════════════════════════════════ */}
-        <div className="rounded-xl border border-border bg-card p-4">
-          <div className="flex items-center gap-2 mb-4">
+        <div className="rounded-xl border border-border bg-card p-3">
+          <div className="flex items-center gap-2 mb-2">
             <UserSquare2 className="w-4 h-4 text-cyan-400" />
             <h2 className="text-sm font-semibold text-foreground">{t("topSalesmen", "Sales Team")}</h2>
-            <span className="text-[10px] text-muted-foreground ml-1">— {t("customerCoverage", "Customer coverage")}</span>
+            <span className="text-[10px] text-muted-foreground ms-1">— {t("customerCoverage", "Customer coverage")}</span>
             <button
               onClick={() => navigate("/salesmen")}
-              className="ml-auto text-[10px] text-primary font-medium hover:underline"
+              className="ms-auto text-[10px] text-primary font-medium hover:underline"
             >
               {t("manage", "Manage →")}
             </button>
@@ -846,11 +922,11 @@ export default function ExecutiveDashboard() {
               sub={t("addSalesmenTracking", "Add salesmen to see performance tracking")}
             />
           ) : (
-            <div className="grid md:grid-cols-2 gap-x-8 gap-y-3">
-              {data.salesmen.slice(0, 10).map((s) => (
+            <div className="grid md:grid-cols-2 gap-x-8 gap-y-2">
+              {data.salesmen.slice(0, 8).map((s) => (
                 <div key={s.id} className="flex items-center gap-3">
                   {/* Avatar */}
-                  <div className="w-7 h-7 rounded-full bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center shrink-0">
+                  <div className="w-6 h-6 rounded-full bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center shrink-0">
                     <span className="text-[10px] font-bold text-cyan-400">
                       {s.name.charAt(0).toUpperCase()}
                     </span>
@@ -880,10 +956,10 @@ export default function ExecutiveDashboard() {
             SECTION 6 — Quick Actions
         ═══════════════════════════════════════════════════════════════ */}
         <div>
-          <h2 className="text-[11px] font-semibold text-muted-foreground uppercase tracking-widest mb-2.5">
+          <h2 className="text-[11px] font-semibold text-muted-foreground uppercase tracking-widest mb-2">
             {t("quickNav", "Quick Access")}
           </h2>
-          <div className="grid grid-cols-3 md:grid-cols-6 gap-3">
+          <div className="grid grid-cols-3 md:grid-cols-6 gap-2.5">
             {[
               { label: t("reports", "Reports"),        path: "/reports",        icon: BarChart3,    color: "text-violet-400", bg: "bg-violet-500/10", border: "border-violet-500/20" },
               { label: t("stockOverview", "Stock"),  path: "/stock",          icon: Package,      color: "text-emerald-400", bg: "bg-emerald-500/10", border: "border-emerald-500/20" },
@@ -895,7 +971,7 @@ export default function ExecutiveDashboard() {
               <button
                 key={path}
                 onClick={() => navigate(path)}
-                className={`flex flex-col items-center gap-1.5 rounded-xl border ${border} ${bg} p-3 hover:opacity-80 transition-all active:scale-[0.97]`}
+                className={`flex flex-col items-center gap-1.5 rounded-xl border ${border} ${bg} py-2.5 px-2 hover:opacity-80 transition-all active:scale-[0.97]`}
               >
                 <Icon className={`w-5 h-5 ${color}`} />
                 <span className="text-[11px] font-medium text-foreground">{label}</span>

@@ -75,6 +75,7 @@ const ProductPerformanceReport = lazy(() => import("./pages/reports/ProductPerfo
 const CustomerAnalysisReport = lazy(() => import("./pages/reports/CustomerAnalysisReport"));
 const ExpiryAlertsReport = lazy(() => import("./pages/reports/ExpiryAlertsReport"));
 const AuditLogPage = lazy(() => import("./pages/audit/AuditLogPage"));
+const UploadCenterPage = lazy(() => import("./pages/admin/UploadCenterPage"));
 
 import { Loader2 } from "lucide-react";
 
@@ -635,6 +636,14 @@ function ProtectedRoutes() {
           />
 
           {/* ── Admin ─────────────────────────────────────────── */}
+          <Route
+            path="/admin/upload-center"
+            element={
+              <RoleGuard requiredPermission="isOwner">
+                <UploadCenterPage />
+              </RoleGuard>
+            }
+          />
           <Route
             path="/admin/users"
             element={

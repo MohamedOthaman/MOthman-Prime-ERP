@@ -149,7 +149,7 @@ export default function InvoiceTeamDashboard() {
             <AlertBanner
               severity="warning"
               icon={Clock}
-              message={`${invoices!.ready} invoice${invoices!.ready !== 1 ? "s" : ""} ready — waiting for warehouse execution`}
+              message={`${invoices!.ready} ${invoices!.ready !== 1 ? t("invoicesReadyPlural", "invoices") : t("invoiceReadySingular", "invoice")} ${t("readyWaitingWarehouse", "ready — waiting for warehouse execution")}`}
               onClick={() => navigate("/invoices")}
             />
           )}
@@ -157,7 +157,7 @@ export default function InvoiceTeamDashboard() {
             <AlertBanner
               severity="info"
               icon={RotateCcw}
-              message={`${returns!.draft} return${returns!.draft !== 1 ? "s" : ""} pending processing`}
+              message={`${returns!.draft} ${returns!.draft !== 1 ? t("returnsPlural", "returns") : t("returnSingular", "return")} ${t("pendingProcessing", "pending processing")}`}
               onClick={() => navigate("/returns")}
             />
           )}
@@ -165,7 +165,7 @@ export default function InvoiceTeamDashboard() {
             <AlertBanner
               severity="danger"
               icon={XCircle}
-              message={`${invoices!.cancelled} cancelled invoice${invoices!.cancelled !== 1 ? "s" : ""} — review required`}
+              message={`${invoices!.cancelled} ${t("cancelledInvoice", "cancelled invoice")}${invoices!.cancelled !== 1 ? t("pluralSuffix", "s") : ""} — ${t("reviewRequired", "review required")}`}
               onClick={() => navigate("/invoices")}
             />
           )}

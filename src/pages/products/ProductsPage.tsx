@@ -60,12 +60,12 @@ export default function ProductsPage() {
 
   const filterGroups = useMemo<FilterDropdownGroup[]>(() => {
     return [
-      { key: "brand", label: "Brands", options: sortValues(rows.map((row) => row.brand)) },
-      { key: "category", label: "Category", options: sortValues(rows.map((row) => row.category)) },
-      { key: "storage", label: "Storage", options: sortValues(rows.map((row) => inferStorageType(row))) },
-      { key: "section", label: "Section", options: sortValues(rows.map((row) => row.section)) },
+      { key: "brand", label: t("brands", "Brands"), options: sortValues(rows.map((row) => row.brand)) },
+      { key: "category", label: t("category", "Category"), options: sortValues(rows.map((row) => row.category)) },
+      { key: "storage", label: t("storage", "Storage"), options: sortValues(rows.map((row) => inferStorageType(row))) },
+      { key: "section", label: t("section", "Section"), options: sortValues(rows.map((row) => row.section)) },
     ];
-  }, [rows]);
+  }, [rows, t]);
 
   const filteredRows = useMemo(() => {
     const q = deferredSearch.trim().toLowerCase();
@@ -129,9 +129,9 @@ export default function ProductsPage() {
         barcode: row.primary_barcode || "",
         price: row.selling_price != null ? row.selling_price.toFixed(3) : "",
         discount: row.discount != null ? row.discount.toFixed(3) : "",
-        status: row.is_active ? "Active" : "Inactive",
+        status: row.is_active ? t("active", "Active") : t("inactive", "Inactive"),
       })),
-    [filteredRows, lang]
+    [filteredRows, lang, t]
   );
 
   const handleToggleFilter = (
@@ -161,22 +161,22 @@ export default function ProductsPage() {
 
   const handleExportExcel = () => {
     void exportExcel({
-      title: "Products Report",
-      subtitle: `${filteredRows.length} filtered products`,
+      title: t("productsReport", "Products Report"),
+      subtitle: `${filteredRows.length} ${t("filteredProducts", "filtered products")}`,
       filename: "products_filtered",
-      sheetName: "Products",
+      sheetName: t("pageTitleProducts", "Products"),
       columns: [
-        { header: "Code", key: "code", width: 14 },
-        { header: "Product Name", key: "name", width: 30 },
-        { header: "Brand", key: "brand", width: 18 },
-        { header: "Category", key: "category", width: 18 },
-        { header: "Section", key: "section", width: 18 },
-        { header: "Storage", key: "storage", width: 12 },
-        { header: "Packaging", key: "packaging", width: 14 },
-        { header: "Barcode", key: "barcode", width: 18 },
-        { header: "Price", key: "price", width: 12 },
-        { header: "Discount %", key: "discount", width: 12 },
-        { header: "Status", key: "status", width: 10 },
+        { header: t("colCode", "Code"), key: "code", width: 14 },
+        { header: t("colProductName", "Product Name"), key: "name", width: 30 },
+        { header: t("brands", "Brand"), key: "brand", width: 18 },
+        { header: t("category", "Category"), key: "category", width: 18 },
+        { header: t("section", "Section"), key: "section", width: 18 },
+        { header: t("storage", "Storage"), key: "storage", width: 12 },
+        { header: t("colPackaging", "Packaging"), key: "packaging", width: 14 },
+        { header: t("colBarcode", "Barcode"), key: "barcode", width: 18 },
+        { header: t("colPrice", "Price"), key: "price", width: 12 },
+        { header: t("colDiscount", "Discount %"), key: "discount", width: 12 },
+        { header: t("colStatus", "Status"), key: "status", width: 10 },
       ],
       rows: exportRows,
     });
@@ -184,22 +184,22 @@ export default function ProductsPage() {
 
   const handleExportPdf = () => {
     exportPDF({
-      title: "Products Report",
-      subtitle: `${filteredRows.length} filtered products`,
+      title: t("productsReport", "Products Report"),
+      subtitle: `${filteredRows.length} ${t("filteredProducts", "filtered products")}`,
       filename: "products_filtered",
-      sheetName: "Products",
+      sheetName: t("pageTitleProducts", "Products"),
       columns: [
-        { header: "Code", key: "code" },
-        { header: "Product Name", key: "name" },
-        { header: "Brand", key: "brand" },
-        { header: "Category", key: "category" },
-        { header: "Section", key: "section" },
-        { header: "Storage", key: "storage" },
-        { header: "Packaging", key: "packaging" },
-        { header: "Barcode", key: "barcode" },
-        { header: "Price", key: "price" },
-        { header: "Discount %", key: "discount" },
-        { header: "Status", key: "status" },
+        { header: t("colCode", "Code"), key: "code" },
+        { header: t("colProductName", "Product Name"), key: "name" },
+        { header: t("brands", "Brand"), key: "brand" },
+        { header: t("category", "Category"), key: "category" },
+        { header: t("section", "Section"), key: "section" },
+        { header: t("storage", "Storage"), key: "storage" },
+        { header: t("colPackaging", "Packaging"), key: "packaging" },
+        { header: t("colBarcode", "Barcode"), key: "barcode" },
+        { header: t("colPrice", "Price"), key: "price" },
+        { header: t("colDiscount", "Discount %"), key: "discount" },
+        { header: t("colStatus", "Status"), key: "status" },
       ],
       rows: exportRows,
     });
@@ -219,7 +219,7 @@ export default function ProductsPage() {
               }}
               className="flex items-center gap-1 rounded-md bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground"
             >
-              <Plus className="h-3 w-3" /> Add Product
+              <Plus className="h-3 w-3" /> {t("addProduct", "Add Product")}
             </button>
           </span>
         </div>
@@ -231,7 +231,7 @@ export default function ProductsPage() {
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <input
               type="text"
-              placeholder="Search by code, name, barcode, or category..."
+              placeholder={t("searchProductsPlaceholder", "Search by code, name, barcode, or category...")}
               value={search}
               onChange={(event) => setSearch(event.target.value)}
               className="h-9 w-full rounded-md border border-border bg-secondary pl-9 pr-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
@@ -251,10 +251,10 @@ export default function ProductsPage() {
           </div>
         </div>
 
-        <div className="text-left text-xs text-muted-foreground">{filteredRows.length} Products</div>
+        <div className="text-left text-xs text-muted-foreground">{filteredRows.length} {t("pageTitleProducts", "Products")}</div>
 
         {loading ? (
-          <div className="py-10 text-center text-sm text-muted-foreground">Loading...</div>
+          <div className="py-10 text-center text-sm text-muted-foreground">{t("loading", "Loading...")}</div>
         ) : filteredRows.length === 0 ? (
           <div className="py-10 text-center text-sm text-muted-foreground">{t("noProductsFound", "No products found")}</div>
         ) : (
@@ -276,8 +276,8 @@ export default function ProductsPage() {
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm text-foreground">{getProductDisplayName(row, lang)}</p>
                     <p className="text-xs text-muted-foreground">
-                      {[row.category || "Uncategorized", row.section || row.brand || "No section", row.uom || "No UOM"].join(" • ")}
-                      {row.selling_price ? ` • ${row.selling_price.toFixed(3)} KWD` : " • No price"}
+                      {[row.category || t("uncategorized", "Uncategorized"), row.section || row.brand || t("noSection", "No section"), row.uom || t("noUom", "No UOM")].join(" • ")}
+                      {row.selling_price ? ` • ${row.selling_price.toFixed(3)} KWD` : ` • ${t("noPrice", "No price")}`}
                     </p>
                   </div>
                   {!row.is_active && (
@@ -290,7 +290,7 @@ export default function ProductsPage() {
                     type="button"
                     onClick={(e) => { e.stopPropagation(); navigate(`/products/${row.id}/trace`); }}
                     className="ml-1 p-1 rounded hover:bg-muted/50 transition shrink-0"
-                    title="View batch trace"
+                    title={t("viewBatchTrace", "View batch trace")}
                   >
                     <Layers className="h-3.5 w-3.5 text-violet-400/70" />
                   </button>

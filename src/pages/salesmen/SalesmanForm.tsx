@@ -5,6 +5,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2, ArrowLeft, Save, Trash2, AlertTriangle } from "lucide-react";
 import { useRole } from "@/features/reports/hooks/useRole";
+import { useLang } from "@/contexts/LanguageContext";
 
 interface SalesmanFormData {
     code: string;
@@ -30,6 +31,7 @@ export default function SalesmanForm() {
     const navigate = useNavigate();
     const { id } = useParams<{ id: string }>();
     const { isAdmin } = useRole();
+    const { t } = useLang();
     const isEdit = Boolean(id && id !== "new");
 
     const [form, setForm] = useState<SalesmanFormData>(EMPTY_FORM);
@@ -53,7 +55,7 @@ export default function SalesmanForm() {
                 .single();
 
             if (err || !data) {
-                setError("Salesman not found.");
+                setError(t("salesmanNotFound", "Salesman not found."));
             } else {
                 setForm({
                     code: data.code,
@@ -69,7 +71,7 @@ export default function SalesmanForm() {
         }
 
         load();
-    }, [id, isEdit]);
+    }, [id, isEdit, t]);
 
     const set = (field: keyof SalesmanFormData, value: string | boolean) => {
         setForm((prev) => ({ ...prev, [field]: value }));
@@ -78,11 +80,11 @@ export default function SalesmanForm() {
 
     const handleSave = async () => {
         if (!form.code.trim()) {
-            setError("Salesman code is required.");
+            setError(t("salesmanCodeRequired", "Salesman code is required."));
             return;
         }
         if (!form.name.trim()) {
-            setError("Salesman name is required.");
+            setError(t("salesmanNameRequired", "Salesman name is required."));
             return;
         }
 
@@ -115,7 +117,7 @@ export default function SalesmanForm() {
 
         if (err) {
             if (err.code === "23505") {
-                setError("This salesman code already exists. Use a unique code.");
+                setError(t("salesmanCodeDuplicate", "This salesman code already exists. Use a unique code."));
             } else {
                 setError(err.message);
             }
@@ -139,7 +141,7 @@ export default function SalesmanForm() {
         setDeleting(false);
 
         if (err) {
-            setError("Failed to delete. This salesman may have linked records.");
+            setError(t("salesmanDeleteFailed", "Failed to delete. This salesman may have linked records."));
             setConfirmDelete(false);
         } else {
             navigate("/salesmen");
@@ -165,7 +167,7 @@ export default function SalesmanForm() {
                         <ArrowLeft className="w-5 h-5 text-foreground" />
                     </button>
                     <h1 className="text-lg font-bold text-foreground tracking-tight">
-                        {isEdit ? "Edit Salesman" : "New Salesman"}
+                        {isEdit ? t("editSalesman", "Edit Salesman") : t("newSalesman", "New Salesman")}
                     </h1>
                     <button
                         onClick={handleSave}
@@ -177,7 +179,7 @@ export default function SalesmanForm() {
                         ) : (
                             <Save className="w-4 h-4" />
                         )}
-                        Save
+                        {t("save", "Save")}
                     </button>
                 </div>
             </header>
@@ -192,12 +194,12 @@ export default function SalesmanForm() {
 
                 <section className="space-y-4">
                     <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                        Salesman Information
+                        {t("salesmanInformation", "Salesman Information")}
                     </h2>
 
                     <div>
                         <label className="block text-xs text-muted-foreground mb-1">
-                            Code <span className="text-destructive">*</span>
+                            {t("code", "Code")} <span className="text-destructive">*</span>
                         </label>
                         <input
                             value={form.code}
@@ -207,13 +209,13 @@ export default function SalesmanForm() {
                             className="w-full bg-secondary border border-border rounded-md px-3 py-2 text-sm text-foreground font-mono uppercase placeholder:normal-case placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
                         />
                         <p className="text-xs text-muted-foreground mt-1">
-                            Must match the code used in customer assignment.
+                            {t("salesmanCodeHint", "Must match the code used in customer assignment.")}
                         </p>
                     </div>
 
                     <div>
                         <label className="block text-xs text-muted-foreground mb-1">
-                            Full Name <span className="text-destructive">*</span>
+                            {t("fullName", "Full Name")} <span className="text-destructive">*</span>
                         </label>
                         <input
                             value={form.name}
@@ -225,7 +227,7 @@ export default function SalesmanForm() {
 
                     <div>
                         <label className="block text-xs text-muted-foreground mb-1">
-                            Arabic Name
+                            {t("arabicName", "Arabic Name")}
                         </label>
                         <input
                             value={form.name_ar}
@@ -239,7 +241,7 @@ export default function SalesmanForm() {
                     <div className="grid grid-cols-2 gap-3">
                         <div>
                             <label className="block text-xs text-muted-foreground mb-1">
-                                Phone
+                                {t("phone", "Phone")}
                             </label>
                             <input
                                 value={form.phone}
@@ -250,7 +252,7 @@ export default function SalesmanForm() {
                         </div>
                         <div>
                             <label className="block text-xs text-muted-foreground mb-1">
-                                Email
+                                {t("email", "Email")}
                             </label>
                             <input
                                 value={form.email}
@@ -264,13 +266,13 @@ export default function SalesmanForm() {
 
                     <div>
                         <label className="block text-xs text-muted-foreground mb-1">
-                            Notes
+                            {t("notes", "Notes")}
                         </label>
                         <textarea
                             value={form.notes}
                             onChange={(e) => set("notes", e.target.value)}
                             rows={3}
-                            placeholder="Notes about this salesman..."
+                            placeholder={t("salesmanNotesPlaceholder", "Notes about this salesman...")}
                             className="w-full bg-secondary border border-border rounded-md px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring resize-none"
                         />
                     </div>
@@ -284,9 +286,9 @@ export default function SalesmanForm() {
                                 className="rounded border-border w-4 h-4"
                             />
                             <div>
-                                <span className="text-sm text-foreground">Active</span>
+                                <span className="text-sm text-foreground">{t("active", "Active")}</span>
                                 <p className="text-xs text-muted-foreground">
-                                    Inactive salesmen are hidden from customer assignment dropdowns.
+                                    {t("inactiveSalesmanHint", "Inactive salesmen are hidden from customer assignment dropdowns.")}
                                 </p>
                             </div>
                         </label>
@@ -296,15 +298,15 @@ export default function SalesmanForm() {
                 {isEdit && isAdmin && (
                     <section className="border-t border-border pt-6">
                         <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
-                            Danger Zone
+                            {t("dangerZone", "Danger Zone")}
                         </h2>
                         {confirmDelete ? (
                             <div className="bg-destructive/10 border border-destructive/30 rounded-lg p-4 space-y-3">
                                 <p className="text-sm text-destructive font-medium">
-                                    Are you sure? This cannot be undone.
+                                    {t("deleteConfirmation", "Are you sure? This cannot be undone.")}
                                 </p>
                                 <p className="text-xs text-muted-foreground">
-                                    If this salesman is assigned to customers, those customer records will lose their salesman assignment.
+                                    {t("salesmanDeleteWarning", "If this salesman is assigned to customers, those customer records will lose their salesman assignment.")}
                                 </p>
                                 <div className="flex gap-2">
                                     <button
@@ -317,13 +319,13 @@ export default function SalesmanForm() {
                                         ) : (
                                             <Trash2 className="w-4 h-4" />
                                         )}
-                                        Delete permanently
+                                        {t("deletePermanently", "Delete permanently")}
                                     </button>
                                     <button
                                         onClick={() => setConfirmDelete(false)}
                                         className="text-sm px-4 py-2 rounded-md bg-secondary text-foreground hover:opacity-80"
                                     >
-                                        Cancel
+                                        {t("cancel", "Cancel")}
                                     </button>
                                 </div>
                             </div>
@@ -333,7 +335,7 @@ export default function SalesmanForm() {
                                 className="flex items-center gap-1.5 text-sm text-destructive hover:opacity-80 transition-opacity"
                             >
                                 <Trash2 className="w-4 h-4" />
-                                Delete salesman
+                                {t("deleteSalesman", "Delete salesman")}
                             </button>
                         )}
                     </section>

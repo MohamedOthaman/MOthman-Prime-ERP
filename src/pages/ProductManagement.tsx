@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Settings, Plus, Edit3, X, Check, Search, Barcode, Camera, Trash2, ChevronDown, ChevronUp, CalendarIcon } from "lucide-react";
 import { useStockContext } from "@/contexts/StockContext";
 import { Product, StorageType } from "@/data/stockData";
@@ -14,12 +14,6 @@ import { useLang } from "@/contexts/LanguageContext";
 import { useNavigate } from "react-router-dom";
 
 type View = "list" | "add" | "edit";
-
-const storageOptions: { label: string; value: StorageType }[] = [
-  { label: "❄️ Frozen", value: "Frozen" },
-  { label: "🧊 Chilled", value: "Chilled" },
-  { label: "📦 Dry", value: "Dry" },
-];
 
 const unitOptions = ["CTN", "PCS", "BAG", "KG", "TIN", "PAIL", "BTL", "BLK", "BOX"];
 
@@ -45,6 +39,15 @@ export default function ProductManagement() {
   const { stock, addProduct, updateProduct } = useStockContext();
   const { t, lang } = useLang();
   const navigate = useNavigate();
+
+  const storageOptions = useMemo<{ label: string; value: StorageType }[]>(
+    () => [
+      { label: `❄️ ${t("frozen", "Frozen")}`, value: "Frozen" },
+      { label: `🧊 ${t("chilled", "Chilled")}`, value: "Chilled" },
+      { label: `📦 ${t("dry", "Dry")}`, value: "Dry" },
+    ],
+    [t]
+  );
   const { videoRef, startScanning, stopCamera } = useBarcodeScanner();
   const [view, setView] = useState<View>("list");
   const [search, setSearch] = useState("");
@@ -108,7 +111,7 @@ export default function ProductManagement() {
 
   const addBarcodeToForm = () => {
     if (!newBarcode.trim()) return;
-    if (barcodes.includes(newBarcode.trim())) { toast.error("Barcode already added"); return; }
+    if (barcodes.includes(newBarcode.trim())) { toast.error(t("barcodeAlreadyAdded", "Barcode already added")); return; }
     setBarcodes(prev => [...prev, newBarcode.trim()]);
     setNewBarcode("");
   };
@@ -118,9 +121,9 @@ export default function ProductManagement() {
     startScanning((barcode) => {
       if (!barcodes.includes(barcode)) {
         setBarcodes(prev => [...prev, barcode]);
-        toast.success(`Barcode added: ${barcode}`);
+        toast.success(`${t("barcodeAdded", "Barcode added")}: ${barcode}`);
       } else {
-        toast.info("Barcode already exists");
+        toast.info(t("barcodeAlreadyExists", "Barcode already exists"));
       }
     });
   };
@@ -145,9 +148,9 @@ export default function ProductManagement() {
   };
 
   const handleSave = async () => {
-    if (!code.trim()) { toast.error("Product Code required"); return; }
-    if (!name.trim()) { toast.error("Product Name required"); return; }
-    if (!brandName.trim()) { toast.error("Brand required"); return; }
+    if (!code.trim()) { toast.error(t("productCodeRequired", "Product Code required")); return; }
+    if (!name.trim()) { toast.error(t("productNameRequired", "Product Name required")); return; }
+    if (!brandName.trim()) { toast.error(t("brandRequired", "Brand required")); return; }
 
     const product: Product = {
       code: code.trim().toUpperCase(),
@@ -171,10 +174,10 @@ export default function ProductManagement() {
 
     if (view === "edit" && editingCode) {
       await updateProduct(editingCode, product, brandName.trim());
-      toast.success("Product updated");
+      toast.success(t("productUpdated", "Product updated"));
     } else {
       await addProduct(brandName.trim(), product);
-      toast.success("Product added");
+      toast.success(t("productAddedMsg", "Product added"));
     }
 
     resetForm();
@@ -200,7 +203,7 @@ export default function ProductManagement() {
                 onClick={() => navigate("/products/import-validation")}
                 className="border border-border bg-secondary px-3 py-1.5 rounded-md text-xs font-semibold"
               >
-                Validate Import
+                {t("validateImport", "Validate Import")}
               </button>
               <button onClick={startAdd} className="bg-primary text-primary-foreground px-3 py-1.5 rounded-md text-xs font-semibold flex items-center gap-1">
                 <Plus className="w-3 h-3" /> {t("add")}
@@ -352,7 +355,7 @@ export default function ProductManagement() {
               <div className="flex gap-2">
                 <input type="text" value={newBarcode} onChange={e => setNewBarcode(e.target.value)}
                   onKeyDown={e => e.key === "Enter" && (e.preventDefault(), addBarcodeToForm())}
-                  placeholder="Enter barcode..."
+                  placeholder={t("enterBarcodeHint", "Enter barcode...")}
                   className="flex-1 bg-secondary text-foreground text-sm rounded-md px-3 py-2 border border-border focus:outline-none focus:ring-1 focus:ring-ring placeholder:text-muted-foreground font-mono" />
                 <button onClick={addBarcodeToForm} className="bg-primary text-primary-foreground px-3 py-2 rounded-md text-xs font-semibold">{t("add")}</button>
               </div>
@@ -395,9 +398,9 @@ export default function ProductManagement() {
                     className="w-full px-4 py-2.5 flex items-center gap-2 text-left hover:bg-muted/50 transition-colors"
                   >
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm text-foreground font-mono">{batch.batchNo || "New Batch"}</p>
+                      <p className="text-sm text-foreground font-mono">{batch.batchNo || t("newBatch", "New Batch")}</p>
                       <p className="text-xs text-muted-foreground">
-                        {batch.qty} {batch.unit} · Exp: {batch.expiryDate || "—"}
+                        {batch.qty} {batch.unit} · {t("exp", "Exp")}: {batch.expiryDate || "—"}
                       </p>
                     </div>
                     {expandedBatch === idx ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
@@ -407,13 +410,13 @@ export default function ProductManagement() {
                     <div className="px-4 pb-3 space-y-2 bg-muted/30">
                       <div className="grid grid-cols-2 gap-2">
                         <div>
-                          <label className="text-[10px] text-muted-foreground block mb-0.5">Batch No *</label>
+                          <label className="text-[10px] text-muted-foreground block mb-0.5">{t("batchNo", "Batch No")} *</label>
                           <input type="text" value={batch.batchNo} onChange={e => updateBatch(idx, "batchNo", e.target.value)}
                             placeholder="B-001"
                             className="w-full bg-secondary text-foreground text-sm rounded-md px-2.5 py-2 border border-border focus:outline-none focus:ring-1 focus:ring-ring placeholder:text-muted-foreground font-mono" />
                         </div>
                         <div>
-                          <label className="text-[10px] text-muted-foreground block mb-0.5">Unit</label>
+                          <label className="text-[10px] text-muted-foreground block mb-0.5">{t("unit", "Unit")}</label>
                           <select value={batch.unit} onChange={e => updateBatch(idx, "unit", e.target.value)}
                             className="w-full bg-secondary text-foreground text-sm rounded-md px-2.5 py-2 border border-border focus:outline-none focus:ring-1 focus:ring-ring">
                             {(packaging ? packaging.split(" / ").filter(Boolean) : unitOptions).map(u => <option key={u} value={u}>{u}</option>)}
@@ -421,57 +424,57 @@ export default function ProductManagement() {
                         </div>
                       </div>
                       <div>
-                        <label className="text-[10px] text-muted-foreground block mb-0.5">Quantity</label>
+                        <label className="text-[10px] text-muted-foreground block mb-0.5">{t("quantity", "Quantity")}</label>
                         <input type="number" value={batch.qty} onChange={e => updateBatch(idx, "qty", Math.max(0, parseInt(e.target.value) || 0))}
                           min="0"
                           className="w-full bg-secondary text-foreground text-sm rounded-md px-2.5 py-2 border border-border focus:outline-none focus:ring-1 focus:ring-ring" />
                       </div>
                       <div className="grid grid-cols-2 gap-2">
                         <div>
-                          <label className="text-[10px] text-muted-foreground block mb-0.5">Production Date</label>
+                          <label className="text-[10px] text-muted-foreground block mb-0.5">{t("productionDate", "Production Date")}</label>
                           <Drawer>
                             <DrawerTrigger asChild>
                               <Button variant="outline" className={cn("w-full justify-start text-left text-sm font-normal h-9 bg-secondary border-border", !batch.productionDate && "text-muted-foreground")}>
                                 <CalendarIcon className="mr-1.5 h-3.5 w-3.5 opacity-60" />
-                                {batch.productionDate ? format(new Date(batch.productionDate), "dd/MM/yyyy") : "Select"}
+                                {batch.productionDate ? format(new Date(batch.productionDate), "dd/MM/yyyy") : t("select", "Select")}
                               </Button>
                             </DrawerTrigger>
                             <DrawerContent className="px-4 pb-8">
                               <div className="mt-4">
-                                <DateWheel value={batch.productionDate || format(new Date(), "yyyy-MM-dd")} onChange={v => updateBatch(idx, "productionDate", v)} label="Production Date" />
+                                <DateWheel value={batch.productionDate || format(new Date(), "yyyy-MM-dd")} onChange={v => updateBatch(idx, "productionDate", v)} label={t("productionDate", "Production Date")} />
                               </div>
                             </DrawerContent>
                           </Drawer>
                         </div>
                         <div>
-                          <label className="text-[10px] text-muted-foreground block mb-0.5">Expiry Date *</label>
+                          <label className="text-[10px] text-muted-foreground block mb-0.5">{t("expiryDate", "Expiry Date")} *</label>
                           <Drawer>
                             <DrawerTrigger asChild>
                               <Button variant="outline" className={cn("w-full justify-start text-left text-sm font-normal h-9 bg-secondary border-border", !batch.expiryDate && "text-muted-foreground")}>
                                 <CalendarIcon className="mr-1.5 h-3.5 w-3.5 opacity-60" />
-                                {batch.expiryDate ? format(new Date(batch.expiryDate), "dd/MM/yyyy") : "Select"}
+                                {batch.expiryDate ? format(new Date(batch.expiryDate), "dd/MM/yyyy") : t("select", "Select")}
                               </Button>
                             </DrawerTrigger>
                             <DrawerContent className="px-4 pb-8">
                               <div className="mt-4">
-                                <DateWheel value={batch.expiryDate || format(new Date(), "yyyy-MM-dd")} onChange={v => updateBatch(idx, "expiryDate", v)} label="Expiry Date" />
+                                <DateWheel value={batch.expiryDate || format(new Date(), "yyyy-MM-dd")} onChange={v => updateBatch(idx, "expiryDate", v)} label={t("expiryDate", "Expiry Date")} />
                               </div>
                             </DrawerContent>
                           </Drawer>
                         </div>
                       </div>
                       <div>
-                        <label className="text-[10px] text-muted-foreground block mb-0.5">Received Date</label>
+                        <label className="text-[10px] text-muted-foreground block mb-0.5">{t("receivedDate", "Received Date")}</label>
                         <Drawer>
                           <DrawerTrigger asChild>
                             <Button variant="outline" className={cn("w-full justify-start text-left text-sm font-normal h-9 bg-secondary border-border", !batch.receivedDate && "text-muted-foreground")}>
                               <CalendarIcon className="mr-1.5 h-3.5 w-3.5 opacity-60" />
-                              {batch.receivedDate ? format(new Date(batch.receivedDate), "dd/MM/yyyy") : "Select"}
+                              {batch.receivedDate ? format(new Date(batch.receivedDate), "dd/MM/yyyy") : t("select", "Select")}
                             </Button>
                           </DrawerTrigger>
                           <DrawerContent className="px-4 pb-8">
                             <div className="mt-4">
-                              <DateWheel value={batch.receivedDate || format(new Date(), "yyyy-MM-dd")} onChange={v => updateBatch(idx, "receivedDate", v)} label="Received Date" />
+                              <DateWheel value={batch.receivedDate || format(new Date(), "yyyy-MM-dd")} onChange={v => updateBatch(idx, "receivedDate", v)} label={t("receivedDate", "Received Date")} />
                             </div>
                           </DrawerContent>
                         </Drawer>

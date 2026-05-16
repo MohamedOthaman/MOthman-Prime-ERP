@@ -331,12 +331,12 @@ export default function ReturnDetailsPage() {
         <div className="rounded-xl border border-border bg-card overflow-hidden">
           <div className="px-4 py-3 border-b border-border flex items-center justify-between">
             <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
-              Return Lines ({lines.length})
+              {t("returnLines", "Return Lines")} ({lines.length})
             </p>
-            <p className="text-[10px] text-muted-foreground">{totalReturnQty} units total</p>
+            <p className="text-[10px] text-muted-foreground">{totalReturnQty} {t("unitsTotal", "units total")}</p>
           </div>
           {lines.length === 0 ? (
-            <div className="px-4 py-6 text-center text-[11px] text-muted-foreground">No return lines</div>
+            <div className="px-4 py-6 text-center text-[11px] text-muted-foreground">{t("noReturnLines", "No return lines")}</div>
           ) : (
             lines.map((line, i) => (
               <div key={line.id} className={`px-4 py-3 ${i > 0 ? "border-t border-border" : ""}`}>
@@ -349,7 +349,7 @@ export default function ReturnDetailsPage() {
                       </span>
                       <ConditionPill condition={line.condition} />
                       {isPosted && line.return_movement_id && (
-                        <span className="text-[9px] text-emerald-400 font-medium">Processed</span>
+                        <span className="text-[9px] text-emerald-400 font-medium">{t("processed", "Processed")}</span>
                       )}
                       {line.outbound_execution_line_id && (
                         <span className="text-[9px] text-muted-foreground/60 font-mono">
@@ -359,9 +359,9 @@ export default function ReturnDetailsPage() {
                     </div>
                     {(line.batch_no || line.expiry_date) && (
                       <p className="text-[10px] text-muted-foreground">
-                        {line.batch_no ? `Batch: ${line.batch_no}` : ""}
+                        {line.batch_no ? `${t("batch", "Batch")}: ${line.batch_no}` : ""}
                         {line.batch_no && line.expiry_date ? " · " : ""}
-                        {line.expiry_date ? `Exp: ${line.expiry_date}` : ""}
+                        {line.expiry_date ? `${t("exp", "Exp")}: ${line.expiry_date}` : ""}
                       </p>
                     )}
                     {line.reason && <p className="text-[10px] text-muted-foreground italic">{line.reason}</p>}
@@ -404,13 +404,13 @@ export default function ReturnDetailsPage() {
                   className="flex items-center gap-1.5 text-xs px-4 py-2 rounded-lg bg-amber-500 text-black font-semibold hover:bg-amber-400 transition disabled:opacity-40"
                 >
                   {acting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
-                  Receive Goods
+                  {t("receiveGoods", "Receive Goods")}
                 </button>
                 <button
                   onClick={() => navigate(`/returns/new?invoiceId=${returnDoc.invoice_id}`)}
                   className="flex items-center gap-1.5 text-xs px-4 py-2 rounded-lg border border-border text-muted-foreground hover:bg-muted/30 transition"
                 >
-                  Edit Lines
+                  {t("editLines", "Edit Lines")}
                 </button>
                 {isAdmin && (
                   <button
@@ -433,14 +433,13 @@ export default function ReturnDetailsPage() {
                   className="flex items-center gap-1.5 text-xs px-4 py-2 rounded-lg bg-violet-500 text-white font-semibold hover:bg-violet-600 transition disabled:opacity-40"
                 >
                   {acting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RotateCcw className="w-3.5 h-3.5" />}
-                  Post Return
+                  {t("postReturn", "Post Return")}
                 </button>
                 <div className="w-full">
                   <div className="flex items-start gap-1.5 rounded-lg border border-amber-500/20 bg-amber-500/5 px-3 py-2">
                     <AlertCircle className="w-3.5 h-3.5 text-amber-400 shrink-0 mt-0.5" />
                     <p className="text-[10px] text-amber-400">
-                      Posting will update inventory across all linked batches. OK items restocked to original batch.
-                      DMG/EXPIRY logged only — no restock.
+                      {t("postReturnWarning", "Posting will update inventory across all linked batches. OK items restocked to original batch. DMG/EXPIRY logged only — no restock.")}
                     </p>
                   </div>
                 </div>
@@ -454,22 +453,22 @@ export default function ReturnDetailsPage() {
           <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-4 space-y-1.5">
             <div className="flex items-center gap-2">
               <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-              <p className="text-xs font-bold text-emerald-400">Return Posted</p>
+              <p className="text-xs font-bold text-emerald-400">{t("returnPostedLabel", "Return Posted")}</p>
             </div>
             <p className="text-[11px] text-muted-foreground">
               {fmtDateTime(returnDoc.posted_at)} · {fmtAED(returnDoc.total_amount)}
             </p>
             <p className="text-[11px] text-muted-foreground">
-              {okQty > 0 ? `${okQty} units restocked` : ""}
+              {okQty > 0 ? `${okQty} ${t("unitsRestocked", "units restocked")}` : ""}
               {okQty > 0 && (dmgQty > 0 || expQty > 0) ? " · " : ""}
-              {dmgQty > 0 ? `${dmgQty} damaged` : ""}
+              {dmgQty > 0 ? `${dmgQty} ${t("damaged", "damaged")}` : ""}
               {dmgQty > 0 && expQty > 0 ? " · " : ""}
-              {expQty > 0 ? `${expQty} expired` : ""}
+              {expQty > 0 ? `${expQty} ${t("expiredLabel", "expired")}` : ""}
             </p>
             {totalAllocSlices > 0 && (
               <p className="text-[10px] text-muted-foreground/70">
-                Traced across {totalAllocSlices} allocation slice{totalAllocSlices !== 1 ? "s" : ""}
-                {uniqueBatches > 0 ? ` / ${uniqueBatches} batch${uniqueBatches !== 1 ? "es" : ""}` : ""}
+                {t("tracedAcross", "Traced across")} {totalAllocSlices} {totalAllocSlices !== 1 ? t("allocationSlices", "allocation slices") : t("allocationSlice", "allocation slice")}
+                {uniqueBatches > 0 ? ` / ${uniqueBatches} ${uniqueBatches !== 1 ? t("batches", "batches") : t("batch", "batch")}` : ""}
               </p>
             )}
           </div>

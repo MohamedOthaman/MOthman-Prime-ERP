@@ -9,7 +9,7 @@
  * Pagination: 50 rows per page.
  */
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   ShieldCheck, Search, ChevronDown, ChevronRight, Clock, User, Filter,
 } from "lucide-react";
@@ -24,19 +24,11 @@ import {
   EmptyState,
   LoadingRows,
 } from "@/components/dashboard/DashboardShell";
+import { useLang } from "@/contexts/LanguageContext";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 const PAGE_SIZE = 50;
-
-const ENTITY_OPTIONS = [
-  { value: "",        label: "All Types"  },
-  { value: "grn",     label: "GRN"        },
-  { value: "invoice", label: "Invoice"    },
-  { value: "product", label: "Product"    },
-  { value: "user",    label: "User"       },
-  { value: "system",  label: "System"     },
-];
 
 const ENTITY_COLOR: Record<string, string> = {
   grn:     "text-cyan-400   bg-cyan-500/10   border-cyan-500/20",
@@ -91,7 +83,12 @@ function JsonPanel({ label, value }: { label: string; value: Record<string, any>
 
 // ─── Row ─────────────────────────────────────────────────────────────────────
 
-function AuditRow({ row }: { row: AuditLogRow }) {
+function AuditRow({ row, labelBefore, labelAfter, labelMetadata }: {
+  row: AuditLogRow;
+  labelBefore: string;
+  labelAfter: string;
+  labelMetadata: string;
+}) {
   const [expanded, setExpanded] = useState(false);
   const hasDetail = row.old_value || row.new_value || row.metadata;
   const entityCls = ENTITY_COLOR[row.entity_type] ?? ENTITY_COLOR.system;
@@ -148,10 +145,10 @@ function AuditRow({ row }: { row: AuditLogRow }) {
         <tr className="border-b border-border/50 bg-muted/10">
           <td colSpan={6} className="px-8 py-3">
             <div className="flex flex-wrap gap-4">
-              {row.old_value && <JsonPanel label="Before" value={row.old_value} />}
-              {row.new_value && <JsonPanel label="After"  value={row.new_value} />}
+              {row.old_value && <JsonPanel label={labelBefore} value={row.old_value} />}
+              {row.new_value && <JsonPanel label={labelAfter}  value={row.new_value} />}
               {row.metadata  && !row.old_value && !row.new_value && (
-                <JsonPanel label="Metadata" value={row.metadata} />
+                <JsonPanel label={labelMetadata} value={row.metadata} />
               )}
             </div>
           </td>
@@ -164,6 +161,7 @@ function AuditRow({ row }: { row: AuditLogRow }) {
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function AuditLogPage() {
+  const { t } = useLang();
   const [rows, setRows]       = useState<AuditLogRow[]>([]);
   const [total, setTotal]     = useState(0);
   const [hasMore, setHasMore] = useState(false);
@@ -180,6 +178,23 @@ export default function AuditLogPage() {
   // Applied filters
   const [applied, setApplied] = useState<AuditLogFilters>({});
 
+  const ENTITY_OPTIONS = useMemo(() => [
+    { value: "",        label: t("allTypes",  "All Types") },
+    { value: "grn",     label: t("grn",       "GRN")       },
+    { value: "invoice", label: t("invoice",   "Invoice")   },
+    { value: "product", label: t("product",   "Product")   },
+    { value: "user",    label: t("user",      "User")      },
+    { value: "system",  label: t("system",    "System")    },
+  ], [t]);
+
+  const TABLE_HEADERS = useMemo(() => [
+    t("timestamp",   "Timestamp"),
+    t("performedBy", "Performed By"),
+    t("entity",      "Entity"),
+    t("action",      "Action"),
+    t("entityId",    "Entity ID"),
+  ], [t]);
+
   async function fetchPage(filters: AuditLogFilters, offset: number) {
     setLoading(true);
     setError(null);
@@ -189,7 +204,7 @@ export default function AuditLogPage() {
       setTotal(result.total);
       setHasMore(result.hasMore);
     } catch (e: any) {
-      setError(e.message ?? "Failed to load audit logs");
+      setError(e.message ?? t("failedLoadAuditLogs", "Failed to load audit logs"));
     } finally {
       setLoading(false);
     }
@@ -222,19 +237,23 @@ export default function AuditLogPage() {
   const pageStart  = page * PAGE_SIZE + 1;
   const pageEnd    = page * PAGE_SIZE + rows.length;
 
+  const labelBefore   = t("before",   "Before");
+  const labelAfter    = t("after",    "After");
+  const labelMetadata = t("metadata", "Metadata");
+
   return (
     <DashboardShell
       icon={ShieldCheck}
-      title="Audit Log"
-      subtitle="Full system activity log — all recorded actions by users"
+      title={t("auditLog", "Audit Log")}
+      subtitle={t("auditLogSubtitle", "Full system activity log — all recorded actions by users")}
       accent="violet"
     >
       {/* Filters */}
-      <SectionCard title="Filters" icon={Filter} iconClass="text-violet-400">
+      <SectionCard title={t("filters", "Filters")} icon={Filter} iconClass="text-violet-400">
         <div className="flex flex-wrap items-end gap-3">
           {/* Entity type */}
           <div className="flex flex-col gap-1">
-            <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Type</label>
+            <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">{t("type", "Type")}</label>
             <select
               value={entityType}
               onChange={e => setEntityType(e.target.value)}
@@ -246,7 +265,7 @@ export default function AuditLogPage() {
 
           {/* From date */}
           <div className="flex flex-col gap-1">
-            <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">From</label>
+            <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">{t("from", "From")}</label>
             <input
               type="date"
               value={fromDate}
@@ -257,7 +276,7 @@ export default function AuditLogPage() {
 
           {/* To date */}
           <div className="flex flex-col gap-1">
-            <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">To</label>
+            <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">{t("to", "To")}</label>
             <input
               type="date"
               value={toDate}
@@ -268,7 +287,7 @@ export default function AuditLogPage() {
 
           {/* Action search */}
           <div className="flex flex-col gap-1 flex-1 min-w-[160px]">
-            <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Action</label>
+            <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">{t("action", "Action")}</label>
             <div className="flex items-center gap-2 rounded-lg border border-border bg-background px-3 py-1.5">
               <Search className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
               <input
@@ -286,14 +305,14 @@ export default function AuditLogPage() {
             onClick={handleApply}
             className="rounded-lg border border-primary bg-primary/10 px-4 py-1.5 text-xs font-semibold text-primary hover:bg-primary/20 transition"
           >
-            Apply
+            {t("apply", "Apply")}
           </button>
           {hasFilters && (
             <button
               onClick={handleClear}
               className="rounded-lg border border-border bg-muted/20 px-3 py-1.5 text-xs text-muted-foreground hover:bg-muted/40 transition"
             >
-              Clear
+              {t("clear", "Clear")}
             </button>
           )}
         </div>
@@ -301,7 +320,9 @@ export default function AuditLogPage() {
 
       {/* Table */}
       <SectionCard
-        title={loading ? "Audit Entries" : `Audit Entries (${total.toLocaleString()} total)`}
+        title={loading
+          ? t("auditEntries", "Audit Entries")
+          : t("auditEntriesTotal", "Audit Entries ({{count}} total)").replace("{{count}}", total.toLocaleString())}
         icon={Clock}
         iconClass="text-violet-400"
       >
@@ -310,7 +331,7 @@ export default function AuditLogPage() {
         ) : loading ? (
           <LoadingRows rows={10} />
         ) : rows.length === 0 ? (
-          <EmptyState icon={ShieldCheck} message="No audit log entries match the filter" />
+          <EmptyState icon={ShieldCheck} message={t("noAuditEntries", "No audit log entries match the filter")} />
         ) : (
           <>
             <div className="overflow-x-auto">
@@ -318,7 +339,7 @@ export default function AuditLogPage() {
                 <thead>
                   <tr className="border-b border-border">
                     <th className="pb-2 w-6" />
-                    {["Timestamp", "Performed By", "Entity", "Action", "Entity ID"].map(h => (
+                    {TABLE_HEADERS.map(h => (
                       <th key={h} className="pb-2 text-left text-[10px] font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap px-2">
                         {h}
                       </th>
@@ -326,7 +347,15 @@ export default function AuditLogPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {rows.map(r => <AuditRow key={r.id} row={r} />)}
+                  {rows.map(r => (
+                    <AuditRow
+                      key={r.id}
+                      row={r}
+                      labelBefore={labelBefore}
+                      labelAfter={labelAfter}
+                      labelMetadata={labelMetadata}
+                    />
+                  ))}
                 </tbody>
               </table>
             </div>
@@ -334,7 +363,7 @@ export default function AuditLogPage() {
             {/* Pagination */}
             <div className="mt-4 flex items-center justify-between gap-4">
               <span className="text-xs text-muted-foreground">
-                Showing {pageStart}–{pageEnd} of {total.toLocaleString()}
+                {t("showing", "Showing")} {pageStart}–{pageEnd} {t("of", "of")} {total.toLocaleString()}
               </span>
               <div className="flex items-center gap-2">
                 <button
@@ -342,17 +371,17 @@ export default function AuditLogPage() {
                   disabled={page === 0}
                   className="rounded-lg border border-border bg-muted/20 px-3 py-1.5 text-xs text-muted-foreground hover:bg-muted/40 transition disabled:opacity-40"
                 >
-                  Previous
+                  {t("previous", "Previous")}
                 </button>
                 <span className="text-xs text-muted-foreground font-mono">
-                  Page {page + 1} / {Math.max(1, Math.ceil(total / PAGE_SIZE))}
+                  {t("page", "Page")} {page + 1} / {Math.max(1, Math.ceil(total / PAGE_SIZE))}
                 </span>
                 <button
                   onClick={() => setPage(p => p + 1)}
                   disabled={!hasMore}
                   className="rounded-lg border border-border bg-muted/20 px-3 py-1.5 text-xs text-muted-foreground hover:bg-muted/40 transition disabled:opacity-40"
                 >
-                  Next
+                  {t("next", "Next")}
                 </button>
               </div>
             </div>

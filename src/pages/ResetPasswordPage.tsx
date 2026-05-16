@@ -35,7 +35,7 @@ export default function ResetPasswordPage() {
         setChecking(false);
       } else {
         // If still no session after waiting, the link is invalid/expired
-        toast.error("Invalid or expired reset link");
+        toast.error(t("invalidResetLink", "Invalid or expired reset link"));
         navigate("/auth");
       }
     };
@@ -49,7 +49,7 @@ export default function ResetPasswordPage() {
     e.preventDefault();
 
     if (!password || !confirmPassword) {
-      toast.error("Please fill all fields");
+      toast.error(t("fillAllFields", "Please fill all fields"));
       return;
     }
 
@@ -85,7 +85,7 @@ export default function ResetPasswordPage() {
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="flex flex-col items-center gap-3">
           <Loader2 className="w-6 h-6 animate-spin text-primary" />
-          <p className="text-sm text-muted-foreground">Verifying reset link…</p>
+          <p className="text-sm text-muted-foreground">{t("verifyingResetLink", "Verifying reset link…")}</p>
         </div>
       </div>
     );

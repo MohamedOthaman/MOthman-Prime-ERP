@@ -66,7 +66,9 @@ export default function PickingQueuePage() {
           <div className="flex-1">
             <h1 className="text-[15px] font-bold text-foreground">{t("pageTitlePickingQueue", "Picking Queue")}</h1>
             <p className="text-[10px] text-muted-foreground">
-              {loading ? "Loading…" : `${filtered.length} ready invoice${filtered.length !== 1 ? "s" : ""}`}
+              {loading
+                ? t("loading", "Loading…")
+                : `${filtered.length} ${t("readyInvoices", "ready invoices")}`}
             </p>
           </div>
           <button
@@ -118,7 +120,7 @@ export default function PickingQueuePage() {
                       #{inv.invoice_number ?? inv.id.slice(0, 8)}
                     </span>
                     <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded border text-amber-400 bg-amber-500/10 border-amber-500/25">
-                      READY
+                      {t("statusReady", "READY")}
                     </span>
                   </div>
                   <p className="text-sm font-medium text-foreground mt-0.5">{inv.customer_name ?? "—"}</p>

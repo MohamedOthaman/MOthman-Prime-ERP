@@ -186,7 +186,7 @@ export default function ImportExport() {
   const [validationErrors, setValidationErrors] = useState<ValidationError[]>([]);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  const expiryOptions = [30, 60, 90, 180].map(d => ({ label: `${d} days`, value: d }));
+  const expiryOptions = [30, 60, 90, 180].map(d => ({ label: `${d} ${t("days", "days")}`, value: d }));
 
   const flattenStock = () => {
     const rows: any[] = [];
@@ -325,23 +325,23 @@ export default function ImportExport() {
     const errors: ValidationError[] = [];
     const code = row["Product Code"] || row["product_code"] || row["Code"];
     if (!code || String(code).trim() === "") {
-      errors.push({ row: rowNum, field: "Product Code", message: "Missing Product Code" });
+      errors.push({ row: rowNum, field: "Product Code", message: t("missingProductCode", "Missing Product Code") });
     }
     const batch = row["Batch No"] || row["batch_no"] || row["Batch"];
     if (!batch || String(batch).trim() === "") {
-      errors.push({ row: rowNum, field: "Batch", message: "Missing Batch No" });
+      errors.push({ row: rowNum, field: "Batch", message: t("missingBatchNo", "Missing Batch No") });
     }
     const prodDate = row["Production Date"] || row["production_date"] || row["Prod Date"];
     if (!prodDate) {
-      errors.push({ row: rowNum, field: "Production Date", message: "Missing Production Date" });
+      errors.push({ row: rowNum, field: "Production Date", message: t("missingProductionDate", "Missing Production Date") });
     }
     const expDate = row["Expiry Date"] || row["expiry_date"] || row["Exp Date"];
     if (!expDate) {
-      errors.push({ row: rowNum, field: "Expiry Date", message: "Missing Expiry Date" });
+      errors.push({ row: rowNum, field: "Expiry Date", message: t("missingExpiryDate", "Missing Expiry Date") });
     }
     const qty = row["Qty"] || row["qty"] || row["Quantity"];
     if (qty === undefined || qty === null || isNaN(Number(qty)) || Number(qty) <= 0) {
-      errors.push({ row: rowNum, field: "Quantity", message: "Invalid or missing Quantity" });
+      errors.push({ row: rowNum, field: "Quantity", message: t("invalidQuantity", "Invalid or missing Quantity") });
     }
     return errors;
   };
@@ -543,7 +543,7 @@ export default function ImportExport() {
                 <p className="text-xs font-semibold text-destructive mb-2">{t("validationErrors", "Validation Errors")} ({validationErrors.length})</p>
                 <div className="max-h-32 overflow-y-auto space-y-1">
                   {validationErrors.map((err, i) => (
-                    <p key={i} className="text-xs text-destructive/80">Row {err.row}: {err.field} — {err.message}</p>
+                    <p key={i} className="text-xs text-destructive/80">{t("rowLabel", "Row")} {err.row}: {err.field} — {err.message}</p>
                   ))}
                 </div>
               </div>

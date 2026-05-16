@@ -78,7 +78,7 @@ export default function ProductImportValidationPage() {
       const data = await getProductImportValidationRows();
       setRows(data);
     } catch (loadError: any) {
-      setError(loadError?.message ?? "Failed to load product import validation data.");
+      setError(loadError?.message ?? t("failedToLoadValidation", "Failed to load product import validation data."));
     } finally {
       setLoading(false);
     }
@@ -157,13 +157,13 @@ export default function ProductImportValidationPage() {
                 </p>
                 <div className="grid gap-2 text-xs text-muted-foreground sm:grid-cols-3">
                   <div className="rounded-md border border-border bg-background p-3">
-                    Import-ready products: {productImportValidationMetadata.importReadyProducts}
+                    {t("importReadyProducts", "Import-ready products")}: {productImportValidationMetadata.importReadyProducts}
                   </div>
                   <div className="rounded-md border border-border bg-background p-3">
-                    Import-ready barcodes: {productImportValidationMetadata.importReadyBarcodes}
+                    {t("importReadyBarcodes", "Import-ready barcodes")}: {productImportValidationMetadata.importReadyBarcodes}
                   </div>
                   <div className="rounded-md border border-border bg-background p-3">
-                    Import-ready prices: {productImportValidationMetadata.importReadyPrices}
+                    {t("importReadyPrices", "Import-ready prices")}: {productImportValidationMetadata.importReadyPrices}
                   </div>
                 </div>
               </div>
