@@ -93,6 +93,7 @@
   "saved": "saved",
   "warehouseErp": "Food Choice ERP",
   "logout": "Logout",
+  "settings": "Settings",
   "brandName": "Food Choice ERP",
   "brandTagline": "Food Solutions Providers",
   "developedBy": "Developed by Mohamed Othman",
@@ -1524,5 +1525,7 @@
   "docTypeInvoice": "Sales Invoice",
   "docTypeSku": "Product / SKU",
   "docTypePackingList": "Packing List",
-  "docTypeUnknown": "Unknown"
+  "docTypeUnknown": "Unknown",
+  "collapseSidebar": "Collapse Sidebar",
+  "expandSidebar": "Expand Sidebar"
 }

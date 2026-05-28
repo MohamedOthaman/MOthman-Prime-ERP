@@ -4,7 +4,9 @@
       "Bash(npm run *)",
       "Bash(npx tsc *)",
       "PowerShell(rustc --version)",
-      "PowerShell(cargo --version)"
+      "PowerShell(cargo --version)",
+      "Bash(grep -E \"\\\\.\\(tsx?|jsx?\\)$\")",
+      "mcp__claude_ai_Supabase__apply_migration"
     ]
   }
 }

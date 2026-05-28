@@ -13,7 +13,24 @@ export interface ParsedInvoice {
   invoiceNo: string;
   date: string;
   customerName: string;
-  items: { itemCode: string; itemName: string; uom: string; qty: number }[];
+  customerCode?: string;
+  poNumber?: string;
+  quotationNumber?: string;
+  currency?: string;
+  paymentTerms?: string;
+  salesmanName?: string;
+  notes?: string;
+  items: {
+    itemCode: string;
+    itemName: string;
+    uom: string;
+    qty: number;
+    barcode?: string;
+    unitPrice?: number;
+    discount?: number;
+    tax?: number;
+    total?: number;
+  }[];
 }
 
 export interface ParsedProduct {
@@ -213,6 +230,27 @@ export async function parsePdf(
   type: PdfType,
   onProgress?: (msg: string) => void,
 ): Promise<ParseResult> {
+  const ext = file.name.split(".").pop()?.toLowerCase() ?? "";
+  const isImage = file.type.startsWith("image/") || ["jpg", "jpeg", "png", "webp", "gif"].includes(ext);
+
+  if (isImage) {
+    onProgress?.("Reading image file...");
+    try {
+      const dataUrl = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+      onProgress?.("Sending image to AI vision...");
+      const { data, error } = await invokeParsePdfWithRetry({ type, images: [dataUrl] }, 2);
+      if (error) return { error: error.message || "Failed to process image" };
+      return data?.data || data;
+    } catch (err: any) {
+      return { error: err.message || "Failed to read image file" };
+    }
+  }
+
   onProgress?.("Reading PDF...");
 
   // Try text extraction first

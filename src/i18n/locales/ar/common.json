@@ -93,6 +93,7 @@
   "saved": "تم الحفظ",
   "warehouseErp": "فود تشويس ERP",
   "logout": "تسجيل الخروج",
+  "settings": "الإعدادات",
   "brandName": "فود تشويس ERP",
   "brandTagline": "حلول الأغذية المتكاملة",
   "developedBy": "تطوير محمد عثمان",
@@ -1570,5 +1571,7 @@
   "docTypeInvoice": "فاتورة بيع",
   "docTypeSku": "منتج / SKU",
   "docTypePackingList": "قائمة تعبئة",
-  "docTypeUnknown": "غير محدد"
+  "docTypeUnknown": "غير محدد",
+  "collapseSidebar": "إخفاء القائمة الجانبية",
+  "expandSidebar": "إظهار القائمة الجانبية"
 }

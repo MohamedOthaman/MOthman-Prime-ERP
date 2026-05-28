@@ -13,7 +13,7 @@ const invoiceTool = {
   type: "function",
   function: {
     name: "extract_invoices",
-    description: "Extract structured invoice data from the transaction summary listing",
+    description: "Extract structured invoice, purchase order (PO), or quotation data from the document",
     parameters: {
       type: "object",
       properties: {
@@ -22,25 +22,37 @@ const invoiceTool = {
           items: {
             type: "object",
             properties: {
-              invoiceNo: { type: "string", description: "The Doc No number" },
-              date: { type: "string", description: "Date in YYYY-MM-DD format (convert from DD/MM/YYYY)" },
-              customerName: { type: "string", description: "Full customer name after the code and slash" },
+              invoiceNo: { type: "string", description: "The document number, invoice number, PO number, or quotation number" },
+              date: { type: "string", description: "Date in YYYY-MM-DD format (convert from any format)" },
+              customerName: { type: "string", description: "Full customer or supplier name" },
+              customerCode: { type: "string", description: "Customer or partner code if printed on the document, otherwise empty string" },
+              poNumber: { type: "string", description: "Purchase Order (PO) number if present, otherwise empty string" },
+              quotationNumber: { type: "string", description: "Quotation number if present, otherwise empty string" },
+              currency: { type: "string", description: "Currency (e.g. KWD, USD, BHD) if present, otherwise empty string" },
+              paymentTerms: { type: "string", description: "Payment terms/credit type if present, otherwise empty string" },
+              salesmanName: { type: "string", description: "Salesman name if present, otherwise empty string" },
+              notes: { type: "string", description: "Any notes or comments printed on the document, otherwise empty string" },
               items: {
                 type: "array",
                 items: {
                   type: "object",
                   properties: {
-                    itemCode: { type: "string" },
-                    itemName: { type: "string" },
-                    uom: { type: "string" },
-                    qty: { type: "number" },
+                    itemCode: { type: "string", description: "Item code or SKU code, or empty string if not present" },
+                    itemName: { type: "string", description: "Full descriptive name of the item" },
+                    uom: { type: "string", description: "Unit of measure (e.g., CTN, PCS, KG, BOX), or empty string if not present" },
+                    qty: { type: "number", description: "Quantity ordered/delivered" },
+                    barcode: { type: "string", description: "Barcode if present, otherwise empty string" },
+                    unitPrice: { type: "number", description: "Unit price of the item if present, otherwise 0" },
+                    discount: { type: "number", description: "Discount amount or percentage if present, otherwise 0" },
+                    tax: { type: "number", description: "Tax amount or percentage if present, otherwise 0" },
+                    total: { type: "number", description: "Line item total price if present, otherwise 0" },
                   },
-                  required: ["itemCode", "itemName", "uom", "qty"],
+                  required: ["itemCode", "itemName", "uom", "qty", "barcode", "unitPrice", "discount", "tax", "total"],
                   additionalProperties: false,
                 },
               },
             },
-            required: ["invoiceNo", "date", "customerName", "items"],
+            required: ["invoiceNo", "date", "customerName", "customerCode", "poNumber", "quotationNumber", "currency", "paymentTerms", "salesmanName", "notes", "items"],
             additionalProperties: false,
           },
         },
@@ -131,12 +143,10 @@ const packingTool = {
 };
 
 const systemPrompts: Record<string, string> = {
-  invoices: `You are a data extraction expert for warehouse management. Extract ALL invoices from this TRANSACTION SUMMARY LISTING PDF text.
-Each invoice starts with "Doc No/Dt :" followed by the invoice number and date (DD/MM/YYYY format - convert to YYYY-MM-DD).
-Customer line has format "Customer : CODE / NAME".
-Items are in a table with columns: Item Code, Item Name, Uom, Sales Qty, LC Value, FC Value.
-Extract the Item Code, Item Name, Uom, and Sales Qty (as a number) for each item.
-Be thorough - extract EVERY invoice and EVERY item from the document.`,
+  invoices: `You are a data extraction expert for ERP systems. Extract ALL invoices, purchase orders (PO), or quotation documents from the provided text or images.
+For each document, find the document/invoice/PO/reference number, the document date (convert to YYYY-MM-DD format), the customer or partner name, any customer/partner code, PO number, quotation number, currency, payment terms, salesman name, and notes.
+Extract every item row in the document table: item code, item name, barcode, quantity, unit of measure (uom), unit price, discount, tax, and total.
+Be extremely thorough and accurate - extract EVERY document and EVERY item from the document.`,
 
   sku: `You are a precise data extraction expert for warehouse stock reports. Extract ALL products from the provided stock report content.
 
@@ -317,11 +327,14 @@ serve(async (req) => {
     // Use pro for SKU (accuracy critical), flash-preview for others (fast + accurate)
     const model = type === "sku" ? "google/gemini-2.5-pro" : "google/gemini-3-flash-preview";
 
-    // For image-based PDFs (packing lists or scanned SKU reports), use vision
-    if (images && images.length > 0 && (type === "packing_list" || !textChunks || textChunks.length === 0)) {
-      const label = type === "packing_list" ? "packing list" : "stock report";
+    // For image-based PDFs (packing lists, invoices, or scanned SKU reports), use vision
+    if (images && images.length > 0 && (type === "packing_list" || type === "invoices" || !textChunks || textChunks.length === 0)) {
+      const label = type === "packing_list" ? "packing list" : type === "invoices" ? "invoice/PO/quotation" : "stock report";
       const content: Array<{ type: string; text?: string; image_url?: { url: string } }> = [
-        { type: "text", text: `Extract all products from these ${label} pages. Detect tables, reconstruct fragmented rows, and use semantic column matching:` },
+        { type: "text", text: type === "invoices"
+          ? "Extract all documents and their item lines from these invoice/PO/quotation images. Identify headers and row details as defined in the function tool:"
+          : `Extract all products from these ${label} pages. Detect tables, reconstruct fragmented rows, and use semantic column matching:`
+        },
       ];
       for (const img of images) {
         content.push({ type: "image_url", image_url: { url: img } });
