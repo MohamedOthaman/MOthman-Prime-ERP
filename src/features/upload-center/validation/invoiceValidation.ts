@@ -3,25 +3,26 @@
  *
  * Extractors return loosely-typed `Record<string, unknown>[]` rows. This module
  * heuristically maps each row to an invoice line (quantity / unit price / line
- * total / description) using bilingual EN + AR column synonyms, then validates
- * it with a `zod` schema that cross-checks the arithmetic. Every value is run
- * through `parseLocaleNumber` first so Arabic-Indic digits and Arabic/Western
- * separators are handled.
+ * total / date / description) using bilingual EN + AR column synonyms, then
+ * validates it with a `zod` schema that cross-checks the arithmetic. Numeric
+ * values go through `parseLocaleNumber` and dates through `parseInvoiceDate`, so
+ * Arabic-Indic digits and Arabic/Western separators are handled.
  *
  * Design guarantees:
  *  - Pure and total: never throws, no I/O, no side effects.
- *  - Defensive: if no row exposes a recognizable invoice column, it returns no
- *    issues (we must not raise noise on layouts we cannot understand).
+ *  - Defensive: if no row exposes a recognizable numeric invoice column, it
+ *    returns no issues (we must not raise noise on layouts we cannot understand).
  */
 
 import { z } from "zod";
 import { normalizeDigits, parseLocaleNumber } from "./numberNormalization";
+import { parseInvoiceDate } from "./dateNormalization";
 
 export type IssueSeverity = "error" | "warning" | "info";
 
 export interface ValidationIssue {
   severity: IssueSeverity;
-  /** Stable machine code, e.g. "invoice.line" / "invoice.total". */
+  /** Stable machine code, e.g. "invoice.line" / "invoice.total" / "invoice.date". */
   code: string;
   message: string;
   /** 1-based data-row index, when the issue is row-scoped. */
@@ -33,6 +34,7 @@ export interface InvoiceLineView {
   qty: number | null;
   unitPrice: number | null;
   lineTotal: number | null;
+  date: string | null;
   description: string | null;
 }
 
@@ -41,9 +43,11 @@ export interface ValidateOptions {
   tolerance?: number;
   /** When provided, the sum of line totals is cross-checked against it. */
   expectedGrandTotal?: number;
+  /** Interpret ambiguous dd/mm vs mm/dd as day-first. Default true. */
+  dayFirst?: boolean;
 }
 
-type LineField = keyof Omit<InvoiceLineView, never>;
+type LineField = keyof InvoiceLineView;
 
 // Synonyms are pre-normalized (see normalizeHeader). Checked as substrings, in
 // priority order, so the most specific fields win before generic ones.
@@ -51,10 +55,11 @@ const SYNONYMS: Record<LineField, string[]> = {
   qty: ["qty", "quantity", "كميه", "عدد"],
   unitPrice: ["unitprice", "price", "سعرالوحده", "سعر", "ثمن"],
   lineTotal: ["linetotal", "lineamount", "amount", "total", "اجمالي", "مجموع", "قيمه", "مبلغ"],
+  date: ["date", "تاريخ"],
   description: ["description", "desc", "itemname", "item", "productname", "product", "name", "صنف", "بيان", "منتج", "اسم"],
 };
 
-const FIELD_PRIORITY: LineField[] = ["qty", "unitPrice", "lineTotal", "description"];
+const FIELD_PRIORITY: LineField[] = ["qty", "unitPrice", "lineTotal", "date", "description"];
 
 /** Normalize a header for matching: ASCII digits, lower-case, strip spacing and
  * punctuation, fold Arabic letter variants, and drop a leading definite article. */
@@ -77,28 +82,38 @@ function classifyHeader(normalized: string): LineField | null {
 
 /** Map one raw row to an invoice line. First recognized column per field wins. */
 export function mapInvoiceLine(row: Record<string, unknown>): InvoiceLineView {
-  const view: InvoiceLineView = { qty: null, unitPrice: null, lineTotal: null, description: null };
-  const seen: Record<LineField, boolean> = { qty: false, unitPrice: false, lineTotal: false, description: false };
+  const view: InvoiceLineView = { qty: null, unitPrice: null, lineTotal: null, date: null, description: null };
+  const seen: Record<LineField, boolean> = { qty: false, unitPrice: false, lineTotal: false, date: false, description: false };
 
   for (const [key, raw] of Object.entries(row)) {
     const field = classifyHeader(normalizeHeader(key));
     if (!field || seen[field]) continue;
 
-    if (field === "description") {
-      const str = raw == null ? "" : String(raw).trim();
-      if (str !== "") {
-        view.description = str;
-        seen.description = true;
-      }
+    if (field === "qty" || field === "unitPrice" || field === "lineTotal") {
+      const num = parseLocaleNumber(raw);
+      if (num === null) continue;
+      view[field] = num;
+      seen[field] = true;
       continue;
     }
 
-    const num = parseLocaleNumber(raw);
-    if (num === null) continue;
-    if (field === "qty") view.qty = num;
-    else if (field === "unitPrice") view.unitPrice = num;
-    else if (field === "lineTotal") view.lineTotal = num;
-    seen[field] = true;
+    if (field === "date") {
+      if (raw instanceof Date) {
+        view.date = Number.isNaN(raw.getTime()) ? null : raw.toISOString().slice(0, 10);
+      } else {
+        const str = raw == null ? "" : String(raw).trim();
+        view.date = str === "" ? null : str;
+      }
+      if (view.date !== null) seen.date = true;
+      continue;
+    }
+
+    // description
+    const str = raw == null ? "" : String(raw).trim();
+    if (str !== "") {
+      view.description = str;
+      seen.description = true;
+    }
   }
 
   return view;
@@ -115,6 +130,7 @@ function buildLineSchema(tolerance: number) {
       qty: z.number().nullable(),
       unitPrice: z.number().nullable(),
       lineTotal: z.number().nullable(),
+      date: z.string().nullable(),
       description: z.string().nullable(),
     })
     .superRefine((line, ctx) => {
@@ -144,6 +160,7 @@ export function validateInvoiceRows(
 ): ValidationIssue[] {
   const tolerance = opts.tolerance ?? 0.02;
   const schema = buildLineSchema(tolerance);
+  const maxPlausibleYear = new Date().getUTCFullYear() + 1;
   const issues: ValidationIssue[] = [];
 
   let recognizedAnyColumn = false;
@@ -152,9 +169,8 @@ export function validateInvoiceRows(
 
   rows.forEach((row, index) => {
     const line = mapInvoiceLine(row);
-    if (line.qty !== null || line.unitPrice !== null || line.lineTotal !== null) {
-      recognizedAnyColumn = true;
-    }
+    const rowRecognized = line.qty !== null || line.unitPrice !== null || line.lineTotal !== null;
+    if (rowRecognized) recognizedAnyColumn = true;
     if (line.lineTotal !== null) {
       recognizedLineTotals += 1;
       lineTotalSum += line.lineTotal;
@@ -169,6 +185,28 @@ export function validateInvoiceRows(
           message: `Row ${index + 1}: ${issue.message}`,
           row: index + 1,
           field: typeof issue.path[0] === "string" ? issue.path[0] : undefined,
+        });
+      }
+    }
+
+    // Date sanity — only for rows that are clearly invoice lines.
+    if (rowRecognized && line.date !== null) {
+      const parsedDate = parseInvoiceDate(line.date, { dayFirst: opts.dayFirst });
+      if (!parsedDate) {
+        issues.push({
+          severity: "warning",
+          code: "invoice.date",
+          message: `Row ${index + 1}: unrecognised date "${line.date}"`,
+          row: index + 1,
+          field: "date",
+        });
+      } else if (parsedDate.year < 2000 || parsedDate.year > maxPlausibleYear) {
+        issues.push({
+          severity: "warning",
+          code: "invoice.date",
+          message: `Row ${index + 1}: implausible date ${parsedDate.iso}`,
+          row: index + 1,
+          field: "date",
         });
       }
     }

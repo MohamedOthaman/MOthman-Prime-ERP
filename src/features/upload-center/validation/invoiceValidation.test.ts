@@ -4,12 +4,12 @@ import { mapInvoiceLine, validateInvoiceRows } from "./invoiceValidation";
 describe("mapInvoiceLine", () => {
   it("maps English headers and parses values", () => {
     const line = mapInvoiceLine({ Item: "Apple", Qty: "10", "Unit Price": "5.50", "Line Total": "55.00" });
-    expect(line).toEqual({ qty: 10, unitPrice: 5.5, lineTotal: 55, description: "Apple" });
+    expect(line).toEqual({ qty: 10, unitPrice: 5.5, lineTotal: 55, date: null, description: "Apple" });
   });
 
   it("maps Arabic headers and Arabic-Indic digit values", () => {
     const line = mapInvoiceLine({ "الصنف": "تفاح", "الكمية": "١٠", "سعر الوحدة": "٥٫٥", "الإجمالي": "٥٥" });
-    expect(line).toEqual({ qty: 10, unitPrice: 5.5, lineTotal: 55, description: "تفاح" });
+    expect(line).toEqual({ qty: 10, unitPrice: 5.5, lineTotal: 55, date: null, description: "تفاح" });
   });
 });
 
@@ -67,5 +67,20 @@ describe("validateInvoiceRows", () => {
       { Qty: "3", "Unit Price": "0.333", "Line Total": "1.00" }, // 0.999 vs 1.00
     ]);
     expect(issues).toEqual([]);
+  });
+
+  it("flags an unrecognised date on a line row", () => {
+    const issues = validateInvoiceRows([
+      { Qty: "1", "Unit Price": "10", "Line Total": "10", Date: "32/13/2024" },
+    ]);
+    expect(issues.some((i) => i.code === "invoice.date")).toBe(true);
+  });
+
+  it("accepts a valid Arabic-digit date and ignores dates on non-line rows", () => {
+    const ok = validateInvoiceRows([
+      { Qty: "1", "Unit Price": "10", "Line Total": "10", "التاريخ": "١٣/٠١/٢٠٢٤" },
+    ]);
+    expect(ok).toEqual([]);
+    expect(validateInvoiceRows([{ "التاريخ": "bogus" }])).toEqual([]);
   });
 });
