@@ -13,9 +13,14 @@
 --     tables the rest of the chain depends on.
 --   • All columns are nullable (except id) and only safe defaults are
 --     kept, so any later INSERT/ALTER in the chain succeeds regardless of
---     which columns it supplies. Foreign keys, RLS, indexes and triggers
---     are intentionally omitted here — later migrations add those (guarded
+--     which columns it supplies. Foreign keys, RLS and triggers are
+--     intentionally omitted here — later migrations add those (guarded
 --     with IF [NOT] EXISTS), matching how production was actually built.
+--   • The only indexes here are unique(code) on customers / salesmen:
+--     phase_5 seeds them with INSERT ... ON CONFLICT (code), which needs a
+--     matching unique arbiter. Because this baseline pre-creates the
+--     tables, phase_5's inline CREATE TABLE (... code UNIQUE) is skipped,
+--     so the arbiter is added here instead.
 -- ════════════════════════════════════════════════════════════════
 
 -- ── salesmen ──────────────────────────────────────────────────────
@@ -30,6 +35,7 @@ CREATE TABLE IF NOT EXISTS public.salesmen (
     created_at                 timestamp with time zone DEFAULT now()
 );
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.salesmen TO authenticated;
+CREATE UNIQUE INDEX IF NOT EXISTS salesmen_code_baseline_uq ON public.salesmen (code);
 
 -- ── suppliers ──────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS public.suppliers (
@@ -65,6 +71,7 @@ CREATE TABLE IF NOT EXISTS public.customers (
     salesman_id                uuid
 );
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.customers TO authenticated;
+CREATE UNIQUE INDEX IF NOT EXISTS customers_code_baseline_uq ON public.customers (code);
 
 -- ── sales_headers ──────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS public.sales_headers (
