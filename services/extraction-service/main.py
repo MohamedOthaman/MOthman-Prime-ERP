@@ -3,6 +3,7 @@ import io
 import json
 import logging
 import time
+import concurrent.futures
 from typing import Dict, Any, List, Optional
 from fastapi import FastAPI, UploadFile, File, Form, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -18,10 +19,10 @@ except ImportError:
     logging.warning("[INIT] pdfplumber NOT available")
 
 try:
-    from PIL import Image
+    from PIL import Image, ImageFilter, ImageOps
     logging.info("[INIT] Pillow loaded")
 except ImportError:
-    Image = None
+    Image = ImageFilter = ImageOps = None
     logging.warning("[INIT] Pillow NOT available")
 
 try:
@@ -65,8 +66,8 @@ load_dotenv()
 # ─── FastAPI app ──────────────────────────────────────────────────────────────
 app = FastAPI(
     title="ERP Invoice Extraction Service",
-    description="Production OCR pipeline: pdfplumber → PaddleOCR/Tesseract → Gemini",
-    version="2.0.0"
+    description="Production OCR pipeline: pdfplumber → PaddleOCR/Tesseract → Gemini 2.5 Flash",
+    version="2.1.0"
 )
 
 app.add_middleware(
@@ -78,31 +79,96 @@ app.add_middleware(
 )
 
 # ─── PaddleOCR lazy init ───────────────────────────────────────────────────────
-_paddle_ocr_client = None
+_paddle_ocr_ar = None
+_paddle_ocr_en = None
 _paddle_init_failed = False
 
-def get_paddle_ocr():
-    global _paddle_ocr_client, _paddle_init_failed
+def get_paddle_ocr(lang: str = "ar"):
+    global _paddle_ocr_ar, _paddle_ocr_en, _paddle_init_failed
     if _paddle_init_failed:
         return None
-    if _paddle_ocr_client is not None:
-        return _paddle_ocr_client
+    client = _paddle_ocr_ar if lang == "ar" else _paddle_ocr_en
+    if client is not None:
+        return client
     try:
         from paddleocr import PaddleOCR
-        # Support Arabic (ar) and English (en) — most supplier POs in Kuwait are bilingual
-        logger.info("[OCR] Initializing PaddleOCR with lang=ar,en ...")
-        _paddle_ocr_client = PaddleOCR(
+        logger.info(f"[OCR] Initializing PaddleOCR lang={lang!r} ...")
+        ocr = PaddleOCR(
             use_angle_cls=True,
-            lang="ar",        # Arabic covers Arabic+Latin script detection
+            lang=lang,
             show_log=False,
-            use_gpu=False,    # Set to True if GPU available
+            use_gpu=False,
         )
-        logger.info("[OCR] PaddleOCR initialized successfully")
-        return _paddle_ocr_client
+        if lang == "ar":
+            _paddle_ocr_ar = ocr
+        else:
+            _paddle_ocr_en = ocr
+        logger.info(f"[OCR] PaddleOCR ({lang}) initialized successfully")
+        return ocr
     except Exception as e:
-        logger.warning(f"[OCR] PaddleOCR init failed: {e} — will fall back to Tesseract")
+        logger.warning(f"[OCR] PaddleOCR ({lang}) init failed: {e} — will fall back to Tesseract")
         _paddle_init_failed = True
         return None
+
+
+# ─── Image preprocessing ───────────────────────────────────────────────────────
+def preprocess_image(image_bytes: bytes) -> bytes:
+    """Enhance image quality for better OCR accuracy on blurry/mobile photos."""
+    if Image is None or ImageFilter is None or ImageOps is None:
+        return image_bytes
+    try:
+        img = Image.open(io.BytesIO(image_bytes))
+
+        # Ensure RGB
+        if img.mode not in ("RGB", "L", "RGBA"):
+            img = img.convert("RGB")
+        if img.mode == "RGBA":
+            bg = Image.new("RGB", img.size, (255, 255, 255))
+            bg.paste(img, mask=img.split()[3])
+            img = bg
+
+        # Convert to grayscale for OCR — single-channel is faster and more accurate
+        gray = img.convert("L")
+
+        # Scale up if image is too small; OCR degrades badly below ~200 DPI equivalent
+        w, h = gray.size
+        min_dim = min(w, h)
+        if min_dim < 1400:
+            scale = 1400 / min_dim
+            new_w, new_h = int(w * scale), int(h * scale)
+            gray = gray.resize((new_w, new_h), Image.LANCZOS)
+            logger.info(f"[PREPROCESS] Upscaled {w}×{h} → {new_w}×{new_h}")
+
+        # Auto-contrast: stretch histogram to use full 0-255 range
+        gray = ImageOps.autocontrast(gray, cutoff=1)
+
+        # Double-sharpen for blurry/out-of-focus captures
+        gray = gray.filter(ImageFilter.SHARPEN)
+        gray = gray.filter(ImageFilter.SHARPEN)
+
+        buf = io.BytesIO()
+        gray.save(buf, format="JPEG", quality=95)
+        result = buf.getvalue()
+        logger.info(f"[PREPROCESS] Enhanced: {len(image_bytes):,} → {len(result):,} bytes")
+        return result
+    except Exception as e:
+        logger.warning(f"[PREPROCESS] Failed ({e}) — using original image")
+        return image_bytes
+
+
+# ─── Arabic/Eastern numeral normalization ──────────────────────────────────────
+_ARABIC_NUMERAL_MAP = str.maketrans(
+    "٠١٢٣٤٥٦٧٨٩٫",
+    "0123456789."
+)
+_PERSIAN_NUMERAL_MAP = str.maketrans(
+    "۰۱۲۳۴۵۶۷۸۹",
+    "0123456789"
+)
+
+def normalize_numerals(text: str) -> str:
+    """Convert Arabic-Indic and Persian digits to ASCII digits."""
+    return text.translate(_ARABIC_NUMERAL_MAP).translate(_PERSIAN_NUMERAL_MAP)
 
 
 # ─── OCR helpers ──────────────────────────────────────────────────────────────
@@ -115,21 +181,32 @@ def _image_to_numpy(image_bytes: bytes):
 
 
 def run_paddle_ocr(image_bytes: bytes) -> str:
-    ocr = get_paddle_ocr()
-    if ocr is None:
-        raise RuntimeError("PaddleOCR not available")
-    img_np = _image_to_numpy(image_bytes)
-    result = ocr.ocr(img_np, cls=True)
-    lines = []
-    if result and result[0]:
-        for line in result[0]:
-            text = line[1][0]
-            conf = line[1][1]
-            if conf > 0.3:  # discard very low-confidence lines
-                lines.append(text)
-    text = "\n".join(lines)
-    logger.info(f"[OCR] PaddleOCR extracted {len(lines)} lines ({len(text)} chars)")
-    return text
+    """Run PaddleOCR; try Arabic model first (handles Arabic + Latin mix), fall back to English."""
+    enhanced = preprocess_image(image_bytes)
+
+    for lang in ("ar", "en"):
+        ocr = get_paddle_ocr(lang)
+        if ocr is None:
+            continue
+        try:
+            img_np = _image_to_numpy(enhanced)
+            result = ocr.ocr(img_np, cls=True)
+            lines = []
+            if result and result[0]:
+                for line in result[0]:
+                    text = line[1][0]
+                    conf = line[1][1]
+                    if conf > 0.3:
+                        lines.append(text)
+            text = normalize_numerals("\n".join(lines))
+            logger.info(f"[OCR] PaddleOCR ({lang}) extracted {len(lines)} lines ({len(text)} chars)")
+            if lines:
+                return text
+        except Exception as e:
+            logger.warning(f"[OCR] PaddleOCR ({lang}) error: {e}")
+            continue
+
+    raise RuntimeError("PaddleOCR failed on all language models")
 
 
 def run_tesseract_ocr(image_bytes: bytes) -> str:
@@ -137,12 +214,16 @@ def run_tesseract_ocr(image_bytes: bytes) -> str:
         raise RuntimeError("Tesseract not installed")
     if Image is None:
         raise RuntimeError("Pillow not installed")
-    img = Image.open(io.BytesIO(image_bytes))
-    # Try Arabic + English
+    enhanced = preprocess_image(image_bytes)
+    img = Image.open(io.BytesIO(enhanced))
     try:
         text = pytesseract.image_to_string(img, lang="ara+eng")
     except Exception:
-        text = pytesseract.image_to_string(img)
+        try:
+            text = pytesseract.image_to_string(img, lang="eng")
+        except Exception:
+            text = pytesseract.image_to_string(img)
+    text = normalize_numerals(text)
     logger.info(f"[OCR] Tesseract extracted {len(text)} chars")
     return text
 
@@ -161,29 +242,59 @@ def perform_ocr(image_bytes: bytes) -> str:
 
 
 # ─── PDF extraction ────────────────────────────────────────────────────────────
+def _clean_cell(cell) -> str:
+    """Strip whitespace and collapse internal newlines from a table cell."""
+    return " ".join(str(cell or "").split())
+
+
 def extract_pdfplumber_text(pdf_bytes: bytes) -> str:
     if pdfplumber is None:
         raise RuntimeError("pdfplumber not installed")
     full_text: List[str] = []
-    page_count = 0
     with pdfplumber.open(io.BytesIO(pdf_bytes)) as pdf:
         page_count = len(pdf.pages)
         logger.info(f"[PDF] pdfplumber opened, {page_count} page(s)")
         for idx, page in enumerate(pdf.pages):
             text = page.extract_text()
             if text:
-                full_text.append(text)
+                full_text.append(text.strip())
 
             tables = page.extract_tables()
             if tables:
-                for table in tables:
-                    full_text.append("\n--- Table ---")
-                    for row in table:
-                        row_str = " | ".join([str(cell or "").strip() for cell in row])
-                        full_text.append(row_str)
-                    full_text.append("---\n")
+                for tbl_idx, table in enumerate(tables):
+                    if not table:
+                        continue
 
-    combined = "\n\n".join(full_text)
+                    # First non-empty row is treated as the header
+                    header_row: List[str] = []
+                    data_rows: List[List[str]] = []
+                    for row in table:
+                        cleaned = [_clean_cell(c) for c in row]
+                        if not header_row and any(cleaned):
+                            header_row = cleaned
+                        elif any(cleaned):
+                            data_rows.append(cleaned)
+
+                    if not data_rows:
+                        continue
+
+                    full_text.append(f"\n=== TABLE {tbl_idx + 1} (page {idx + 1}) ===")
+                    if header_row:
+                        full_text.append("COLUMNS: " + " | ".join(header_row))
+                        full_text.append("-" * 60)
+
+                    for row in data_rows:
+                        # Emit as "ColName: value" pairs so Gemini can map columns unambiguously
+                        if header_row and len(row) == len(header_row):
+                            pairs = [f"{h}: {v}" for h, v in zip(header_row, row) if v]
+                            full_text.append("  " + " | ".join(pairs))
+                        else:
+                            # Fallback: plain pipe-separated
+                            full_text.append("  " + " | ".join(row))
+
+                    full_text.append("=== END TABLE ===\n")
+
+    combined = normalize_numerals("\n\n".join(full_text))
     logger.info(f"[PDF] pdfplumber extracted {len(combined)} chars from {page_count} page(s)")
     return combined
 
@@ -195,30 +306,30 @@ def extract_scanned_pdf(pdf_bytes: bytes) -> str:
 
     logger.info("[PDF] Converting scanned PDF pages to images...")
 
-    # Windows: try common Poppler paths automatically
     poppler_paths = [
         os.environ.get("POPPLER_PATH", ""),
         r"C:\Program Files\poppler\Library\bin",
         r"C:\poppler\Library\bin",
         r"C:\tools\poppler\Library\bin",
+        r"C:\Program Files\poppler-windows\Library\bin",
     ]
     images = None
     for ppath in poppler_paths:
         try:
-            kwargs = {"dpi": 200}
+            kwargs: Dict[str, Any] = {"dpi": 220}
             if ppath and os.path.isdir(ppath):
                 kwargs["poppler_path"] = ppath
             images = convert_from_bytes(pdf_bytes, **kwargs)
-            logger.info(f"[PDF] Converted {len(images)} page(s) to images (poppler: {ppath or 'system PATH'})")
+            logger.info(f"[PDF] Converted {len(images)} page(s) (poppler: {ppath or 'system PATH'})")
             break
         except Exception as e:
-            logger.debug(f"[PDF] Poppler path '{ppath}' failed: {e}")
+            logger.debug(f"[PDF] Poppler path {ppath!r} failed: {e}")
 
     if images is None:
         raise RuntimeError(
-            "pdf2image failed — ensure Poppler is installed. "
+            "pdf2image failed — Poppler not found. "
             "Download: https://github.com/oschwartz10612/poppler-windows/releases "
-            "Then set POPPLER_PATH env var to the bin/ folder."
+            "Extract and set POPPLER_PATH env var."
         )
 
     page_texts: List[str] = []
@@ -243,7 +354,7 @@ def parse_excel_directly(file_bytes: bytes, filename: str) -> Dict[str, Any]:
         raise RuntimeError("pandas not installed")
 
     ext = filename.rsplit(".", 1)[-1].lower()
-    logger.info(f"[EXCEL] Parsing {ext.upper()} file: {filename}")
+    logger.info(f"[EXCEL] Parsing {ext.upper()}: {filename}")
 
     if ext == "csv":
         df = pd.read_csv(io.BytesIO(file_bytes))
@@ -267,7 +378,7 @@ def parse_excel_directly(file_bytes: bytes, filename: str) -> Dict[str, Any]:
         new_headers = df.iloc[header_idx]
         df = df.iloc[header_idx + 1:].copy()
         df.columns = new_headers
-        logger.info(f"[EXCEL] Found header row at index {header_idx}")
+        logger.info(f"[EXCEL] Header row at index {header_idx}")
 
     col_mapping: Dict[str, Any] = {}
     for col in df.columns:
@@ -333,37 +444,57 @@ def parse_excel_directly(file_bytes: bytes, filename: str) -> Dict[str, Any]:
     logger.info(f"[EXCEL] Extracted {len(items)} line items")
     return {
         "header": {
-            "customerName": "",
-            "customerCode": "",
-            "invoiceNumber": "",
-            "quotationNumber": "",
-            "poNumber": "",
-            "date": "",
-            "currency": "KWD",
-            "paymentTerms": "",
-            "salesman": "",
+            "customerName": "", "customerCode": "",
+            "invoiceNumber": "", "quotationNumber": "",
+            "poNumber": "", "date": "", "currency": "KWD",
+            "paymentTerms": "", "salesman": "",
             "comments": f"Imported from {filename}",
         },
-        "items": items
+        "items": items,
     }
 
 
 # ─── Gemini structuring ────────────────────────────────────────────────────────
-GEMINI_PROMPT = """You are a world-class data extraction specialist for ERP systems.
+GEMINI_PROMPT = """You are a world-class data extraction specialist for ERP supply-chain systems.
 Your task: parse raw text from a supplier invoice, purchase order (PO), or quotation — which may be in English, Arabic, or a mix of both — and return a single clean JSON object.
 
-RULES:
-1. Return ONLY raw JSON. No markdown code blocks, no explanations, no prose.
+═══ STRICT RULES ═══
+1. Return ONLY raw JSON. No markdown code blocks (no ```json). No explanations. No prose.
 2. If a field is not found, use "" for strings and 0 for numbers.
-3. Dates must be in YYYY-MM-DD format.
-4. For "currency", infer from symbols or text (KD/KWD → "KWD", USD/$→ "USD", etc.). Default: "KWD".
-5. Extract EVERY line item — do not skip rows.
-6. For "qty" and "unitPrice", parse numbers carefully (Arabic numerals: ٠١٢٣٤٥٦٧٨٩ map to 0-9).
-7. For "total" per row: if not explicit, compute qty × unitPrice.
-8. "itemCode" is the supplier's own product code/SKU. "barcode" is EAN/UPC if present.
-9. "discount" is percentage (0-100), not an amount.
+3. Dates → YYYY-MM-DD. If only day/month present, use current/recent year.
+4. Currency: KD/KWD → "KWD", USD/$ → "USD", SAR → "SAR". Default: "KWD".
+5. Extract EVERY line item — do not skip rows, do not merge similar items.
+6. For numerics, digits are already ASCII — parse carefully, including decimals.
+7. "total" per row: if missing, compute qty × unitPrice.
+8. "discount": percentage (0–100), NOT a monetary amount.
+9. If the document is a PO/quotation, put the PO number in "poNumber".
 
-TARGET JSON SCHEMA (respond with EXACTLY this structure):
+═══ COLUMN PRIORITY FOR itemCode ═══
+Different PO formats label the supplier's product code differently.
+Use THIS priority order to find "itemCode":
+  1. "Supplier Reference" or "Supplier Code" or "Supplier Article" column
+  2. "SKU", "Item Code", "Product Code", "Ref" column
+  3. "Article" or "Article #" only if no supplier-specific code exists
+  4. Leave empty if no code found
+→ Do NOT use the buyer's internal article number as itemCode.
+
+═══ BARCODE ═══
+Use the 8-, 12-, or 13-digit EAN/UPC/GS1 barcode if present.
+In LuLu / retail POs it appears in a dedicated "Barcode" column.
+
+═══ UOM NORMALIZATION ═══
+Many POs write UOM as "CAR=24EA", "CTN=12PC", "BOX=6BTL" etc.
+Extract ONLY the primary unit before "=" → "CAR", "CTN", "BOX".
+Common mappings: CAR→CAR, CTN→CTN, EA→EA, PCS→PCS, KG→KG, L→LTR.
+
+═══ HEADER FIELDS ═══
+• customerName  → "Delivery To", "Ship To", "Sold To", or buyer company name.
+  In LuLu POs: "Delivery To : LuLu Hypermarket, AlQurain KWT" → "LuLu Hypermarket AlQurain KWT"
+• poNumber      → "Purchase Order #", "PO No.", "LPO No.", "Order #"
+• date          → Order Date is preferred; Due Date is second choice.
+• comments      → any free-text notes or HOT FOOD / temperature labels.
+
+═══ TARGET JSON SCHEMA (respond with EXACTLY this structure — no extra keys) ═══
 {
   "header": {
     "customerName": "",
@@ -394,7 +525,22 @@ TARGET JSON SCHEMA (respond with EXACTLY this structure):
 RAW EXTRACTED TEXT:
 """
 
+# Max text to send to Gemini — prevents token-limit errors on very long docs
+MAX_GEMINI_TEXT_CHARS = 80_000
+
+# Gemini API call timeout in seconds per attempt
+GEMINI_TIMEOUT_SECONDS = 90
+
 MAX_GEMINI_RETRIES = 3
+
+_gemini_executor = concurrent.futures.ThreadPoolExecutor(max_workers=2, thread_name_prefix="gemini")
+
+
+def _call_gemini_sync(model, prompt: str) -> str:
+    """Blocking call to Gemini — run inside an executor so we can apply a timeout."""
+    response = model.generate_content(prompt)
+    return response.text
+
 
 def run_gemini_structuring(
     text_content: str,
@@ -407,36 +553,58 @@ def run_gemini_structuring(
             status_code=400,
             detail=(
                 "Gemini API key not configured. "
-                "Pass it in the X-Gemini-API-Key header or set GEMINI_API_KEY env variable."
+                "Pass it in the X-Gemini-API-Key header or set GEMINI_API_KEY in .env"
             ),
         )
 
     import google.generativeai as genai
     genai.configure(api_key=api_key)
 
-    generation_config = {"response_mime_type": "application/json"}
-    model = genai.GenerativeModel("gemini-2.5-flash-preview-05-20", generation_config=generation_config)
+    # gemini-2.5-flash-preview-05-20 forces JSON output via response_mime_type
+    generation_config = {
+        "response_mime_type": "application/json",
+        "temperature": 0,
+    }
+    model = genai.GenerativeModel(
+        "gemini-2.5-flash-preview-05-20",
+        generation_config=generation_config,
+    )
+
+    # Truncate very long text to avoid token-limit errors
+    if len(text_content) > MAX_GEMINI_TEXT_CHARS:
+        logger.warning(
+            f"[GEMINI] Text too long ({len(text_content):,} chars), "
+            f"truncating to {MAX_GEMINI_TEXT_CHARS:,}"
+        )
+        text_content = text_content[:MAX_GEMINI_TEXT_CHARS] + "\n\n[...document truncated...]"
 
     last_error: Optional[Exception] = None
     for attempt in range(1, MAX_GEMINI_RETRIES + 1):
         try:
-            logger.info(f"[GEMINI] Attempt {attempt}/{MAX_GEMINI_RETRIES} — sending {len(text_content)} chars of text")
+            logger.info(
+                f"[GEMINI] Attempt {attempt}/{MAX_GEMINI_RETRIES} — "
+                f"{len(text_content):,} chars, timeout={GEMINI_TIMEOUT_SECONDS}s"
+            )
 
             if image_bytes and not text_content.strip():
-                # Vision fallback: send image directly when OCR returned nothing
-                logger.warning("[GEMINI] OCR returned empty — using Vision API fallback")
+                # Vision fallback when OCR returned nothing
+                logger.warning("[GEMINI] OCR empty — using Vision fallback")
                 if Image is None:
                     raise RuntimeError("Pillow not available for vision fallback")
                 img = Image.open(io.BytesIO(image_bytes))
-                prompt_parts = [GEMINI_PROMPT + "\n[IMAGE SUPPLIED — extract from the image above]", img]
-                response = model.generate_content(prompt_parts)
+                future = _gemini_executor.submit(
+                    model.generate_content,
+                    [GEMINI_PROMPT + "\n[IMAGE PROVIDED]", img],
+                )
             else:
-                response = model.generate_content(GEMINI_PROMPT + text_content)
+                future = _gemini_executor.submit(
+                    _call_gemini_sync, model, GEMINI_PROMPT + text_content
+                )
 
-            raw = response.text
-            logger.info(f"[GEMINI] Raw response length: {len(raw)} chars")
+            raw = future.result(timeout=GEMINI_TIMEOUT_SECONDS)
+            logger.info(f"[GEMINI] Raw response: {len(raw)} chars")
 
-            # Strip markdown code fences if Gemini ignores instructions
+            # Strip markdown fences in case model ignores response_mime_type
             cleaned = raw.strip()
             if cleaned.startswith("```"):
                 cleaned = cleaned.split("```", 2)[1]
@@ -445,18 +613,21 @@ def run_gemini_structuring(
                 cleaned = cleaned.rsplit("```", 1)[0].strip()
 
             parsed = json.loads(cleaned)
-            logger.info(f"[GEMINI] Parsed JSON — {len(parsed.get('items', []))} item(s)")
+            logger.info(f"[GEMINI] OK — {len(parsed.get('items', []))} item(s)")
             return parsed
 
         except json.JSONDecodeError as e:
             logger.error(f"[GEMINI] JSON parse error on attempt {attempt}: {e}")
             last_error = e
+        except concurrent.futures.TimeoutError:
+            logger.error(f"[GEMINI] Timed out after {GEMINI_TIMEOUT_SECONDS}s (attempt {attempt})")
+            last_error = TimeoutError(f"Gemini timed out after {GEMINI_TIMEOUT_SECONDS}s")
         except Exception as e:
             logger.error(f"[GEMINI] API error on attempt {attempt}: {e}")
             last_error = e
             if "quota" in str(e).lower() or "429" in str(e):
                 wait = 2 ** attempt
-                logger.info(f"[GEMINI] Rate limited — waiting {wait}s before retry")
+                logger.info(f"[GEMINI] Rate limited — waiting {wait}s")
                 time.sleep(wait)
             else:
                 time.sleep(1)
@@ -479,7 +650,7 @@ async def extract_document(
     filename = file.filename or "uploaded_file"
     ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
 
-    logger.info(f"[API] Request received — file: {filename!r}, type: {doc_type!r}, ext: {ext!r}")
+    logger.info(f"[API] Request — file: {filename!r}, type: {doc_type!r}, ext: {ext!r}")
 
     if ext not in SUPPORTED_EXTENSIONS:
         raise HTTPException(
@@ -490,52 +661,48 @@ async def extract_document(
     file_bytes = await file.read()
     logger.info(f"[API] File size: {len(file_bytes):,} bytes")
 
-    # ── Excel / CSV: no AI needed ──────────────────────────────────────────────
+    # ── Excel / CSV: direct parse, no AI needed ────────────────────────────────
     if ext in {"xlsx", "xls", "csv"}:
-        logger.info("[EXCEL] Starting direct Excel extraction (no AI required)")
+        logger.info("[EXCEL] Direct extraction (no AI)")
         result = parse_excel_directly(file_bytes, filename)
-        logger.info(f"[EXCEL] Complete — {len(result['items'])} items extracted")
+        logger.info(f"[EXCEL] Complete — {len(result['items'])} items")
         return {"success": True, "source": "excel", "data": result}
 
-    # ── PDF: detect digital vs scanned ────────────────────────────────────────
+    # ── Determine text content ─────────────────────────────────────────────────
     text_content = ""
     source_method = "unknown"
     vision_fallback_bytes: Optional[bytes] = None
 
     if ext == "pdf":
-        logger.info("[PDF] Starting PDF analysis...")
+        logger.info("[PDF] Analysing...")
         try:
             pdf_text = extract_pdfplumber_text(file_bytes)
-            # A digital PDF typically has >50 meaningful characters per page
-            if len(pdf_text.strip()) > 50:
-                logger.info(f"[PDF] Digital PDF detected — {len(pdf_text)} chars extracted")
+            if len(pdf_text.strip()) > 80:
+                logger.info(f"[PDF] Digital — {len(pdf_text):,} chars from pdfplumber")
                 text_content = pdf_text
                 source_method = "digital_pdf_pdfplumber"
             else:
-                logger.info("[PDF] Scanned PDF detected (text < 50 chars) — switching to OCR")
+                logger.info("[PDF] Scanned (low text) — switching to OCR")
                 text_content = extract_scanned_pdf(file_bytes)
                 source_method = "scanned_pdf_paddleocr"
         except Exception as e:
-            logger.warning(f"[PDF] pdfplumber error: {e} — attempting OCR fallback")
+            logger.warning(f"[PDF] pdfplumber error: {e} — OCR fallback")
             try:
                 text_content = extract_scanned_pdf(file_bytes)
-                source_method = "scanned_pdf_paddleocr_fallback"
+                source_method = "scanned_pdf_fallback"
             except Exception as e2:
-                logger.error(f"[PDF] All PDF extraction methods failed: {e2}")
+                logger.error(f"[PDF] All extraction methods failed: {e2}")
                 raise HTTPException(status_code=500, detail=f"PDF extraction failed: {e2}")
-
-    # ── Image file ─────────────────────────────────────────────────────────────
     else:
-        logger.info(f"[OCR] Image file detected ({ext.upper()}) — running OCR")
+        logger.info(f"[OCR] Image ({ext.upper()})")
         text_content = perform_ocr(file_bytes)
         source_method = "image_paddleocr"
-        # Save bytes for Gemini Vision fallback in case OCR returned nothing
         vision_fallback_bytes = file_bytes
 
     # ── Sanity check ───────────────────────────────────────────────────────────
     if not text_content.strip():
         if vision_fallback_bytes:
-            logger.warning("[API] OCR returned empty — will attempt Gemini Vision fallback")
+            logger.warning("[API] OCR empty — will try Gemini Vision fallback")
         else:
             raise HTTPException(
                 status_code=400,
@@ -546,7 +713,7 @@ async def extract_document(
             )
 
     # ── Gemini structuring ─────────────────────────────────────────────────────
-    logger.info(f"[API] OCR complete — {len(text_content)} chars. Sending to Gemini...")
+    logger.info(f"[API] Sending {len(text_content):,} chars to Gemini...")
     structured = run_gemini_structuring(
         text_content=text_content,
         custom_api_key=x_gemini_api_key,
@@ -554,7 +721,7 @@ async def extract_document(
     )
 
     item_count = len(structured.get("items", []))
-    logger.info(f"[API] Gemini structuring complete — {item_count} item(s) extracted")
+    logger.info(f"[API] Complete — {item_count} item(s) from {source_method}")
 
     return {
         "success": True,
@@ -567,17 +734,25 @@ async def extract_document(
 # ─── Health check ──────────────────────────────────────────────────────────────
 @app.get("/health")
 def health_check():
-    paddle = get_paddle_ocr()
+    paddle_ar = get_paddle_ocr("ar")
     return {
         "status": "healthy",
+        "version": "2.1.0",
         "pdfplumber": pdfplumber is not None,
         "pdf2image": convert_from_bytes is not None,
         "pytesseract": pytesseract is not None,
-        "paddleocr": paddle is not None,
+        "paddleocr": paddle_ar is not None,
         "pandas": pd is not None,
         "numpy": np is not None,
+        "pillow": Image is not None,
         "gemini_api_key_set": bool(os.environ.get("GEMINI_API_KEY")),
     }
+
+
+@app.get("/ready")
+def ready_check():
+    """Minimal liveness check for pre-flight tests (no PaddleOCR init)."""
+    return {"ready": True}
 
 
 if __name__ == "__main__":

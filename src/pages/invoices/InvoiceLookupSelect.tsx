@@ -26,6 +26,7 @@ interface InvoiceLookupSelectProps {
   searchPlaceholder: string;
   emptyText: string;
   disabled?: boolean;
+  triggerClassName?: string;
   onSelect: (option: InvoiceLookupOption) => void;
 }
 
@@ -36,6 +37,7 @@ export default function InvoiceLookupSelect({
   searchPlaceholder,
   emptyText,
   disabled,
+  triggerClassName,
   onSelect,
 }: InvoiceLookupSelectProps) {
   const [open, setOpen] = useState(false);
@@ -71,7 +73,7 @@ export default function InvoiceLookupSelect({
           role="combobox"
           aria-expanded={open}
           disabled={disabled}
-          className="w-full justify-between bg-background font-normal"
+          className={cn("w-full justify-between bg-background font-normal", triggerClassName)}
         >
           <span className={cn("truncate text-left", !selectedOption && "text-muted-foreground")}>
             {selectedOption?.label ?? placeholder}

@@ -93,6 +93,12 @@ const lineInputClass =
 const fieldLabelClass =
   "shrink-0 text-[11px] font-medium text-foreground/80 whitespace-nowrap";
 
+// Sales Master compact field styles
+const ML = "text-[10px] font-semibold text-foreground/55 whitespace-nowrap shrink-0";
+const MF = "h-[24px] rounded-[2px] border border-border bg-background px-1.5 text-[11px] text-foreground focus:outline-none focus:ring-1 focus:ring-ring";
+const MR = "h-[24px] rounded-[2px] border border-border/50 bg-muted/40 px-1.5 text-[11px] text-foreground/70 select-none cursor-default";
+const MD = "h-3.5 w-px bg-border/60 mx-1 shrink-0";
+
 function createDraftInvoiceNo() {
   const now = new Date();
   const parts = [
@@ -182,7 +188,25 @@ export default function InvoiceEntryPage() {
 
   const [extracting, setExtracting] = useState(false);
   const [extractionProgress, setExtractionProgress] = useState("");
+  const [serviceOnline, setServiceOnline] = useState<boolean | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const EXTRACT_SVC = "http://127.0.0.1:8000";
+
+  const checkExtractionService = async (): Promise<boolean> => {
+    try {
+      const ctrl = new AbortController();
+      const timeout = setTimeout(() => ctrl.abort(), 5000);
+      const res = await fetch(`${EXTRACT_SVC}/health`, { signal: ctrl.signal });
+      clearTimeout(timeout);
+      const online = res.ok;
+      setServiceOnline(online);
+      return online;
+    } catch {
+      setServiceOnline(false);
+      return false;
+    }
+  };
 
   const [headerId, setHeaderId] = useState<string | null>(id ?? null);
   const [invoiceNo, setInvoiceNo] = useState(createDraftInvoiceNo());
@@ -578,19 +602,6 @@ export default function InvoiceEntryPage() {
             };
           }
 
-          if (field === "product_code" && value.trim() !== line.product_code) {
-            return {
-              ...nextLine,
-              product_id: "",
-              product_name: "",
-              unit: "",
-              search: "",
-              available_stock: null,
-              fefo_preview: [],
-              fefo_preview_open: false,
-            };
-          }
-
           if (field === "product_barcode" && value.trim() !== line.product_barcode) {
             return {
               ...nextLine,
@@ -609,6 +620,101 @@ export default function InvoiceEntryPage() {
       );
     },
     []
+  );
+
+  /**
+   * Product-code onChange handler.
+   * If the typed value is an EXACT match in the product catalogue, the full product
+   * (name, UOM, price, barcode) is applied immediately — no Enter or blur needed.
+   * If no exact match exists yet the code field is simply updated so the user can
+   * finish typing, then press Enter or blur to trigger a fuzzy/manual lookup.
+   */
+  const handleProductCodeChange = useCallback(
+    (index: number, value: string) => {
+      const normalized = normalizeLookupSearch(value);
+
+      setLines((current) => {
+        const currentLine = current[index];
+        if (!currentLine) return current;
+
+        // ── Empty → clear everything ──────────────────────────────────────────
+        if (!normalized) {
+          return current.map((line, i) =>
+            i !== index
+              ? line
+              : {
+                  ...line,
+                  product_code: value,
+                  product_id: "",
+                  product_name: "",
+                  unit: "",
+                  search: "",
+                  product_barcode: "",
+                  available_stock: null,
+                  fefo_preview: [],
+                  fefo_preview_open: false,
+                }
+          );
+        }
+
+        // ── Exact match → apply product in one atomic update ─────────────────
+        const matched = productByCode.get(normalized);
+        if (matched) {
+          const qty = currentLine.quantity || "1";
+          const price =
+            currentLine.unit_price ||
+            String(matched.selling_price == null ? 0 : Number(matched.selling_price));
+
+          const applied = {
+            ...currentLine,
+            product_code: matched.item_code ?? value,
+            product_id: matched.id,
+            product_barcode: matched.primary_barcode ?? "",
+            product_name: getProductLabel(matched, lang),
+            unit: matched.uom ?? "",
+            search: formatProductLookup(matched),
+            unit_price: price,
+            quantity: qty,
+            product_picker_open: false,
+            fefo_preview_open: false,
+          };
+
+          const updated = current.map((line, i) => (i === index ? applied : line));
+          if (index === updated.length - 1 && !isReadOnly) {
+            return [...updated, { ...EMPTY_LINE }];
+          }
+          return updated;
+        }
+
+        // ── No match yet → just update the code, clear stale product fields ──
+        const codeChanged = value.trim() !== currentLine.product_code;
+        return current.map((line, i) =>
+          i !== index
+            ? line
+            : codeChanged
+            ? {
+                ...line,
+                product_code: value,
+                product_id: "",
+                product_name: "",
+                unit: "",
+                search: "",
+                available_stock: null,
+                fefo_preview: [],
+                fefo_preview_open: false,
+              }
+            : { ...line, product_code: value }
+        );
+      });
+
+      // ── After state update: kick off async FEFO preview if exact match ─────
+      const matched = productByCode.get(normalized);
+      if (matched) {
+        const currentQty = lines[index]?.quantity || "1";
+        void updateLineInventoryPreview(index, matched.id, currentQty);
+      }
+    },
+    [formatProductLookup, isReadOnly, lang, lines, productByCode, updateLineInventoryPreview]
   );
 
   const resolveManualProductLookup = useCallback(
@@ -692,7 +798,12 @@ export default function InvoiceEntryPage() {
       const isLastLine = index === lines.length - 1;
 
       if (field === "product_code") {
-        void resolveManualProductLookup(index, "code");
+        // If product is already resolved (instant match), just advance focus.
+        // Otherwise try a manual lookup (handles pasted codes, slow typists).
+        const currentLine = lines[index];
+        if (!currentLine?.product_id) {
+          void resolveManualProductLookup(index, "code");
+        }
         focusNextField(index, `[data-line-qty="{i}"]`);
         return;
       }
@@ -1012,7 +1123,7 @@ export default function InvoiceEntryPage() {
     if (!file) return;
 
     // Helper: handle both flat values and confidence-wrapped { value, confidence } objects
-    const nf = <T>(field: unknown, fallback: T): T => {
+    const nf = <T extends unknown>(field: unknown, fallback: T): T => {
       if (field === undefined || field === null) return fallback;
       if (typeof field === "object" && field !== null && "value" in field)
         return ((field as { value: unknown }).value ?? fallback) as T;
@@ -1027,6 +1138,16 @@ export default function InvoiceEntryPage() {
     setExtractionProgress("Uploading document...");
 
     try {
+      // ── Pre-flight: verify extraction service is reachable ─────────────────
+      const svcReady = await checkExtractionService();
+      if (!svcReady) {
+        throw new Error(
+          "Extraction service is offline.\n" +
+          "Start it by running: services/extraction-service/start.bat\n" +
+          "Then try uploading again."
+        );
+      }
+
       // ── Step 1: Upload to Supabase storage (non-blocking) ──────────────────
       const storagePath = `invoices/${Date.now()}_${file.name}`;
       try {
@@ -1055,35 +1176,79 @@ export default function InvoiceEntryPage() {
       formData.append("file", file);
       formData.append("doc_type", "invoice");
 
-      const response = await fetch("http://127.0.0.1:8000/extract", {
-        method: "POST",
-        headers,
-        body: formData,
-      });
+      // 2-minute timeout — large scanned PDFs can take 60-90 seconds
+      const abortController = new AbortController();
+      const extractionTimeout = setTimeout(() => abortController.abort(), 120_000);
+
+      let response: Response;
+      try {
+        response = await fetch(`${EXTRACT_SVC}/extract`, {
+          method: "POST",
+          headers,
+          body: formData,
+          signal: abortController.signal,
+        });
+      } catch (fetchErr) {
+        clearTimeout(extractionTimeout);
+        if (fetchErr instanceof Error && fetchErr.name === "AbortError") {
+          throw new Error(
+            "Extraction timed out after 2 minutes.\n" +
+            "Try a smaller file, or check the service log for errors."
+          );
+        }
+        throw new Error(
+          "Could not reach the extraction service.\n" +
+          "Make sure services/extraction-service/start.bat is running."
+        );
+      }
+      clearTimeout(extractionTimeout);
 
       if (!response.ok) {
-        const errorText = await response.text();
+        const errorText = await response.text().catch(() => "");
         console.error("[API] Error response:", errorText);
-        throw new Error(`Extraction service error: ${errorText || response.statusText}`);
+
+        let userMsg = "Could not extract document.";
+        if (response.status === 400) {
+          userMsg = `Unsupported file or bad request: ${errorText || response.statusText}`;
+        } else if (response.status === 500) {
+          // Try to parse detail from FastAPI error body
+          try {
+            const parsed = JSON.parse(errorText);
+            userMsg = parsed.detail || "AI extraction format invalid.";
+          } catch {
+            userMsg = errorText || "AI extraction format invalid.";
+          }
+        }
+        throw new Error(userMsg);
       }
 
       // ── Step 3: AI Structuring ─────────────────────────────────────────────
       setExtractionProgress("AI Structuring...");
 
-      const result = await response.json();
+      let result: Record<string, unknown>;
+      try {
+        result = await response.json();
+      } catch {
+        throw new Error("AI extraction format invalid — server returned non-JSON response.");
+      }
+
       console.log("[API] OCR complete");
       console.log("[API] Source method:", result.source);
       console.log("[PDF] Text length:", result.text_length ?? "N/A");
 
       if (!result.success || !result.data) {
-        throw new Error(result.error || "AI extraction returned no structured data.");
+        throw new Error((result.error as string) || "AI extraction returned no structured data.");
       }
 
-      const extData = result.data;
+      const extData = result.data as Record<string, unknown>;
       console.log("[API] Gemini raw response:", extData);
 
       const extractedItems: unknown[] = Array.isArray(extData.items) ? extData.items : [];
-      const extractedHeader: Record<string, unknown> = extData.header ?? {};
+      const extractedHeader: Record<string, unknown> = (extData.header as Record<string, unknown>) ?? {};
+
+      if (extractedItems.length === 0) {
+        throw new Error("No products detected in the document. Check document quality or enter lines manually.");
+      }
 
       console.log("[INVOICE] Extraction received:", extractedHeader);
       console.log("[INVOICE] Item count:", extractedItems.length);
@@ -1418,7 +1583,15 @@ export default function InvoiceEntryPage() {
         {error && (
           <div className="flex items-start gap-2 rounded-sm border border-destructive/30 bg-destructive/10 px-2 py-1.5">
             <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-destructive" />
-            <p className="text-xs text-destructive">{error}</p>
+            <p className="text-xs text-destructive whitespace-pre-wrap">{error}</p>
+          </div>
+        )}
+
+        {serviceOnline === false && !extracting && (
+          <div className="flex items-center gap-2 rounded-sm border border-amber-500/40 bg-amber-500/8 px-2.5 py-1 text-[10.5px]">
+            <span className="h-2 w-2 shrink-0 rounded-full bg-amber-500" />
+            <span className="text-amber-800 font-medium">AI extraction service offline</span>
+            <span className="text-amber-700/70">— run <code className="font-mono bg-amber-100 px-1 rounded-[2px]">services/extraction-service/start.bat</code> to enable PO / quotation upload</span>
           </div>
         )}
 
@@ -1452,8 +1625,8 @@ export default function InvoiceEntryPage() {
         {/* Sales Master — Dense Oracle Forms Style */}
         <section className="rounded-sm border border-border bg-card shadow-sm">
           {/* Section header bar */}
-          <div className="flex items-center justify-between border-b border-border bg-muted/30 px-2.5 py-1">
-            <h2 className="text-[10.5px] font-bold text-foreground/70 uppercase tracking-widest select-none">
+          <div className="flex items-center justify-between border-b border-border bg-muted px-2.5 py-[4px]">
+            <h2 className="text-[10px] font-bold text-foreground/60 uppercase tracking-[0.12em] select-none">
               {t("salesMaster", "Sales Master")}
             </h2>
             {/* Upload PO / Ref Trigger */}
@@ -1487,261 +1660,199 @@ export default function InvoiceEntryPage() {
             </div>
           </div>
 
-          {/* Field rows — using fixed-column layout, no wrapping */}
+          {/* Field rows */}
           <div className="px-2.5 py-1.5 space-y-[3px]">
 
-            {/* ── Row 1: Invoice No · Invoice Date · Payment Type · Cust.Com · COPY/Find ── */}
-            <div className="flex items-center gap-x-3 text-[11px] overflow-x-auto">
-              <label className="flex items-center gap-1 shrink-0">
-                <span className="w-[76px] text-right text-[10.5px] font-semibold text-foreground/65 whitespace-nowrap">{t("invoiceNo", "Invoice No")}</span>
-                <input
-                  value={invoiceNo}
-                  onChange={(e) => setInvoiceNo(e.target.value)}
-                  readOnly={isReadOnly}
-                  className="h-[26px] w-[128px] rounded-sm border border-border bg-background px-1.5 text-[11px] text-foreground focus:outline-none focus:ring-1 focus:ring-ring font-mono"
-                />
+            {/* ── Row 1: Document reference ──────────────────────────────────────── */}
+            <div className="flex items-center gap-x-2.5 overflow-x-auto">
+
+              <label className="flex items-center gap-x-1 shrink-0">
+                <span className={ML}>Invoice No</span>
+                <input value={invoiceNo} onChange={(e) => setInvoiceNo(e.target.value)}
+                  readOnly={isReadOnly} className={cn(MF, "w-[116px] font-mono")} />
               </label>
 
-              <label className="flex items-center gap-1 shrink-0">
-                <span className="w-[76px] text-right text-[10.5px] font-semibold text-foreground/65 whitespace-nowrap">{t("invoiceDate", "Invoice Date")}</span>
-                <input
-                  type="date"
-                  value={invoiceDate}
-                  onChange={(e) => setInvoiceDate(e.target.value)}
-                  readOnly={isReadOnly}
-                  className="h-[26px] w-[128px] rounded-sm border border-border bg-background px-1.5 text-[11px] text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
-                />
+              <label className="flex items-center gap-x-1 shrink-0">
+                <span className={ML}>Date</span>
+                <input type="date" value={invoiceDate} onChange={(e) => setInvoiceDate(e.target.value)}
+                  readOnly={isReadOnly} className={cn(MF, "w-[116px]")} />
               </label>
 
-              <label className="flex items-center gap-1 shrink-0">
-                <span className="w-[76px] text-right text-[10.5px] font-semibold text-foreground/65 whitespace-nowrap">{t("paymentType", "Payment Type")}</span>
-                <input
-                  value="CREDIT"
-                  readOnly
-                  className="h-[26px] w-[80px] rounded-sm border border-border bg-muted/30 px-1.5 text-[11px] text-foreground/70 select-none font-medium text-center"
-                />
+              <span className={MD} />
+
+              <label className="flex items-center gap-x-1 shrink-0">
+                <span className={ML}>Payment</span>
+                <input value="CREDIT" readOnly
+                  className={cn(MR, "w-[60px] text-center font-medium")} />
               </label>
 
-              <label className="flex items-center gap-1 shrink-0">
-                <span className="w-[62px] text-right text-[10.5px] font-semibold text-foreground/65 whitespace-nowrap">Cust. Com.</span>
-                <input
-                  value={custCom1}
-                  onChange={(e) => setCustCom1(e.target.value)}
-                  readOnly={isReadOnly}
-                  className="h-[26px] w-[110px] rounded-sm border border-border bg-background px-1.5 text-[11px] text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
-                />
-                <input
-                  value={custCom2}
-                  onChange={(e) => setCustCom2(e.target.value)}
-                  readOnly={isReadOnly}
-                  className="h-[26px] w-[52px] rounded-sm border border-border bg-background px-1.5 text-[11px] text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
-                />
+              <label className="flex items-center gap-x-1 shrink-0">
+                <span className={ML}>Cust. Com.</span>
+                <input value={custCom1} onChange={(e) => setCustCom1(e.target.value)}
+                  readOnly={isReadOnly} className={cn(MF, "w-[88px]")} />
+                <input value={custCom2} onChange={(e) => setCustCom2(e.target.value)}
+                  readOnly={isReadOnly} className={cn(MF, "w-[42px] ml-0.5")} />
               </label>
 
-              <div className="flex items-center gap-1.5 ml-auto shrink-0">
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="h-[26px] text-[10.5px] font-bold px-2.5 rounded-sm border-border bg-background hover:bg-muted/50 tracking-wide"
-                  onClick={() => toast.info("Copy action triggered")}
-                >
+              <div className="ml-auto flex items-center gap-1.5 shrink-0">
+                <Button type="button" variant="outline"
+                  className="h-[24px] text-[10px] font-bold px-2.5 rounded-[2px] border-border bg-background hover:bg-muted/60 tracking-wide"
+                  onClick={() => toast.info("Copy action triggered")}>
                   COPY
                 </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="h-[26px] text-[10.5px] font-bold px-2.5 rounded-sm border-border bg-background hover:bg-muted/50"
-                  onClick={() => navigate("/invoice-list")}
-                >
+                <Button type="button" variant="outline"
+                  className="h-[24px] text-[10px] font-bold px-2.5 rounded-[2px] border-border bg-background hover:bg-muted/60"
+                  onClick={() => navigate("/invoice-list")}>
                   Find Invoice
                 </Button>
               </div>
             </div>
 
-            {/* ── Row 2: Cust Code · Cust Name · Child · Salesman ── */}
-            <div className="flex items-center gap-x-3 text-[11px] overflow-x-auto">
-              <label className="flex items-center gap-1 shrink-0">
-                <span className="w-[76px] text-right text-[10.5px] font-semibold text-foreground/65 whitespace-nowrap">{t("custCode", "Cust. Code")}</span>
-                <input
-                  value={selectedCustomer?.code ?? ""}
-                  readOnly
-                  className="h-[26px] w-[90px] rounded-sm border border-border bg-muted/30 px-1.5 text-[11px] text-foreground/80 font-mono"
-                  placeholder="—"
-                />
+            {/* ── Row 2: Customer ────────────────────────────────────────────────── */}
+            <div className="flex items-center gap-x-2.5 overflow-x-auto">
+
+              <label className="flex items-center gap-x-1 shrink-0">
+                <span className={ML}>Code</span>
+                <input value={selectedCustomer?.code ?? ""} readOnly
+                  className={cn(MR, "w-[68px] font-mono")} placeholder="—" />
               </label>
 
-              <label className="flex items-center gap-1 shrink-0">
-                <span className="w-[76px] text-right text-[10.5px] font-semibold text-foreground/65 whitespace-nowrap">{t("custName", "Cust. Name")}</span>
-                <div className="w-[260px]">
+              <label className="flex items-center gap-x-1 shrink-0">
+                <span className={ML}>Customer</span>
+                <div className="w-[232px]">
                   <InvoiceLookupSelect
-                    value={customerId}
-                    options={customerOptions}
+                    value={customerId} options={customerOptions}
                     placeholder={t("selectCustomer", "Select customer")}
                     searchPlaceholder={t("searchByCodeOrName", "Search by code or name...")}
                     emptyText={t("noCustomerFound", "No customer found.")}
-                    disabled={isReadOnly}
-                    onSelect={handleCustomerChange}
+                    disabled={isReadOnly} onSelect={handleCustomerChange}
+                    triggerClassName="h-[24px] text-[11px] px-2 py-0 rounded-[2px]"
                   />
                 </div>
               </label>
 
-              <label className="flex items-center gap-1 shrink-0">
-                <span className="w-[76px] text-right text-[10.5px] font-semibold text-foreground/65 whitespace-nowrap">{t("customerChild", "Cust. Child")}</span>
-                <input
-                  value={customerChild}
-                  onChange={(e) => setCustomerChild(e.target.value)}
-                  readOnly={isReadOnly}
-                  placeholder="—"
-                  className="h-[26px] w-[110px] rounded-sm border border-border bg-background px-1.5 text-[11px] text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
-                />
+              <label className="flex items-center gap-x-1 shrink-0">
+                <span className={ML}>Child</span>
+                <input value={customerChild} onChange={(e) => setCustomerChild(e.target.value)}
+                  readOnly={isReadOnly} placeholder="—"
+                  className={cn(MF, "w-[80px]")} />
               </label>
 
-              <label className="flex items-center gap-1 shrink-0">
-                <span className="w-[62px] text-right text-[10.5px] font-semibold text-foreground/65 whitespace-nowrap">{t("salesman", "Salesman")}</span>
-                <input
-                  value={selectedSalesman?.code ?? ""}
-                  readOnly
-                  className="h-[26px] w-[58px] rounded-sm border border-border bg-muted/30 px-1.5 text-[11px] text-foreground/80 font-mono text-center"
-                  placeholder="—"
-                />
-                <div className="w-[170px]">
+              <span className={MD} />
+
+              <label className="flex items-center gap-x-1 shrink-0">
+                <span className={ML}>Salesman</span>
+                <input value={selectedSalesman?.code ?? ""} readOnly
+                  className={cn(MR, "w-[46px] font-mono text-center")} placeholder="—" />
+                <div className="w-[158px] ml-0.5">
                   <InvoiceLookupSelect
-                    value={salesmanId}
-                    options={salesmanOptions}
+                    value={salesmanId} options={salesmanOptions}
                     placeholder={t("selectSalesman", "Select salesman")}
                     searchPlaceholder={t("searchSalesman", "Search salesman...")}
                     emptyText={t("noSalesmanFound", "No salesman found.")}
-                    disabled={isReadOnly}
-                    onSelect={handleSalesmanSelect}
+                    disabled={isReadOnly} onSelect={handleSalesmanSelect}
+                    triggerClassName="h-[24px] text-[11px] px-2 py-0 rounded-[2px]"
                   />
                 </div>
               </label>
             </div>
 
-            {/* ── Row 3: Currency · Exch Rate · Man.Inv. · Order Date · Delivery Date · Type ── */}
-            <div className="flex items-center gap-x-3 text-[11px] overflow-x-auto">
-              <label className="flex items-center gap-1 shrink-0">
-                <span className="w-[76px] text-right text-[10.5px] font-semibold text-foreground/65 whitespace-nowrap">{t("currency", "Currency")}</span>
-                <input
-                  value={currency}
-                  onChange={(e) => setCurrency(e.target.value)}
+            {/* ── Row 3: Currency / PO Ref / Dates / Type ───────────────────────── */}
+            <div className="flex items-center gap-x-2.5 overflow-x-auto">
+
+              <label className="flex items-center gap-x-1 shrink-0">
+                <span className={ML}>Currency</span>
+                <input value={currency} onChange={(e) => setCurrency(e.target.value)}
                   readOnly={isReadOnly}
-                  className="h-[26px] w-[68px] rounded-sm border border-border bg-background px-1.5 text-[11px] text-foreground focus:outline-none focus:ring-1 focus:ring-ring font-mono text-center"
-                />
+                  className={cn(MF, "w-[46px] font-mono text-center")} />
               </label>
 
-              <label className="flex items-center gap-1 shrink-0">
-                <span className="w-[76px] text-right text-[10.5px] font-semibold text-foreground/65 whitespace-nowrap">{t("exchangeRate", "Exch. Rate")}</span>
-                <input
-                  type="number"
-                  step="0.000001"
-                  value={exchangeRate}
+              <label className="flex items-center gap-x-1 shrink-0">
+                <span className={ML}>Rate</span>
+                <input type="number" step="0.000001" value={exchangeRate}
                   onChange={(e) => setExchangeRate(e.target.value)}
                   readOnly={isReadOnly}
-                  className="h-[26px] w-[90px] rounded-sm border border-border bg-background px-1.5 text-[11px] text-foreground focus:outline-none focus:ring-1 focus:ring-ring font-mono text-right"
-                />
+                  className={cn(MF, "w-[88px] font-mono text-right")} />
               </label>
 
-              <label className="flex items-center gap-1 shrink-0">
-                <span className="w-[62px] text-right text-[10.5px] font-semibold text-foreground/65 whitespace-nowrap">Man. Inv. #</span>
-                <input
-                  value={poNumber}
-                  onChange={(e) => setPoNumber(e.target.value)}
-                  readOnly={isReadOnly}
-                  className="h-[26px] w-[128px] rounded-sm border border-border bg-background px-1.5 text-[11px] text-foreground focus:outline-none focus:ring-1 focus:ring-ring font-mono"
-                  placeholder="PO / Ref No"
-                />
+              <span className={MD} />
+
+              <label className="flex items-center gap-x-1 shrink-0">
+                <span className={ML}>PO / Ref #</span>
+                <input value={poNumber} onChange={(e) => setPoNumber(e.target.value)}
+                  readOnly={isReadOnly} placeholder="PO / Ref No"
+                  className={cn(MF, "w-[120px] font-mono")} />
               </label>
 
-              <label className="flex items-center gap-1 shrink-0">
-                <span className="w-[62px] text-right text-[10.5px] font-semibold text-foreground/65 whitespace-nowrap">{t("orderDate", "Order Date")}</span>
-                <input
-                  type="date"
-                  value={orderDate}
-                  onChange={(e) => setOrderDate(e.target.value)}
-                  readOnly={isReadOnly}
-                  className="h-[26px] w-[120px] rounded-sm border border-border bg-background px-1.5 text-[11px] text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
-                />
+              <span className={MD} />
+
+              <label className="flex items-center gap-x-1 shrink-0">
+                <span className={ML}>Order Date</span>
+                <input type="date" value={orderDate} onChange={(e) => setOrderDate(e.target.value)}
+                  readOnly={isReadOnly} className={cn(MF, "w-[116px]")} />
               </label>
 
-              <label className="flex items-center gap-1 shrink-0">
-                <span className="w-[62px] text-right text-[10.5px] font-semibold text-foreground/65 whitespace-nowrap">{t("deliveryDate", "Del. Date")}</span>
-                <input
-                  type="date"
-                  value={deliveryDate}
-                  onChange={(e) => setDeliveryDate(e.target.value)}
-                  readOnly={isReadOnly}
-                  className="h-[26px] w-[120px] rounded-sm border border-border bg-background px-1.5 text-[11px] text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
-                />
+              <label className="flex items-center gap-x-1 shrink-0">
+                <span className={ML}>Del. Date</span>
+                <input type="date" value={deliveryDate} onChange={(e) => setDeliveryDate(e.target.value)}
+                  readOnly={isReadOnly} className={cn(MF, "w-[116px]")} />
               </label>
 
-              <label className="flex items-center gap-1 shrink-0">
-                <span className="w-[32px] text-right text-[10.5px] font-semibold text-foreground/65 whitespace-nowrap">Type</span>
-                <input
-                  value={invoiceType}
-                  onChange={(e) => setInvoiceType(e.target.value)}
+              <span className={MD} />
+
+              <label className="flex items-center gap-x-1 shrink-0">
+                <span className={ML}>Type</span>
+                <input value={invoiceType} onChange={(e) => setInvoiceType(e.target.value)}
                   readOnly={isReadOnly}
-                  className="h-[26px] w-[52px] rounded-sm border border-border bg-background px-1.5 text-[11px] text-foreground focus:outline-none focus:ring-1 focus:ring-ring font-mono text-center"
-                />
+                  className={cn(MF, "w-[42px] font-mono text-center")} />
               </label>
             </div>
 
-            {/* ── Row 4: Disc Type · Disc Value · Comments · FOC Code · FOC Name ── */}
-            <div className="flex items-center gap-x-3 text-[11px] overflow-x-auto">
-              <label className="flex items-center gap-1 shrink-0">
-                <span className="w-[76px] text-right text-[10.5px] font-semibold text-foreground/65 whitespace-nowrap">{t("discType", "Disc. Type")}</span>
-                <select
-                  value={discountType}
-                  onChange={(e) => setDiscountType(e.target.value)}
+            {/* ── Row 4: Discount / Comments / FOC ──────────────────────────────── */}
+            <div className="flex items-center gap-x-2.5 overflow-x-auto">
+
+              <label className="flex items-center gap-x-1 shrink-0">
+                <span className={ML}>Disc. Type</span>
+                <select value={discountType} onChange={(e) => setDiscountType(e.target.value)}
                   disabled={isReadOnly}
-                  className="h-[26px] w-[108px] rounded-sm border border-border bg-background px-1 text-[11px] focus:outline-none focus:ring-1 focus:ring-ring"
-                >
+                  className={cn(MF, "w-[98px] px-1 cursor-pointer")}>
                   <option value="Percentage">Percentage</option>
                   <option value="Amount">Amount</option>
                 </select>
               </label>
 
-              <label className="flex items-center gap-1 shrink-0">
-                <span className="w-[62px] text-right text-[10.5px] font-semibold text-foreground/65 whitespace-nowrap">Disc. (Amt/%)</span>
-                <input
-                  type="number"
-                  step="0.001"
-                  value={discountValue}
+              <label className="flex items-center gap-x-1 shrink-0">
+                <span className={ML}>Disc.</span>
+                <input type="number" step="0.001" value={discountValue}
                   onChange={(e) => setDiscountValue(e.target.value)}
                   readOnly={isReadOnly}
-                  className="h-[26px] w-[90px] rounded-sm border border-border bg-background px-1.5 text-[11px] text-foreground focus:outline-none focus:ring-1 focus:ring-ring text-right font-mono"
-                />
+                  className={cn(MF, "w-[76px] font-mono text-right")} />
               </label>
 
-              <label className="flex items-center gap-1 flex-1 min-w-0">
-                <span className="w-[62px] shrink-0 text-right text-[10.5px] font-semibold text-foreground/65 whitespace-nowrap">{t("comments", "Comments")}</span>
-                <input
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
+              <span className={MD} />
+
+              <label className="flex items-center gap-x-1 flex-1 min-w-0">
+                <span className={cn(ML, "shrink-0")}>Comments</span>
+                <input value={notes} onChange={(e) => setNotes(e.target.value)}
                   readOnly={isReadOnly}
-                  className="h-[26px] flex-1 min-w-0 rounded-sm border border-border bg-background px-1.5 text-[11px] text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
-                  placeholder={t("invoiceNotesPlaceholder", "Invoice notes...")}
-                />
+                  className={cn(MF, "flex-1 min-w-0")}
+                  placeholder={t("invoiceNotesPlaceholder", "Invoice notes...")} />
               </label>
 
-              <label className="flex items-center gap-1 shrink-0">
-                <span className="w-[28px] text-right text-[10.5px] font-semibold text-foreground/65 whitespace-nowrap">FOC</span>
-                <input
-                  value={focCode}
-                  onChange={(e) => setFocCode(e.target.value)}
+              <span className={MD} />
+
+              <label className="flex items-center gap-x-1 shrink-0">
+                <span className={ML}>FOC</span>
+                <input value={focCode} onChange={(e) => setFocCode(e.target.value)}
                   readOnly={isReadOnly}
-                  className="h-[26px] w-[48px] rounded-sm border border-border bg-background px-1 text-[11px] text-foreground focus:outline-none focus:ring-1 focus:ring-ring font-mono text-center"
-                />
+                  className={cn(MF, "w-[42px] font-mono text-center")} />
               </label>
 
-              <label className="flex items-center gap-1 shrink-0">
-                <span className="w-[32px] text-right text-[10.5px] font-semibold text-foreground/65 whitespace-nowrap">Name</span>
-                <input
-                  value={focName}
-                  onChange={(e) => setFocName(e.target.value)}
+              <label className="flex items-center gap-x-1 shrink-0">
+                <span className={ML}>FOC Name</span>
+                <input value={focName} onChange={(e) => setFocName(e.target.value)}
                   readOnly={isReadOnly}
-                  className="h-[26px] w-[160px] rounded-sm border border-border bg-background px-1.5 text-[11px] text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
-                />
+                  className={cn(MF, "w-[148px]")} />
               </label>
             </div>
 
@@ -1750,23 +1861,23 @@ export default function InvoiceEntryPage() {
 
         {/* Sales Detail — dense ERP table */}
         <section className="rounded-sm border border-border bg-card shadow-sm">
-          <div className="flex items-center justify-between border-b border-border bg-muted/30 px-2.5 py-1">
-            <span className="text-[10.5px] font-bold text-foreground/70 uppercase tracking-widest select-none">
+          <div className="flex items-center justify-between border-b border-border bg-muted px-2.5 py-[4px]">
+            <span className="text-[10px] font-bold text-foreground/60 uppercase tracking-[0.12em] select-none">
               {t("salesDetail", "Sales Detail")}
             </span>
           </div>
           <div className="overflow-x-auto relative max-h-[480px]">
             <table className="w-full border-separate border-spacing-0 text-[11px] bg-background">
               <thead>
-                <tr className="sticky top-0 z-10 bg-muted/90 backdrop-blur-[2px] text-[10px] font-bold uppercase tracking-wide text-foreground/75 border-b-2 border-border">
-                  <th className="w-8 border-r border-border py-[5px] text-center font-bold">#</th>
-                  <th className="w-28 border-r border-border px-2 py-[5px] text-left font-bold text-primary">{t("itemCode", "Item Code")}</th>
-                  <th className="min-w-[190px] border-r border-border px-2 py-[5px] text-left font-bold">{t("itemName", "Item Name")}</th>
-                  <th className="w-24 border-r border-border px-2 py-[5px] text-left font-bold">{t("store", "Store")}</th>
-                  <th className="w-14 border-r border-border px-1 py-[5px] text-center font-bold">{t("uom", "UOM")}</th>
-                  <th className="w-18 border-r border-border px-2 py-[5px] text-right font-bold">{t("qty", "Qty")}</th>
-                  <th className="w-20 border-r border-border px-2 py-[5px] text-right font-bold">{t("unitPrice", "Unit Price")}</th>
-                  <th className="w-16 border-r border-border px-2 py-[5px] text-right font-bold">{t("discPct", "Disc %")}</th>
+                <tr className="sticky top-0 z-10 bg-muted border-b-2 border-border text-[10px] font-bold uppercase tracking-wide text-foreground/70 select-none">
+                  <th className="w-8 border-r border-border py-[5px] text-center">#</th>
+                  <th className="w-28 border-r border-border px-2 py-[5px] text-left text-primary">{t("itemCode", "Item Code")}</th>
+                  <th className="min-w-[190px] border-r border-border px-2 py-[5px] text-left">{t("itemName", "Item Name")}</th>
+                  <th className="w-24 border-r border-border px-2 py-[5px] text-left">{t("store", "Store")}</th>
+                  <th className="w-14 border-r border-border px-1 py-[5px] text-center">{t("uom", "UOM")}</th>
+                  <th className="w-18 border-r border-border px-2 py-[5px] text-right">{t("qty", "Qty")}</th>
+                  <th className="w-20 border-r border-border px-2 py-[5px] text-right">{t("unitPrice", "Unit Price")}</th>
+                  <th className="w-16 border-r border-border px-2 py-[5px] text-right">{t("discPct", "Disc %")}</th>
                   <th className="w-24 border-r border-border px-2 py-[5px] text-right font-bold">{t("total", "Total")}</th>
                   <th className="w-32 border-r border-border px-2 py-[5px] text-left font-bold">{t("batch", "Batch")}</th>
                   <th className="w-28 border-r border-border px-2 py-[5px] text-left font-bold">{t("expiry", "Expiry")}</th>
@@ -1804,8 +1915,8 @@ export default function InvoiceEntryPage() {
                   return (
                     <Fragment key={line.id ?? `line-${index}`}>
                       <tr className={cn(
-                        "align-middle transition-colors hover:bg-accent/20",
-                        index % 2 === 0 ? "bg-background" : "bg-muted/5",
+                        "align-middle transition-colors hover:bg-accent/25 focus-within:outline focus-within:outline-1 focus-within:outline-ring/40",
+                        index % 2 === 0 ? "bg-background" : "bg-muted/8",
                         isMatched && "bg-emerald-500/5 hover:bg-emerald-500/10 border-l-2 border-l-emerald-500",
                         isAmbiguous && "bg-amber-500/5 hover:bg-amber-500/10 border-l-2 border-l-amber-500",
                         isUnmatched && "bg-rose-500/5 hover:bg-rose-500/10 border-l-2 border-l-rose-500"
@@ -1826,15 +1937,21 @@ export default function InvoiceEntryPage() {
                             value={line.product_code}
                             data-line-code={index}
                             onChange={(event) =>
-                              handleCodeOrBarcodeChange(index, "product_code", event.target.value)
+                              handleProductCodeChange(index, event.target.value)
                             }
-                            onBlur={() => void resolveManualProductLookup(index, "code")}
+                            onBlur={() => {
+                              // Fallback: resolve if user pasted a code or typed slowly
+                              if (!line.product_id && line.product_code.trim()) {
+                                void resolveManualProductLookup(index, "code");
+                              }
+                            }}
                             onKeyDown={(e) => handleLineKeyDown(e, index, "product_code")}
                             readOnly={isReadOnly}
                             placeholder="Code"
                             className={cn(
                               lineInputClass,
                               "font-mono border-0 focus:ring-0 focus:bg-accent/40 rounded-none h-7 px-2",
+                              line.product_id && "text-foreground",
                               isAmbiguous && "bg-amber-500/5 text-amber-900",
                               isUnmatched && "bg-rose-500/5 text-rose-900"
                             )}
@@ -2124,31 +2241,33 @@ export default function InvoiceEntryPage() {
 
                       {(line.product_id || exceedsStock || line.fefo_preview_open) && (
                         <tr>
-                          <td colSpan={13} className="border-b border-border bg-muted/20 px-3 py-1.5">
+                          <td colSpan={13} className="border-b border-border bg-muted/15 px-3 py-[3px]">
                             <div>
-                              <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[10.5px]">
-                                <span className="text-muted-foreground">
-                                  {t("available", "Available")}:{" "}
-                                  <span
-                                    className={cn(
-                                      "font-medium",
-                                      exceedsStock ? "text-destructive" : "text-foreground"
-                                    )}
-                                  >
-                                    {line.product_id ? availableStock.toFixed(3) : "-"}
-                                  </span>
+                              {/* Compact status row */}
+                              <div className="flex flex-wrap items-center gap-x-4 gap-y-0.5 text-[10px]">
+                                <span className={cn(
+                                  "font-mono font-semibold",
+                                  exceedsStock ? "text-destructive" : "text-foreground/70"
+                                )}>
+                                  AVAIL: {line.product_id ? availableStock.toFixed(3) : "—"}
+                                  {line.unit ? ` ${line.unit}` : ""}
                                 </span>
 
                                 {compactAllocation && (
-                                  <span className="text-muted-foreground">
+                                  <span className="font-mono text-primary/80 font-medium">
                                     FEFO:{" "}
-                                    <span className="font-medium text-foreground">
-                                      {compactAllocation.batch_no || t("noBatch", "No batch")}
+                                    <span className="text-foreground font-bold">
+                                      {compactAllocation.batch_no || "—"}
                                     </span>
-                                    {" • "}
-                                    {formatExpiryDate(compactAllocation.expiry_date, t("noExpiry", "No expiry"))}
-                                    {" • "}
-                                    {compactAllocation.allocated_qty.toFixed(3)}
+                                    {" | "}EXP:{" "}
+                                    <span className="text-foreground">
+                                      {formatExpiryDate(compactAllocation.expiry_date, "No expiry")}
+                                    </span>
+                                    {" | "}QTY:{" "}
+                                    <span className="text-foreground font-bold">
+                                      {compactAllocation.allocated_qty.toFixed(3)}
+                                      {line.unit ? ` ${line.unit}` : ""}
+                                    </span>
                                   </span>
                                 )}
 
@@ -2156,48 +2275,48 @@ export default function InvoiceEntryPage() {
                                   <button
                                     type="button"
                                     onClick={() => toggleFefoPreview(index)}
-                                    className="text-primary underline"
+                                    className="text-primary/70 underline hover:text-primary text-[10px]"
                                   >
                                     {line.fefo_preview_open
-                                      ? t("hideFefo", "Hide FEFO")
-                                      : `${t("showFefo", "Show FEFO")} (${line.fefo_preview.length} ${t("batches", "batches")})`}
+                                      ? "▲ Hide batches"
+                                      : `▼ ${line.fefo_preview.length} batches`}
                                   </button>
                                 )}
 
                                 {hasPartialAllocation && (
-                                  <span className="text-destructive">
-                                    {t("fefoCovers", "FEFO covers")} {allocatedQty.toFixed(3)} / {requestedQty.toFixed(3)}
+                                  <span className="text-amber-600 font-medium">
+                                    ⚠ FEFO covers {allocatedQty.toFixed(3)} / {requestedQty.toFixed(3)}
                                   </span>
                                 )}
 
                                 {showNoAllocationMessage && (
-                                  <span className="text-muted-foreground">
-                                    {t("noFefoAllocationPreview", "No FEFO allocation preview available")}
-                                  </span>
+                                  <span className="text-muted-foreground/70 italic">No FEFO allocation available</span>
                                 )}
 
                                 {exceedsStock && (
-                                  <span className="font-medium text-destructive">
-                                    {t("requestedQtyExceedsStock", "Requested quantity exceeds available stock")}
+                                  <span className="font-semibold text-destructive">
+                                    ✗ Requested qty exceeds stock
                                   </span>
                                 )}
                               </div>
 
+                              {/* Multi-batch expansion */}
                               {line.fefo_preview.length > 1 && line.fefo_preview_open && (
-                                <div className="mt-1 space-y-0.5 max-w-lg">
+                                <div className="mt-0.5 mb-0.5 space-y-px max-w-xl">
                                   {line.fefo_preview.map((allocation, allocationIndex) => (
                                     <div
                                       key={`${allocation.batch_no ?? "batch"}-${allocation.expiry_date ?? "no-expiry"}-${allocationIndex}`}
-                                      className="grid grid-cols-[1.2fr_1fr_0.7fr] gap-3 rounded-sm border border-border/60 px-2 py-0.5 text-[10.5px] bg-background"
+                                      className="flex items-center gap-3 rounded-[2px] border border-border/50 bg-background px-2 py-px text-[10px] font-mono"
                                     >
-                                      <span className="font-mono text-foreground">
-                                        {allocation.batch_no || t("noBatch", "No batch")}
+                                      <span className="w-28 font-bold text-foreground truncate">
+                                        {allocation.batch_no || "No batch"}
                                       </span>
                                       <span className="text-muted-foreground">
-                                        {formatExpiryDate(allocation.expiry_date, t("noExpiry", "No expiry"))}
+                                        EXP: {formatExpiryDate(allocation.expiry_date, "—")}
                                       </span>
-                                      <span className="text-right font-medium text-foreground">
+                                      <span className="ml-auto font-semibold text-foreground">
                                         {allocation.allocated_qty.toFixed(3)}
+                                        {line.unit ? ` ${line.unit}` : ""}
                                       </span>
                                     </div>
                                   ))}
