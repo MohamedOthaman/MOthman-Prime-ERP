@@ -61,10 +61,14 @@ and never breaks production flows.
   flag-independent runtime detector); make the extraction service URL configurable; add
   `.env.example`; document the security posture and the `.env`/CI-injection follow-up
   (the file stays tracked for now to avoid breaking the release build). See `docs/SECURITY.md`.
-- **P1 — OCR robustness & structured extraction**
+- **P1 — OCR robustness & structured extraction** *(in progress)*
   Confidence scoring surfaced in the review UI; validation layer (totals, tax, date,
   currency, SKU match) using `zod`; preprocessing (deskew/denoise/rotation) consolidated;
   Arabic/English mixed-invoice test corpus + golden tests.
+  _Landed:_ pure `zod` validation layer + Arabic/Western number normalization
+  (`src/features/upload-center/validation/`, 23 unit tests), wired into the extraction
+  pipeline as non-blocking warnings. _Next:_ surface issues/confidence in the review UI;
+  image preprocessing; date/tax/SKU cross-checks.
 - **P2 — Provider abstraction + MiniCPM-V**
   A single extraction provider interface in the service; pluggable backends
   (pdfplumber-text / PaddleOCR / Tesseract / Gemini / **MiniCPM-V**) with capability flags
