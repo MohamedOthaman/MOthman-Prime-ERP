@@ -7,7 +7,9 @@ export function getMovingThreshold(): number {
   try {
     const saved = localStorage.getItem(MOVING_THRESHOLD_KEY);
     if (saved) return Number(saved);
-  } catch {}
+  } catch {
+    // ignore
+  }
   return 20;
 }
 

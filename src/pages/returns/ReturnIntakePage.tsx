@@ -96,7 +96,7 @@ export default function ReturnIntakePage() {
 
       // Fetch allocation counts per exec line for multi-batch awareness
       const execLineIds = exec_val ? exec_val.lines.map((el) => el.id) : [];
-      let allocCountMap: Record<string, number> = {};
+      const allocCountMap: Record<string, number> = {};
       if (execLineIds.length > 0) {
         const { data: allocData } = await supabase
           .from("outbound_execution_allocations" as any)

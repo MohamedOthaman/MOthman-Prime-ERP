@@ -48,7 +48,7 @@ export function useBootstrapCache(options?: { enabled?: boolean }): BootstrapSta
         status: "failed",
         lastRunAt: Date.now(),
       }));
-      // eslint-disable-next-line no-console
+       
       console.warn("[bootstrap] failed", err);
     } finally {
       runningRef.current = false;
@@ -74,7 +74,7 @@ export function useBootstrapCache(options?: { enabled?: boolean }): BootstrapSta
 
       if (needsRefresh) void run();
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [enabled, isOnline, supabaseReachable]);
 
   return { ...state, refresh: run };

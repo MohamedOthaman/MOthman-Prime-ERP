@@ -20,7 +20,7 @@ async function createAdapter(): Promise<DatabaseAdapter> {
       await adapter.init();
     } catch (err) {
       // Fall back to IndexedDB if the SQL plugin failed to load.
-      // eslint-disable-next-line no-console
+       
       console.warn(
         "[DatabaseProvider] SQLite init failed, falling back to IndexedDB",
         err
@@ -37,7 +37,7 @@ async function createAdapter(): Promise<DatabaseAdapter> {
   const results = await runDataMigrations(adapter);
   const failures = results.filter((r) => r.status === "failed");
   if (failures.length > 0) {
-    // eslint-disable-next-line no-console
+     
     console.error("[DatabaseProvider] migration failures", failures);
   }
 

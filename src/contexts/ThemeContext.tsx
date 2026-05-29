@@ -29,7 +29,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     root.classList.remove(...ALL_THEMES);
     root.classList.add(theme);
     localStorage.setItem("app-theme", theme);
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []);  
  
   const setTheme = (t: Theme) => {
     const commit = () => {

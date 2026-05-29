@@ -75,7 +75,7 @@ export function createSyncWorker(
           const startedAt = Date.now();
           try {
             if (isDryRun()) {
-              // eslint-disable-next-line no-console
+               
               console.info("[sync:dry-run]", entry.entity, entry.op, entry.id);
             } else {
               await handler(entry);

@@ -7,11 +7,11 @@ interface ErrorSink {
 
 const noopSink: ErrorSink = {
   capture: (error, context) => {
-    // eslint-disable-next-line no-console
+     
     console.error("[error]", error, context ?? "");
   },
   message: (msg, context) => {
-    // eslint-disable-next-line no-console
+     
     console.warn("[error:msg]", msg, context ?? "");
   },
 };

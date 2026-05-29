@@ -184,7 +184,7 @@ export default function NetWeightPage() {
   useEffect(() => {
     if (phase === "scanning" && cameraOpen) void startCamera();
     return () => { if (phase === "scanning") stopCamera(); };
-  }, [phase]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [phase]);  
 
   // ── Packing list ────────────────────────────────────────────────────────────
 
