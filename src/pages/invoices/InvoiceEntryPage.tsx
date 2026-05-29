@@ -154,12 +154,14 @@ function formatExpiryDate(value: string | null, noExpiryLabel = "No expiry") {
   return parsed.toLocaleDateString("en-GB");
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function useDebounce<T extends (...args: any[]) => any>(fn: T, delay: number): T {
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const fnRef = useRef(fn);
   fnRef.current = fn;
 
   return useCallback(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     ((...args: any[]) => {
       if (timerRef.current) clearTimeout(timerRef.current);
       timerRef.current = setTimeout(() => fnRef.current(...args), delay);
@@ -244,12 +246,13 @@ export default function InvoiceEntryPage() {
     async function loadCustomerMappings() {
       try {
         const { data, error } = await supabase
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           .from("customer_sku_mappings" as any)
           .select("external_name, product_id")
           .eq("customer_id", customerId);
         if (!error && data) {
           const map: Record<string, string> = {};
-          data.forEach((row: any) => {
+          ((data || []) as Array<{ external_name: string; product_id: string }>).forEach((row) => {
             map[row.external_name.toLowerCase()] = row.product_id;
           });
           setCustomerMappings(map);
@@ -828,7 +831,7 @@ export default function InvoiceEntryPage() {
         focusNextField(index, selectorMap[nextField]);
       }
     },
-    [addLine, focusNextField, isReadOnly, lines.length, resolveManualProductLookup]
+    [addLine, focusNextField, isReadOnly, lines, resolveManualProductLookup]
   );
 
   const validateLines = () => {
@@ -910,11 +913,14 @@ export default function InvoiceEntryPage() {
         const mappedLines = lines.filter((line) => line.originalName && line.product_id);
         if (mappedLines.length > 0 && customerId) {
           const { data: existing } = await supabase
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             .from("customer_sku_mappings" as any)
             .select("external_name")
             .eq("customer_id", customerId);
 
-          const existingNames = new Set((existing || []).map((r: any) => r.external_name.toLowerCase()));
+          const existingNames = new Set(
+            ((existing || []) as Array<{ external_name: string }>).map((r) => r.external_name.toLowerCase())
+          );
           const mappingsToInsert = mappedLines
             .filter((line) => !existingNames.has(line.originalName!.toLowerCase()))
             .map((line) => ({
@@ -924,11 +930,13 @@ export default function InvoiceEntryPage() {
             }));
 
           if (mappingsToInsert.length > 0) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             await supabase.from("customer_sku_mappings" as any).insert(mappingsToInsert);
           }
 
           for (const line of mappedLines) {
             const { data: existingFb } = await supabase
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
               .from("auto_match_feedback" as any)
               .select("id, usage_count")
               .eq("external_name", line.originalName)
@@ -937,6 +945,7 @@ export default function InvoiceEntryPage() {
 
             if (existingFb) {
               await supabase
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 .from("auto_match_feedback" as any)
                 .update({
                   usage_count: (existingFb.usage_count || 0) + 1,
@@ -944,6 +953,7 @@ export default function InvoiceEntryPage() {
                 })
                 .eq("id", existingFb.id);
             } else {
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
               await supabase.from("auto_match_feedback" as any).insert({
                 external_name: line.originalName,
                 matched_product_id: line.product_id,
@@ -1123,7 +1133,7 @@ export default function InvoiceEntryPage() {
     if (!file) return;
 
     // Helper: handle both flat values and confidence-wrapped { value, confidence } objects
-    const nf = <T extends unknown>(field: unknown, fallback: T): T => {
+    const nf = <T,>(field: unknown, fallback: T): T => {
       if (field === undefined || field === null) return fallback;
       if (typeof field === "object" && field !== null && "value" in field)
         return ((field as { value: unknown }).value ?? fallback) as T;
@@ -1257,6 +1267,7 @@ export default function InvoiceEntryPage() {
       let ocrDocId: string | null = null;
       try {
         const { data: ocrDoc, error: ocrErr } = await supabase
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           .from("ocr_documents" as any)
           .insert({
             filename: file.name,
@@ -1381,11 +1392,13 @@ export default function InvoiceEntryPage() {
         if (matchedProduct && extItemName) {
           try {
             if (customerId) {
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
               await supabase.from("customer_sku_mappings" as any).upsert(
                 { customer_id: customerId, external_name: extItemName, product_id: matchedProduct.id },
                 { onConflict: "customer_id,external_name" }
               );
             }
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             await supabase.from("auto_match_feedback" as any).upsert(
               {
                 external_name: extItemName,
@@ -1452,6 +1465,7 @@ export default function InvoiceEntryPage() {
       if (ocrDocId) {
         try {
           await supabase
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             .from("ocr_documents" as any)
             .update({ status: "applied" })
             .eq("id", ocrDocId);
