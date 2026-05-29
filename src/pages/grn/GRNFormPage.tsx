@@ -181,7 +181,6 @@ export default function GRNFormPage() {
     toast.info(
       `${matched.length} lines loaded from document · ${matchedCount} matched · ${matched.length - matchedCount} unmatched`
     );
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [products]);
 
   // Focus helper

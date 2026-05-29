@@ -499,7 +499,7 @@ export default function InvoiceEntryPage() {
         }
 
         // Load customer alias mappings for matched customer
-        let localMappings: Record<string, string> = {};
+        const localMappings: Record<string, string> = {};
         if (injectedCustomerId) {
           try {
             const { data } = await supabase
@@ -621,7 +621,6 @@ export default function InvoiceEntryPage() {
         setExtractionProgress("");
       }
     })();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loading]);
 
   const setLineValue = useCallback(
