@@ -179,7 +179,7 @@ BEGIN
       AND line.product_id IS NOT NULL
       AND COALESCE(line.received_quantity, line.quantity, line.qty, 0) > 0
       AND COALESCE(NULLIF(BTRIM(line.qc_status), ''), 'pending') = 'pass'
-    ON CONFLICT (reference_type, reference_id, reference_line_id, type) DO NOTHING;
+    ON CONFLICT (reference_type, reference_id, reference_line_id, type) WHERE reference_line_id IS NOT NULL DO NOTHING;
   END IF;
 
   RETURN NEW;
