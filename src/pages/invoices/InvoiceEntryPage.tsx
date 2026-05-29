@@ -193,7 +193,7 @@ export default function InvoiceEntryPage() {
   const [serviceOnline, setServiceOnline] = useState<boolean | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const EXTRACT_SVC = "http://127.0.0.1:8000";
+  const EXTRACT_SVC = import.meta.env.VITE_EXTRACTION_SERVICE_URL ?? "http://127.0.0.1:8000";
 
   const checkExtractionService = async (): Promise<boolean> => {
     try {

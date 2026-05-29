@@ -8,6 +8,7 @@
  * print path for print previews.
  */
 
+import { isTauriRuntime } from "@/platform/runtime";
 import type {
   FoodChoiceNativeBridge,
   FoodChoiceNativeSaveFilePayload,
@@ -70,7 +71,7 @@ async function printHtml(payload: FoodChoiceNativePrintPayload): Promise<void> {
 
 export function initTauriBridge(): void {
   if (typeof window === "undefined") return;
-  if (!window.__TAURI__) return;
+  if (!isTauriRuntime()) return;
 
   // Merge — don't clobber any earlier wires (e.g. dev-tooling stubs).
   const existing: FoodChoiceNativeBridge | undefined = window.__FOOD_CHOICE_NATIVE__;
