@@ -70,12 +70,26 @@ app = FastAPI(
     version="2.1.0"
 )
 
+# CORS — origins are configurable via EXTRACTION_ALLOWED_ORIGINS (comma-separated).
+# Credentials are disabled because the service authenticates via the
+# X-Gemini-API-Key request header (not cookies); wildcard-origin + credentials
+# is both invalid per the CORS spec and insecure, so it is avoided entirely.
+_default_origins = (
+    "http://localhost:1420,http://127.0.0.1:1420,"
+    "tauri://localhost,http://tauri.localhost,https://tauri.localhost"
+)
+_allowed_origins = [
+    o.strip()
+    for o in os.environ.get("EXTRACTION_ALLOWED_ORIGINS", _default_origins).split(",")
+    if o.strip()
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_headers=["*"],
-    allow_methods=["*"],
+    allow_origins=_allowed_origins,
+    allow_credentials=False,
+    allow_headers=["Content-Type", "X-Gemini-API-Key"],
+    allow_methods=["GET", "POST", "OPTIONS"],
 )
 
 # ─── PaddleOCR lazy init ───────────────────────────────────────────────────────
