@@ -8,6 +8,11 @@ import { startEngine } from "./lib/automation";
 
 bootstrapPlatformRuntime();
 initErrorSink();
-startEngine();
+// The automation engine must never block or crash app startup.
+try {
+  startEngine();
+} catch (err) {
+  console.error("[Automation] startEngine failed — automation disabled:", err);
+}
 
 createRoot(document.getElementById("root")!).render(<App />);

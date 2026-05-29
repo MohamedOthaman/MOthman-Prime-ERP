@@ -44,6 +44,12 @@ export async function generateEmbedding(text: string, apiKey: string): Promise<n
 
 // ─── Index helpers ─────────────────────────────────────────────────────────────
 
+/**
+ * Persist an embedding. NOTE: the `entity_embeddings` table has RLS that denies
+ * writes to anon/authenticated clients — indexing must run with the service-role
+ * key from a trusted server/admin context. Calling this with the browser anon
+ * client will fail the RLS check (by design). See the P5 migration.
+ */
 export async function upsertEmbedding(
   entityType: EntityType,
   entityId: string,

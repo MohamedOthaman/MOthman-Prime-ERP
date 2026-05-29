@@ -1010,5 +1010,60 @@ def ready_check():
     return {"ready": True}
 
 
+# ─── Server configuration (env-driven, no hardcoded host/port) ─────────────────
+# HOST defaults to 127.0.0.1 (loopback) for safety: /extract and /detect are
+# UNAUTHENTICATED. Set HOST=0.0.0.0 only when the service is behind a firewall
+# or reverse proxy. PORT defaults to 8000; set PORT=8080 for the hosted target.
+SERVICE_HOST = os.environ.get("HOST", "127.0.0.1")
+SERVICE_PORT = int(os.environ.get("PORT", "8000"))
+# Auto-reload is a development feature; disabled unless EXTRACTION_RELOAD=true.
+SERVICE_RELOAD = os.environ.get("EXTRACTION_RELOAD", "").lower() in ("1", "true", "yes")
+
+
+@app.on_event("startup")
+def _startup_validation() -> None:
+    """Log effective configuration and warn about missing providers at boot."""
+    logger.info("=" * 70)
+    logger.info(f"[STARTUP] Extraction service v3.0.0 binding {SERVICE_HOST}:{SERVICE_PORT}")
+    logger.info(f"[STARTUP] OCR provider chain: {_EXTRACTION_PROVIDER}")
+    logger.info(f"[STARTUP] CORS allowed origins: {_allowed_origins}")
+
+    if SERVICE_HOST == "0.0.0.0":
+        logger.warning(
+            "[STARTUP] Bound to 0.0.0.0 — /extract and /detect are UNAUTHENTICATED. "
+            "Ensure a firewall or reverse proxy restricts access."
+        )
+
+    # Structuring provider availability
+    has_gemini = bool(os.environ.get("GEMINI_API_KEY"))
+    if _USE_MINICPM_V:
+        up = _minicpm_available()
+        logger.info(f"[STARTUP] MiniCPM-V enabled at {_MINICPM_V_URL} (reachable={up})")
+        if not up and not has_gemini:
+            logger.warning(
+                "[STARTUP] MiniCPM-V unreachable AND no GEMINI_API_KEY — "
+                "structuring will fail until one is available "
+                "(a per-request X-Gemini-API-Key header also works)."
+            )
+    elif not has_gemini:
+        logger.warning(
+            "[STARTUP] No GEMINI_API_KEY set — structuring relies on a per-request "
+            "X-Gemini-API-Key header. Set GEMINI_API_KEY or USE_MINICPM_V to avoid 400s."
+        )
+
+    if _USE_ULTRALYTICS:
+        logger.info(
+            f"[STARTUP] Ultralytics /detect enabled at {_ULTRALYTICS_URL} "
+            f"(reachable={_ultralytics_available()})"
+        )
+    logger.info("=" * 70)
+
+
 if __name__ == "__main__":
-    uvicorn.run("main:app", host="127.0.0.1", port=8000, reload=True, log_level="info")
+    uvicorn.run(
+        "main:app",
+        host=SERVICE_HOST,
+        port=SERVICE_PORT,
+        reload=SERVICE_RELOAD,
+        log_level=os.environ.get("LOG_LEVEL", "info"),
+    )

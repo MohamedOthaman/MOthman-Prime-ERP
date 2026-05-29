@@ -255,6 +255,14 @@ export const sidebarConfig: SidebarSectionConfig[] = [
         permissions: ["isAdmin"],
       },
       {
+        id: "operations",
+        labelKey: "sidebar:item.operations",
+        fallbackLabel: "Operations",
+        icon: Activity,
+        path: "/operations",
+        permissions: ["isAdmin"],
+      },
+      {
         id: "audit",
         labelKey: "sidebar:item.audit",
         fallbackLabel: "Audit",
