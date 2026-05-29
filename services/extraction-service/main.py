@@ -1,8 +1,11 @@
 import os
 import io
 import json
+import base64
 import logging
 import time
+import urllib.request
+import urllib.error
 import concurrent.futures
 from typing import Dict, Any, List, Optional
 from fastapi import FastAPI, UploadFile, File, Form, Header, HTTPException
@@ -67,7 +70,7 @@ load_dotenv()
 app = FastAPI(
     title="ERP Invoice Extraction Service",
     description="Production OCR pipeline: pdfplumber → PaddleOCR/Tesseract → Gemini 2.5 Flash",
-    version="2.1.0"
+    version="3.0.0"
 )
 
 # CORS — origins are configurable via EXTRACTION_ALLOWED_ORIGINS (comma-separated).
@@ -133,7 +136,6 @@ def preprocess_image(image_bytes: bytes) -> bytes:
     try:
         img = Image.open(io.BytesIO(image_bytes))
 
-        # Ensure RGB
         if img.mode not in ("RGB", "L", "RGBA"):
             img = img.convert("RGB")
         if img.mode == "RGBA":
@@ -141,10 +143,8 @@ def preprocess_image(image_bytes: bytes) -> bytes:
             bg.paste(img, mask=img.split()[3])
             img = bg
 
-        # Convert to grayscale for OCR — single-channel is faster and more accurate
         gray = img.convert("L")
 
-        # Scale up if image is too small; OCR degrades badly below ~200 DPI equivalent
         w, h = gray.size
         min_dim = min(w, h)
         if min_dim < 1400:
@@ -153,10 +153,7 @@ def preprocess_image(image_bytes: bytes) -> bytes:
             gray = gray.resize((new_w, new_h), Image.LANCZOS)
             logger.info(f"[PREPROCESS] Upscaled {w}×{h} → {new_w}×{new_h}")
 
-        # Auto-contrast: stretch histogram to use full 0-255 range
         gray = ImageOps.autocontrast(gray, cutoff=1)
-
-        # Double-sharpen for blurry/out-of-focus captures
         gray = gray.filter(ImageFilter.SHARPEN)
         gray = gray.filter(ImageFilter.SHARPEN)
 
@@ -185,9 +182,8 @@ def normalize_numerals(text: str) -> str:
     return text.translate(_ARABIC_NUMERAL_MAP).translate(_PERSIAN_NUMERAL_MAP)
 
 
-# ─── OCR helpers ──────────────────────────────────────────────────────────────
+# ─── OCR engine helpers ────────────────────────────────────────────────────────
 def _image_to_numpy(image_bytes: bytes):
-    """Convert raw image bytes to numpy RGB array."""
     if np is None or Image is None:
         raise RuntimeError("numpy or Pillow not available")
     img = Image.open(io.BytesIO(image_bytes)).convert("RGB")
@@ -195,7 +191,7 @@ def _image_to_numpy(image_bytes: bytes):
 
 
 def run_paddle_ocr(image_bytes: bytes) -> str:
-    """Run PaddleOCR; try Arabic model first (handles Arabic + Latin mix), fall back to English."""
+    """Run PaddleOCR; try Arabic model first, fall back to English."""
     enhanced = preprocess_image(image_bytes)
 
     for lang in ("ar", "en"):
@@ -242,22 +238,132 @@ def run_tesseract_ocr(image_bytes: bytes) -> str:
     return text
 
 
-def perform_ocr(image_bytes: bytes) -> str:
-    """Try PaddleOCR first, fall back to Tesseract."""
+# ─── Provider abstraction ──────────────────────────────────────────────────────
+# Providers are selected at startup via environment variables:
+#   EXTRACTION_PROVIDER = paddle (default) | tesseract | minicpm
+#   USE_MINICPM_V       = true  → use MiniCPM-V for document structuring
+#   MINICPM_V_URL       = base URL of the MiniCPM-V HTTP service
+#   MINICPM_V_MODEL     = model name reported by the service (default: MiniCPM-V)
+#
+# The provider chain always falls back: preferred → alternatives → empty string.
+# The structuring step falls back from MiniCPM-V → Gemini if MiniCPM-V is unreachable.
+
+_MINICPM_V_URL = os.environ.get("MINICPM_V_URL", "http://127.0.0.1:8001").rstrip("/")
+_MINICPM_V_MODEL = os.environ.get("MINICPM_V_MODEL", "MiniCPM-V")
+_USE_MINICPM_V = os.environ.get("USE_MINICPM_V", "").lower() in ("1", "true", "yes")
+_EXTRACTION_PROVIDER = os.environ.get("EXTRACTION_PROVIDER", "paddle").lower()
+
+
+def _minicpm_available() -> bool:
+    """Probe the MiniCPM-V service health endpoint; return False on any error."""
     try:
-        return run_paddle_ocr(image_bytes)
-    except Exception as e:
-        logger.warning(f"[OCR] PaddleOCR failed: {e} — trying Tesseract")
+        req = urllib.request.Request(
+            f"{_MINICPM_V_URL}/health",
+            method="GET",
+        )
+        with urllib.request.urlopen(req, timeout=2):
+            return True
+    except Exception:
+        return False
+
+
+def _minicpm_chat(
+    messages: list,
+    timeout: int = 60,
+) -> str:
+    """POST to MiniCPM-V /v1/chat/completions and return the assistant message content."""
+    payload = json.dumps({
+        "model": _MINICPM_V_MODEL,
+        "messages": messages,
+        "max_tokens": 8192,
+        "temperature": 0,
+    }).encode()
+    req = urllib.request.Request(
+        f"{_MINICPM_V_URL}/v1/chat/completions",
+        data=payload,
+        headers={"Content-Type": "application/json"},
+        method="POST",
+    )
+    with urllib.request.urlopen(req, timeout=timeout) as resp:
+        data = json.loads(resp.read())
+    return data["choices"][0]["message"]["content"]
+
+
+def _run_minicpm_ocr(image_bytes: bytes) -> str:
+    """Use MiniCPM-V vision to extract plain text from an invoice image."""
+    enhanced = preprocess_image(image_bytes)
+    b64 = base64.b64encode(enhanced).decode()
+    content = run_minicpm_ocr_extraction = _minicpm_chat(
+        messages=[{
+            "role": "user",
+            "content": [
+                {
+                    "type": "image_url",
+                    "image_url": {"url": f"data:image/jpeg;base64,{b64}"},
+                },
+                {
+                    "type": "text",
+                    "text": (
+                        "Extract all text from this invoice or document image exactly as written. "
+                        "Preserve columns and layout as best you can. Return plain text only — "
+                        "no commentary, no markdown."
+                    ),
+                },
+            ],
+        }],
+        timeout=60,
+    )
+    text = normalize_numerals(content)
+    logger.info(f"[OCR] MiniCPM-V extracted {len(text)} chars")
+    return text
+
+
+# Ordered OCR provider chains keyed by EXTRACTION_PROVIDER value.
+# Each entry is a list of (id, available_fn, run_fn) triples tried in order.
+def _paddle_available() -> bool:
+    return get_paddle_ocr("ar") is not None
+
+def _tesseract_available() -> bool:
+    return pytesseract is not None and Image is not None
+
+_OCR_CHAIN: Dict[str, list] = {
+    "paddle": [
+        ("paddle", _paddle_available, run_paddle_ocr),
+        ("tesseract", _tesseract_available, run_tesseract_ocr),
+    ],
+    "tesseract": [
+        ("tesseract", _tesseract_available, run_tesseract_ocr),
+        ("paddle", _paddle_available, run_paddle_ocr),
+    ],
+    "minicpm": [
+        ("minicpm", _minicpm_available, _run_minicpm_ocr),
+        ("paddle", _paddle_available, run_paddle_ocr),
+        ("tesseract", _tesseract_available, run_tesseract_ocr),
+    ],
+}
+
+
+def perform_ocr(image_bytes: bytes) -> str:
+    """Run OCR using the configured provider chain with automatic fallback."""
+    chain = _OCR_CHAIN.get(_EXTRACTION_PROVIDER, _OCR_CHAIN["paddle"])
+    last_error: Optional[Exception] = None
+    for provider_id, is_available, run_fn in chain:
+        if not is_available():
+            continue
         try:
-            return run_tesseract_ocr(image_bytes)
-        except Exception as e2:
-            logger.error(f"[OCR] Tesseract also failed: {e2}")
-            return ""
+            result = run_fn(image_bytes)
+            if result:
+                logger.info(f"[OCR] Provider '{provider_id}' succeeded")
+                return result
+        except Exception as e:
+            logger.warning(f"[OCR] Provider '{provider_id}' failed: {e}")
+            last_error = e
+    logger.error(f"[OCR] All providers failed. Last error: {last_error}")
+    return ""
 
 
 # ─── PDF extraction ────────────────────────────────────────────────────────────
 def _clean_cell(cell) -> str:
-    """Strip whitespace and collapse internal newlines from a table cell."""
     return " ".join(str(cell or "").split())
 
 
@@ -279,7 +385,6 @@ def extract_pdfplumber_text(pdf_bytes: bytes) -> str:
                     if not table:
                         continue
 
-                    # First non-empty row is treated as the header
                     header_row: List[str] = []
                     data_rows: List[List[str]] = []
                     for row in table:
@@ -298,12 +403,10 @@ def extract_pdfplumber_text(pdf_bytes: bytes) -> str:
                         full_text.append("-" * 60)
 
                     for row in data_rows:
-                        # Emit as "ColName: value" pairs so Gemini can map columns unambiguously
                         if header_row and len(row) == len(header_row):
                             pairs = [f"{h}: {v}" for h, v in zip(header_row, row) if v]
                             full_text.append("  " + " | ".join(pairs))
                         else:
-                            # Fallback: plain pipe-separated
                             full_text.append("  " + " | ".join(row))
 
                     full_text.append("=== END TABLE ===\n")
@@ -468,7 +571,8 @@ def parse_excel_directly(file_bytes: bytes, filename: str) -> Dict[str, Any]:
     }
 
 
-# ─── Gemini structuring ────────────────────────────────────────────────────────
+# ─── Structuring providers ──────────────────────────────────────────────────────
+# The prompt is shared across all structuring backends.
 GEMINI_PROMPT = """You are a world-class data extraction specialist for ERP supply-chain systems.
 Your task: parse raw text from a supplier invoice, purchase order (PO), or quotation — which may be in English, Arabic, or a mix of both — and return a single clean JSON object.
 
@@ -539,19 +643,14 @@ Common mappings: CAR→CAR, CTN→CTN, EA→EA, PCS→PCS, KG→KG, L→LTR.
 RAW EXTRACTED TEXT:
 """
 
-# Max text to send to Gemini — prevents token-limit errors on very long docs
 MAX_GEMINI_TEXT_CHARS = 80_000
-
-# Gemini API call timeout in seconds per attempt
 GEMINI_TIMEOUT_SECONDS = 90
-
 MAX_GEMINI_RETRIES = 3
 
 _gemini_executor = concurrent.futures.ThreadPoolExecutor(max_workers=2, thread_name_prefix="gemini")
 
 
 def _call_gemini_sync(model, prompt: str) -> str:
-    """Blocking call to Gemini — run inside an executor so we can apply a timeout."""
     response = model.generate_content(prompt)
     return response.text
 
@@ -574,7 +673,6 @@ def run_gemini_structuring(
     import google.generativeai as genai
     genai.configure(api_key=api_key)
 
-    # gemini-2.5-flash-preview-05-20 forces JSON output via response_mime_type
     generation_config = {
         "response_mime_type": "application/json",
         "temperature": 0,
@@ -584,7 +682,6 @@ def run_gemini_structuring(
         generation_config=generation_config,
     )
 
-    # Truncate very long text to avoid token-limit errors
     if len(text_content) > MAX_GEMINI_TEXT_CHARS:
         logger.warning(
             f"[GEMINI] Text too long ({len(text_content):,} chars), "
@@ -601,7 +698,6 @@ def run_gemini_structuring(
             )
 
             if image_bytes and not text_content.strip():
-                # Vision fallback when OCR returned nothing
                 logger.warning("[GEMINI] OCR empty — using Vision fallback")
                 if Image is None:
                     raise RuntimeError("Pillow not available for vision fallback")
@@ -618,7 +714,6 @@ def run_gemini_structuring(
             raw = future.result(timeout=GEMINI_TIMEOUT_SECONDS)
             logger.info(f"[GEMINI] Raw response: {len(raw)} chars")
 
-            # Strip markdown fences in case model ignores response_mime_type
             cleaned = raw.strip()
             if cleaned.startswith("```"):
                 cleaned = cleaned.split("```", 2)[1]
@@ -650,6 +745,61 @@ def run_gemini_structuring(
         status_code=500,
         detail=f"Gemini failed after {MAX_GEMINI_RETRIES} attempts: {last_error}",
     )
+
+
+def run_minicpm_structuring(
+    text_content: str,
+    image_bytes: Optional[bytes] = None,
+) -> Dict[str, Any]:
+    """Structure a document via MiniCPM-V (replaces Gemini when USE_MINICPM_V=true)."""
+    content: list = []
+    if image_bytes and not text_content.strip():
+        b64 = base64.b64encode(image_bytes).decode()
+        content.append({
+            "type": "image_url",
+            "image_url": {"url": f"data:image/jpeg;base64,{b64}"},
+        })
+    content.append({
+        "type": "text",
+        "text": GEMINI_PROMPT + (text_content or "[IMAGE PROVIDED]"),
+    })
+
+    try:
+        raw = _minicpm_chat(
+            messages=[{"role": "user", "content": content}],
+            timeout=120,
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"MiniCPM-V structuring failed: {e}")
+
+    cleaned = raw.strip()
+    if cleaned.startswith("```"):
+        cleaned = cleaned.split("```", 2)[1]
+        if cleaned.startswith("json"):
+            cleaned = cleaned[4:]
+        cleaned = cleaned.rsplit("```", 1)[0].strip()
+
+    try:
+        parsed = json.loads(cleaned)
+    except json.JSONDecodeError as e:
+        raise HTTPException(status_code=500, detail=f"MiniCPM-V returned invalid JSON: {e}")
+
+    logger.info(f"[MINICPM] Structured — {len(parsed.get('items', []))} item(s)")
+    return parsed
+
+
+def run_structuring(
+    text_content: str,
+    custom_api_key: Optional[str],
+    image_bytes: Optional[bytes],
+) -> Dict[str, Any]:
+    """Route to the active structuring provider; fall back from MiniCPM-V → Gemini."""
+    if _USE_MINICPM_V:
+        if _minicpm_available():
+            logger.info("[STRUCTURE] Using MiniCPM-V provider")
+            return run_minicpm_structuring(text_content, image_bytes)
+        logger.warning("[STRUCTURE] MiniCPM-V unavailable — falling back to Gemini")
+    return run_gemini_structuring(text_content, custom_api_key, image_bytes)
 
 
 # ─── Main extraction endpoint ──────────────────────────────────────────────────
@@ -698,25 +848,25 @@ async def extract_document(
             else:
                 logger.info("[PDF] Scanned (low text) — switching to OCR")
                 text_content = extract_scanned_pdf(file_bytes)
-                source_method = "scanned_pdf_paddleocr"
+                source_method = f"scanned_pdf_{_EXTRACTION_PROVIDER}"
         except Exception as e:
             logger.warning(f"[PDF] pdfplumber error: {e} — OCR fallback")
             try:
                 text_content = extract_scanned_pdf(file_bytes)
-                source_method = "scanned_pdf_fallback"
+                source_method = f"scanned_pdf_fallback_{_EXTRACTION_PROVIDER}"
             except Exception as e2:
                 logger.error(f"[PDF] All extraction methods failed: {e2}")
                 raise HTTPException(status_code=500, detail=f"PDF extraction failed: {e2}")
     else:
         logger.info(f"[OCR] Image ({ext.upper()})")
         text_content = perform_ocr(file_bytes)
-        source_method = "image_paddleocr"
+        source_method = f"image_{_EXTRACTION_PROVIDER}"
         vision_fallback_bytes = file_bytes
 
     # ── Sanity check ───────────────────────────────────────────────────────────
     if not text_content.strip():
         if vision_fallback_bytes:
-            logger.warning("[API] OCR empty — will try Gemini Vision fallback")
+            logger.warning("[API] OCR empty — will try vision structuring fallback")
         else:
             raise HTTPException(
                 status_code=400,
@@ -726,9 +876,9 @@ async def extract_document(
                 ),
             )
 
-    # ── Gemini structuring ─────────────────────────────────────────────────────
-    logger.info(f"[API] Sending {len(text_content):,} chars to Gemini...")
-    structured = run_gemini_structuring(
+    # ── Structuring ────────────────────────────────────────────────────────────
+    logger.info(f"[API] Structuring {len(text_content):,} chars...")
+    structured = run_structuring(
         text_content=text_content,
         custom_api_key=x_gemini_api_key,
         image_bytes=vision_fallback_bytes if not text_content.strip() else None,
@@ -745,21 +895,112 @@ async def extract_document(
     }
 
 
+# ─── Ultralytics vision endpoint (P4 — optional) ──────────────────────────────
+# Proxies image detection requests to a separately-running Ultralytics inference
+# service (e.g. Ultralytics HUB or a custom YOLOv8 FastAPI wrapper).
+# Enable by setting USE_ULTRALYTICS=true and ULTRALYTICS_URL to the service base URL.
+
+_ULTRALYTICS_URL = os.environ.get("ULTRALYTICS_URL", "http://127.0.0.1:8002").rstrip("/")
+_USE_ULTRALYTICS = os.environ.get("USE_ULTRALYTICS", "").lower() in ("1", "true", "yes")
+
+
+def _ultralytics_available() -> bool:
+    try:
+        req = urllib.request.Request(f"{_ULTRALYTICS_URL}/health", method="GET")
+        with urllib.request.urlopen(req, timeout=2):
+            return True
+    except Exception:
+        return False
+
+
+@app.post("/detect")
+async def detect_objects(
+    file: UploadFile = File(...),
+    confidence: float = Form(0.25),
+    classes: Optional[str] = Form(None),
+):
+    """
+    Forward an image to the Ultralytics inference service for object/product detection.
+    Returns bounding boxes with class names and confidence scores.
+    Requires USE_ULTRALYTICS=true and a running Ultralytics service at ULTRALYTICS_URL.
+    """
+    if not _USE_ULTRALYTICS:
+        raise HTTPException(
+            status_code=503,
+            detail="Ultralytics vision is disabled. Set USE_ULTRALYTICS=true and configure ULTRALYTICS_URL.",
+        )
+    if not _ultralytics_available():
+        raise HTTPException(
+            status_code=503,
+            detail=f"Ultralytics service is not reachable at {_ULTRALYTICS_URL}.",
+        )
+
+    file_bytes = await file.read()
+    logger.info(f"[DETECT] Forwarding {len(file_bytes):,} bytes to Ultralytics ({_ULTRALYTICS_URL})")
+
+    # Forward as multipart form to the Ultralytics /detect endpoint
+    import urllib.parse
+    boundary = "----ExtractionServiceBoundary"
+    body_parts = [
+        f"--{boundary}\r\nContent-Disposition: form-data; name=\"file\"; filename=\"{file.filename or 'image.jpg'}\"\r\nContent-Type: image/jpeg\r\n\r\n".encode()
+        + file_bytes
+        + b"\r\n",
+        f"--{boundary}\r\nContent-Disposition: form-data; name=\"confidence\"\r\n\r\n{confidence}\r\n".encode(),
+    ]
+    if classes:
+        body_parts.append(
+            f"--{boundary}\r\nContent-Disposition: form-data; name=\"classes\"\r\n\r\n{classes}\r\n".encode()
+        )
+    body_parts.append(f"--{boundary}--\r\n".encode())
+    body = b"".join(body_parts)
+
+    try:
+        req = urllib.request.Request(
+            f"{_ULTRALYTICS_URL}/detect",
+            data=body,
+            headers={"Content-Type": f"multipart/form-data; boundary={boundary}"},
+            method="POST",
+        )
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            result = json.loads(resp.read())
+        logger.info(f"[DETECT] Got {len(result.get('detections', []))} detections")
+        return {"success": True, "source": "ultralytics", "data": result}
+    except urllib.error.HTTPError as e:
+        raise HTTPException(status_code=e.code, detail=f"Ultralytics error: {e.reason}")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Detection failed: {e}")
+
+
 # ─── Health check ──────────────────────────────────────────────────────────────
 @app.get("/health")
 def health_check():
     paddle_ar = get_paddle_ocr("ar")
+    minicpm_up = _minicpm_available() if _USE_MINICPM_V else None
+    structure_provider = "minicpm" if (_USE_MINICPM_V and minicpm_up) else "gemini"
+
     return {
         "status": "healthy",
-        "version": "2.1.0",
+        "version": "3.0.0",
+        # OCR
+        "ocr_provider": _EXTRACTION_PROVIDER,
         "pdfplumber": pdfplumber is not None,
         "pdf2image": convert_from_bytes is not None,
         "pytesseract": pytesseract is not None,
         "paddleocr": paddle_ar is not None,
+        # Structuring
+        "structure_provider": structure_provider,
+        "gemini_api_key_set": bool(os.environ.get("GEMINI_API_KEY")),
+        "minicpm_v_enabled": _USE_MINICPM_V,
+        "minicpm_v_url": _MINICPM_V_URL if _USE_MINICPM_V else None,
+        "minicpm_v_available": minicpm_up,
+        # Ultralytics
+        "ultralytics_enabled": _USE_ULTRALYTICS,
+        "ultralytics_url": _ULTRALYTICS_URL if _USE_ULTRALYTICS else None,
+        "ultralytics_available": _ultralytics_available() if _USE_ULTRALYTICS else None,
+        # Runtime
         "pandas": pd is not None,
         "numpy": np is not None,
         "pillow": Image is not None,
-        "gemini_api_key_set": bool(os.environ.get("GEMINI_API_KEY")),
     }
 
 

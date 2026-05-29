@@ -1,5 +1,6 @@
 import { getExtractor } from "../extractors";
 import { validateInvoiceRows } from "../validation";
+import { fireTrigger } from "@/lib/automation";
 import type { ExtractionResult, ExtractionHints } from "../types";
 
 export interface PipelineOptions {
@@ -35,6 +36,12 @@ export async function runExtraction(
       // Validation is non-critical; ignore failures so extraction is unaffected.
     }
   }
+
+  fireTrigger("ocr.completed", {
+    documentId: file.name,
+    itemCount: result.rows.length,
+    warnings: result.warnings,
+  });
 
   return { result, extractorId: extractor.id };
 }
