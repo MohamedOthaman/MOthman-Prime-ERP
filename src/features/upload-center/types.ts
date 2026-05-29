@@ -1,5 +1,6 @@
 export type DocumentType =
   | "invoice"
+  | "purchase_order"
   | "sku"
   | "packing_list"
   | "unknown";

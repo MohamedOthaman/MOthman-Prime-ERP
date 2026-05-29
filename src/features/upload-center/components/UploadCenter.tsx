@@ -1,6 +1,7 @@
 import { useState, useCallback } from "react";
 import { Upload, Info } from "lucide-react";
 import { toast } from "sonner";
+import { useNavigate } from "react-router-dom";
 import { DragDropZone } from "./DragDropZone";
 import { UploadQueueTable } from "./UploadQueueTable";
 import { ExtractionReviewDialog } from "./ExtractionReviewDialog";
@@ -17,7 +18,8 @@ function nextId() {
 
 export function UploadCenter() {
   const { t } = useLang();
-  const { addInvoice, importProducts, loadData } = useStockContext();
+  const { importProducts, loadData } = useStockContext();
+  const navigate = useNavigate();
   const [queue, setQueue] = useState<UploadItem[]>([]);
   const [reviewItem, setReviewItem] = useState<UploadItem | null>(null);
 
@@ -68,39 +70,78 @@ export function UploadCenter() {
   async function handleConfirm(item: UploadItem, chosenType: DocumentType) {
     setReviewItem(null);
     if (!item.result) return;
+
+    // ── Sales invoice → open in InvoiceEntryPage with pre-matched rows ────────
+    if (chosenType === "invoice") {
+      const invoices = item.result.rows as unknown as ParsedInvoice[];
+      if (invoices.length === 0) { toast.error(t("noDataExtracted", "No data extracted.")); return; }
+      const inv = invoices[0];
+      const rawExtraction = {
+        header: {
+          invoiceNumber: inv.invoiceNo ?? "",
+          poNumber: inv.poNumber ?? "",
+          quotationNumber: inv.quotationNumber ?? "",
+          date: inv.date ?? "",
+          customerName: inv.customerName ?? "",
+          customerCode: inv.customerCode ?? "",
+          currency: inv.currency ?? "KWD",
+          paymentTerms: inv.paymentTerms ?? "",
+          salesman: inv.salesmanName ?? "",
+          comments: inv.notes ?? "",
+        },
+        items: inv.items.map((it) => ({
+          itemCode: it.itemCode ?? "",
+          barcode: it.barcode ?? "",
+          itemName: it.itemName ?? "",
+          unit: it.uom ?? "PCS",
+          qty: it.qty ?? 0,
+          unitPrice: it.unitPrice ?? 0,
+          discount: it.discount ?? 0,
+          total: it.total ?? 0,
+        })),
+      };
+      updateItem(item.id, { status: "done", appliedCount: inv.items.length });
+      toast.success(
+        `${inv.items.length} ${t("rowsExtracted", "rows extracted")} — ${t("openingInvoiceEntry", "opening invoice entry…")}`
+      );
+      navigate("/invoice-entry", { state: { rawExtraction } });
+      return;
+    }
+
+    // ── Purchase order / supplier invoice → open in GRN entry ─────────────────
+    if (chosenType === "purchase_order") {
+      const invoices = item.result.rows as unknown as ParsedInvoice[];
+      if (invoices.length === 0) { toast.error(t("noDataExtracted", "No data extracted.")); return; }
+      const inv = invoices[0];
+      const rawLines = inv.items.map((it) => ({
+        itemCode: it.itemCode ?? "",
+        itemName: it.itemName ?? "",
+        qty: it.qty ?? 0,
+        uom: it.uom ?? "PCS",
+        unitPrice: it.unitPrice ?? 0,
+        barcode: it.barcode ?? "",
+      }));
+      updateItem(item.id, { status: "done", appliedCount: inv.items.length });
+      toast.success(
+        `${inv.items.length} ${t("rowsExtracted", "rows extracted")} — ${t("openingGrnEntry", "opening GRN entry…")}`
+      );
+      navigate("/grn/new", {
+        state: {
+          rawLines,
+          referenceNo: inv.invoiceNo ?? "",
+          poNumber: inv.poNumber ?? inv.invoiceNo ?? "",
+          supplierName: inv.customerName ?? "",
+        },
+      });
+      return;
+    }
+
     updateItem(item.id, { status: "applying", documentType: chosenType, progress: t("applying", "Applying…") });
 
     try {
       let count = 0;
 
-      if (chosenType === "invoice") {
-        const invoices = item.result.rows as unknown as ParsedInvoice[];
-        for (const inv of invoices) {
-          try {
-            await addInvoice({
-              invoiceNo: inv.invoiceNo,
-              date: inv.date,
-              time: new Date().toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }),
-              customerName: inv.customerName,
-              items: inv.items.map((it) => ({
-                productCode: it.itemCode,
-                productName: it.itemName,
-                qty: it.qty,
-                unit: it.uom,
-                batchNo: "",
-                expiryDate: "",
-              })),
-              type: "OUT",
-              status: "ready",
-              deductionLog: [],
-            });
-            count++;
-          } catch {
-            // skip individual failures
-          }
-        }
-        await loadData();
-      } else if (chosenType === "sku") {
+      if (chosenType === "sku") {
         const products = item.result.rows as unknown as ParsedProduct[];
         const brandMap = new Map<string, ParsedProduct[]>();
         for (const p of products) {

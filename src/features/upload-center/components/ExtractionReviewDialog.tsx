@@ -11,7 +11,23 @@ interface Props {
   onClose: () => void;
 }
 
-const DOC_TYPES: DocumentType[] = ["invoice", "sku", "packing_list"];
+const DOC_TYPES: DocumentType[] = ["invoice", "purchase_order", "sku", "packing_list"];
+
+const DOC_TYPE_LABELS: Record<DocumentType, string> = {
+  invoice: "Sales Invoice",
+  purchase_order: "Purchase Order / Supplier Invoice",
+  sku: "SKU / Stock Report",
+  packing_list: "Packing List",
+  unknown: "Unknown",
+};
+
+const DOC_TYPE_ACTION: Record<DocumentType, string> = {
+  invoice: "Open in Invoice Entry",
+  purchase_order: "Open in GRN Entry",
+  sku: "Import Products",
+  packing_list: "Import to GRN",
+  unknown: "Import",
+};
 
 export function ExtractionReviewDialog({ item, onConfirm, onClose }: Props) {
   const { t } = useLang();
@@ -56,7 +72,7 @@ export function ExtractionReviewDialog({ item, onConfirm, onClose }: Props) {
                     : "border-border bg-card text-foreground hover:bg-muted/50"
                 }`}
               >
-                <DocumentTypeBadge type={type} />
+                {DOC_TYPE_LABELS[type] ?? type}
               </button>
             ))}
           </div>
@@ -125,7 +141,8 @@ export function ExtractionReviewDialog({ item, onConfirm, onClose }: Props) {
             disabled={rows.length === 0}
             className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90 disabled:opacity-40"
           >
-            {t("importRows", "Import")} {rows.length > 0 ? `(${rows.length})` : ""}
+            {DOC_TYPE_ACTION[chosenType] ?? t("importRows", "Import")}{" "}
+            {rows.length > 0 ? `(${rows.length})` : ""}
           </button>
         </div>
       </div>

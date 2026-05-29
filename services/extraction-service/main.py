@@ -63,11 +63,19 @@ logger = logging.getLogger("extraction-service")
 
 load_dotenv()
 
+# ─── MiniCPM-V local inference config ─────────────────────────────────────────
+# Set USE_MINICPM_V=true in .env to route image understanding through a local
+# MiniCPM-V server (OpenAI-compatible API served by MiniCPM-V/serve.py).
+# Falls back to PaddleOCR/Gemini if the server is unreachable.
+USE_MINICPM_V = os.environ.get("USE_MINICPM_V", "false").lower() == "true"
+MINICPM_V_URL = os.environ.get("MINICPM_V_URL", "http://127.0.0.1:8001")
+MINICPM_V_TIMEOUT = int(os.environ.get("MINICPM_V_TIMEOUT", "60"))
+
 # ─── FastAPI app ──────────────────────────────────────────────────────────────
 app = FastAPI(
     title="ERP Invoice Extraction Service",
-    description="Production OCR pipeline: pdfplumber → PaddleOCR/Tesseract → Gemini 2.5 Flash",
-    version="2.1.0"
+    description="Production OCR pipeline: pdfplumber → PaddleOCR/Tesseract → MiniCPM-V/Gemini",
+    version="2.2.0"
 )
 
 app.add_middleware(
@@ -228,8 +236,85 @@ def run_tesseract_ocr(image_bytes: bytes) -> str:
     return text
 
 
+def run_minicpm_v_ocr(image_bytes: bytes) -> str:
+    """
+    Send an image to a locally-running MiniCPM-V server (OpenAI-compatible API)
+    and extract all text from the document image.
+
+    The server is expected to implement POST /v1/chat/completions exactly like
+    the OpenAI chat completions API, accepting image_url content parts.
+    See MiniCPM-V/serve.py for the reference server implementation.
+    """
+    if not USE_MINICPM_V:
+        raise RuntimeError("MiniCPM-V not enabled (USE_MINICPM_V=false)")
+
+    import base64
+    import urllib.request
+
+    enhanced = preprocess_image(image_bytes)
+    b64 = base64.b64encode(enhanced).decode("utf-8")
+    data_url = f"data:image/jpeg;base64,{b64}"
+
+    payload = {
+        "model": "MiniCPM-V",
+        "messages": [
+            {
+                "role": "user",
+                "content": [
+                    {
+                        "type": "text",
+                        "text": (
+                            "You are an expert OCR and document understanding system. "
+                            "Extract ALL text from this document image exactly as written, "
+                            "preserving table structure, numbers, and Arabic/English content. "
+                            "Output only the extracted text with no commentary."
+                        ),
+                    },
+                    {
+                        "type": "image_url",
+                        "image_url": {"url": data_url},
+                    },
+                ],
+            }
+        ],
+        "max_tokens": 4096,
+        "temperature": 0,
+    }
+
+    import json as _json
+    req_data = _json.dumps(payload).encode("utf-8")
+    req = urllib.request.Request(
+        f"{MINICPM_V_URL}/v1/chat/completions",
+        data=req_data,
+        headers={"Content-Type": "application/json"},
+        method="POST",
+    )
+
+    with urllib.request.urlopen(req, timeout=MINICPM_V_TIMEOUT) as resp:
+        result = _json.loads(resp.read().decode("utf-8"))
+
+    text = result["choices"][0]["message"]["content"]
+    text = normalize_numerals(text)
+    logger.info(f"[MINICPM-V] Extracted {len(text)} chars")
+    return text
+
+
 def perform_ocr(image_bytes: bytes) -> str:
-    """Try PaddleOCR first, fall back to Tesseract."""
+    """
+    OCR pipeline with optional MiniCPM-V:
+      1. MiniCPM-V (if USE_MINICPM_V=true) — best quality for complex docs
+      2. PaddleOCR — bilingual Arabic/English, fast
+      3. Tesseract — universal fallback
+    """
+    if USE_MINICPM_V:
+        try:
+            text = run_minicpm_v_ocr(image_bytes)
+            if text.strip():
+                return text
+            logger.warning("[OCR] MiniCPM-V returned empty — falling through to PaddleOCR")
+        except Exception as e:
+            logger.warning(f"[OCR] MiniCPM-V unavailable: {e} — falling back to PaddleOCR")
+
     try:
         return run_paddle_ocr(image_bytes)
     except Exception as e:

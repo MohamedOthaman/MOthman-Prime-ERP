@@ -1,5 +1,5 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useLocation } from "react-router-dom";
 import {
   AlertTriangle,
   ArrowLeft,
@@ -173,6 +173,7 @@ function useDebounce<T extends (...args: any[]) => any>(fn: T, delay: number): T
 export default function InvoiceEntryPage() {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
+  const location = useLocation();
   const { lang, t } = useLang();
   const isNew = !id;
   const printRef = useRef<HTMLDivElement>(null);
@@ -443,6 +444,185 @@ export default function InvoiceEntryPage() {
 
     void loadPage();
   }, [formatProductLookup, id, isNew, lang]);
+
+  // ── Inject pre-extracted data arriving from UploadCenter navigation ──────────
+  // Runs once after initial data load; checks location.state.rawExtraction.
+  const didInjectFromNavState = useRef(false);
+  useEffect(() => {
+    if (didInjectFromNavState.current || !isNew || loading || products.length === 0) return;
+    const state = location.state as {
+      rawExtraction?: { header: Record<string, unknown>; items: unknown[] };
+    } | null;
+    if (!state?.rawExtraction?.items?.length) return;
+    didInjectFromNavState.current = true;
+
+    const { header: extractedHeader, items: extractedItems } = state.rawExtraction;
+    const nf = <T,>(field: unknown, fallback: T): T => {
+      if (field === undefined || field === null) return fallback;
+      if (typeof field === "object" && field !== null && "value" in field)
+        return ((field as { value: unknown }).value ?? fallback) as T;
+      return field as T;
+    };
+
+    void (async () => {
+      setExtracting(true);
+      setExtractionProgress("Matching products from document...");
+      try {
+        // Populate header fields
+        const invoiceNoVal = nf<string>(extractedHeader.invoiceNumber, "");
+        const poNoVal = nf<string>(extractedHeader.poNumber, "");
+        const dateVal = nf<string>(extractedHeader.date, "");
+        const commentsVal = nf<string>(extractedHeader.comments, "");
+        const currencyVal = nf<string>(extractedHeader.currency, "");
+        const custNameVal = nf<string>(extractedHeader.customerName, "");
+        if (invoiceNoVal) setInvoiceNo(invoiceNoVal);
+        else if (poNoVal) setInvoiceNo(`PO-${poNoVal}`);
+        if (dateVal) setInvoiceDate(dateVal.split("T")[0]);
+        if (poNoVal) setPoNumber(poNoVal);
+        if (commentsVal) setNotes(commentsVal);
+        if (currencyVal) setCurrency(currencyVal);
+
+        let injectedCustomerId = "";
+        if (custNameVal) {
+          const lcName = custNameVal.toLowerCase().trim();
+          const matchedCust = customers.find(
+            (c) =>
+              c.name.toLowerCase().includes(lcName) ||
+              lcName.includes(c.name.toLowerCase()) ||
+              (c.code && c.code.toLowerCase() === lcName)
+          );
+          if (matchedCust) {
+            setCustomerId(matchedCust.id);
+            injectedCustomerId = matchedCust.id;
+            if (matchedCust.salesman_id) setSalesmanId(matchedCust.salesman_id);
+          }
+        }
+
+        // Load customer alias mappings for matched customer
+        let localMappings: Record<string, string> = {};
+        if (injectedCustomerId) {
+          try {
+            const { data } = await supabase
+              .from("customer_sku_mappings" as any)
+              .select("external_name, product_id")
+              .eq("customer_id", injectedCustomerId);
+            if (data) {
+              (data as Array<{ external_name: string; product_id: string }>).forEach(
+                (row) => { localMappings[row.external_name.toLowerCase()] = row.product_id; }
+              );
+            }
+          } catch { /* non-critical */ }
+        }
+
+        setExtractionProgress("Injecting Invoice Lines...");
+        const mappedLines: InvoiceLineForm[] = [];
+        let matchedCount = 0, ambiguousCount = 0, unmatchedCount = 0;
+
+        for (const rawItem of extractedItems) {
+          const item = rawItem as Record<string, unknown>;
+          const extBarcode = nf<string>(item.barcode, "").trim();
+          const extItemCode = nf<string>(item.itemCode, "").trim();
+          const extItemName = nf<string>(item.itemName, "").trim();
+          const extQty = nf<number>(item.qty, 1);
+          const extPrice = nf<number>(item.unitPrice, 0);
+          const extDisc = nf<number>(item.discount, 0);
+          const extUnit = nf<string>(item.unit, "PCS");
+
+          let matched: ProductLookup | null = null;
+          if (extBarcode) matched = resolveProductByCodeOrBarcode(extBarcode, "barcode");
+          if (!matched && extItemCode) matched = resolveProductByCodeOrBarcode(extItemCode, "code");
+          if (!matched && extItemName) {
+            const pid = localMappings[extItemName.toLowerCase()];
+            if (pid) matched = productsById.get(pid) ?? null;
+          }
+
+          let suggestions: ProductLookup[] = [];
+          if (!matched && extItemName) {
+            const sims = products
+              .map((p) => ({
+                product: p,
+                similarity: Math.max(
+                  getStringSimilarity(extItemName, getProductLabel(p, lang)),
+                  p.item_code ? getStringSimilarity(extItemName, p.item_code) : 0
+                ),
+              }))
+              .sort((a, b) => b.similarity - a.similarity);
+            suggestions = sims.filter((s) => s.similarity >= 0.45).slice(0, 5).map((s) => s.product);
+            if (sims[0] && sims[0].similarity > 0.75) matched = sims[0].product;
+          }
+
+          if (matched && extItemName) matchedCount++;
+          else if (!matched && extItemName && suggestions.length > 0) ambiguousCount++;
+          else if (!matched && extItemName) unmatchedCount++;
+
+          if (matched && extItemName) {
+            try {
+              if (injectedCustomerId) {
+                await supabase.from("customer_sku_mappings" as any).upsert(
+                  { customer_id: injectedCustomerId, external_name: extItemName, product_id: matched.id },
+                  { onConflict: "customer_id,external_name" }
+                );
+              }
+              await supabase.from("auto_match_feedback" as any).upsert(
+                {
+                  external_name: extItemName,
+                  matched_product_id: matched.id,
+                  usage_count: 1,
+                  last_used: new Date().toISOString(),
+                },
+                { onConflict: "external_name,matched_product_id" }
+              );
+            } catch { /* non-critical */ }
+          }
+
+          const quantity = String(extQty > 0 ? extQty : 1);
+          let availableStock: number | null = null;
+          let fefoPreview: FefoPreviewAllocation[] = [];
+          if (matched) {
+            try {
+              const inv = await loadLineInventoryPreview(matched.id, quantity);
+              availableStock = inv.availableStock;
+              fefoPreview = inv.fefoPreview;
+            } catch { /* non-critical */ }
+          }
+
+          mappedLines.push({
+            search: matched ? formatProductLookup(matched) : "",
+            product_id: matched?.id ?? "",
+            product_code: matched?.item_code ?? extItemCode,
+            product_barcode: matched?.primary_barcode ?? extBarcode,
+            product_name: matched ? getProductLabel(matched, lang) : extItemName,
+            unit: matched?.uom ?? extUnit,
+            quantity,
+            unit_price: String(
+              extPrice || (matched?.selling_price != null ? Number(matched.selling_price) : 0)
+            ),
+            discount: String(extDisc || 0),
+            available_stock: availableStock,
+            fefo_preview: fefoPreview,
+            fefo_preview_open: false,
+            product_picker_open: false,
+            originalName: extItemName || undefined,
+            suggestions: suggestions.length > 0 ? suggestions : undefined,
+            is_foc: false,
+            store: "MAIN",
+            batch: fefoPreview[0]?.batch_no ?? "",
+            expiry: fefoPreview[0]?.expiry_date ?? "",
+          });
+        }
+
+        mappedLines.push({ ...EMPTY_LINE });
+        setLines(mappedLines);
+        toast.success(
+          `${extractedItems.length} line(s) loaded — ✓ ${matchedCount} matched · ⚠ ${ambiguousCount} ambiguous · ✗ ${unmatchedCount} unmatched`
+        );
+      } finally {
+        setExtracting(false);
+        setExtractionProgress("");
+      }
+    })();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading]);
 
   const setLineValue = useCallback(
     (
