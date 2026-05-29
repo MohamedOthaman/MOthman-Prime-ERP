@@ -196,3 +196,27 @@ CREATE TABLE IF NOT EXISTS public.inventory_batches (
     production_date            date
 );
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.inventory_batches TO authenticated;
+
+-- ── products: reconcile out-of-band columns ──────────────────────────
+-- The base migration created public.products with a minimal column set,
+-- but production's products carries many more columns (added out-of-band).
+-- Several product views / RPCs (phase_7, phase_8, phase_9) reference these
+-- columns before the migration that adds them (phase_11) runs, so a
+-- from-scratch apply fails (e.g. "column p.is_active does not exist").
+-- Add them up-front, nullable + IF NOT EXISTS, so the views resolve and the
+-- later ADD COLUMN IF NOT EXISTS statements become no-ops. No-op on
+-- production where these columns already exist.
+ALTER TABLE public.products
+    ADD COLUMN IF NOT EXISTS item_code         text,
+    ADD COLUMN IF NOT EXISTS internal_code     text,
+    ADD COLUMN IF NOT EXISTS name_en           text,
+    ADD COLUMN IF NOT EXISTS name_ar           text,
+    ADD COLUMN IF NOT EXISTS category          text,
+    ADD COLUMN IF NOT EXISTS country           text,
+    ADD COLUMN IF NOT EXISTS country_of_origin text,
+    ADD COLUMN IF NOT EXISTS brand             text,
+    ADD COLUMN IF NOT EXISTS uom               text,
+    ADD COLUMN IF NOT EXISTS pack_size         text,
+    ADD COLUMN IF NOT EXISTS image_path        text,
+    ADD COLUMN IF NOT EXISTS is_active         boolean DEFAULT true,
+    ADD COLUMN IF NOT EXISTS updated_at        timestamp with time zone DEFAULT now();
