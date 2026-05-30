@@ -1147,6 +1147,10 @@ export default function InvoiceEntryPage() {
     setExtracting(true);
     setExtractionProgress("Uploading document...");
 
+    // Hoisted so the catch block can record a failed document with its storage
+    // path (No Lost Invoices). Null until the storage upload step assigns it.
+    let storagePath: string | null = null;
+
     try {
       // ── Pre-flight: verify extraction service is reachable ─────────────────
       const svcReady = await checkExtractionService();
@@ -1159,7 +1163,7 @@ export default function InvoiceEntryPage() {
       }
 
       // ── Step 1: Upload to Supabase storage (non-blocking) ──────────────────
-      const storagePath = `invoices/${Date.now()}_${file.name}`;
+      storagePath = `invoices/${Date.now()}_${file.name}`;
       try {
         const { error: uploadError } = await supabase.storage
           .from("documents")
