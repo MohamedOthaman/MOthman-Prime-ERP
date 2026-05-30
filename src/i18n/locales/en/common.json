@@ -1566,5 +1566,6 @@
   "opsNotReachable": "down",
   "opsAlertExtraction": "Extraction service is unreachable — OCR extraction will fail.",
   "opsAlertSync": "sync operation(s) failed permanently and need attention.",
-  "opsAlertSupabase": "Supabase is not reachable — running in offline mode."
+  "opsAlertSupabase": "Supabase is not reachable — running in offline mode.",
+  "ocrFailedSaved": "This document has been saved — retry extraction or enter the invoice manually below. Nothing was lost."
 }
