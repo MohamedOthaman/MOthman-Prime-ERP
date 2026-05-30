@@ -84,34 +84,35 @@ backend proxy before exposing P5 to users. CSP already allows
 > a table with no policy makes it unreadable to all non-service roles and can lock
 > out the app.
 
-Numbers below are from the **live** Supabase advisors (`get_advisors`, project
-`koxtzeymsujzlqrpsims`) run during this stabilization pass.
-**Security: 18 ERROR + WARN/INFO findings. Performance: 0 ERROR, 35 WARN, 90 INFO.**
+Numbers below are from the **live** Supabase **security** advisor (`get_advisors`,
+project `koxtzeymsujzlqrpsims`) run on **2026-05-30**.
+**Verified security baseline: 16 ERROR + 5 WARN + 0 INFO** (full breakdown below).
 P4/P5 objects (`entity_embeddings`, `assistant_sessions`, `match_entities`, P4
-indexes) were confirmed **absent** from the live advisor output — because they are
-not applied yet, so none of these findings are attributable to this PR.
+indexes) were confirmed **absent** from the advisor output — they are not applied
+yet, so none of these findings are attributable to this PR.
 
-### 5.1 `rls_disabled_in_public` — ERROR ×6
+> ⚠️ **Performance advisor counts are NOT verified.** The performance advisor's
+> output exceeds the MCP tool result-size limit and could not be fully enumerated
+> in this session. Confirmed *categories* present (partial read): `unindexed_foreign_keys`
+> (INFO) and `unused_index` (INFO). **TODO (human):** re-run
+> `get_advisors(type:"performance")` from a context that can capture the full list
+> and record exact totals here. Do not cite specific performance counts until then.
+
+### 5.1 `rls_disabled_in_public` — ERROR ×6  ✅ verified 2026-05-30
 
 Tables in `public` with **RLS fully disabled** (readable/writable by any holder of
 a valid anon/authenticated key, subject only to grants — no row filtering):
 
-`outbound_execution_lines`, `outbound_execution_sessions`,
-`outbound_execution_allocations`, `outbound_scan_events`, `sales_returns`,
-`sales_return_lines`
-
-Related: `inventory_movements` is flagged `rls_enabled_no_policy` (INFO) — RLS is
-**on** but it has **no policy**, so it is effectively unreadable to non-service
-roles. Two of the RLS-disabled tables (`outbound_execution_lines`,
-`outbound_scan_events`) are also flagged `sensitive_columns_exposed` (ERROR ×2).
+`outbound_execution_sessions`, `outbound_execution_lines`, `outbound_scan_events`,
+`sales_returns`, `sales_return_lines`, `outbound_execution_allocations`
 
 > Enabling RLS without simultaneously adding correct policies will lock the table
-> (as `inventory_movements` demonstrates) — which is exactly why this must be a
-> deliberate, tested, per-table change, not a blanket toggle.
+> out for all non-service roles — which is exactly why this must be a deliberate,
+> tested, per-table change, not a blanket toggle.
 
 Remediation: https://supabase.com/docs/guides/database/database-linter?lint=0013_rls_disabled_in_public
 
-### 5.2 `security_definer_view` — ERROR ×10
+### 5.2 `security_definer_view` — ERROR ×10  ✅ verified 2026-05-30
 
 Views in `public` that run with the **definer's** rights and bypass the querying
 user's RLS. Each must be reviewed individually — some are intentional reporting
@@ -121,46 +122,56 @@ views, others should be `SECURITY INVOKER`:
 `v_stock_summary`, `product_master`, `receiving_lines`, `v_product_stock_balance`,
 `sales_invoices`, `v_expiry_alerts`, `inventory_movements_log`
 
-> ERROR total = 6 (`rls_disabled_in_public`) + 10 (`security_definer_view`) +
-> 2 (`sensitive_columns_exposed`) = **18**.
+> **ERROR total = 6 (`rls_disabled_in_public`) + 10 (`security_definer_view`) = 16.**
+> The advisor returned **no** `sensitive_columns_exposed` findings — an earlier
+> draft of this file incorrectly claimed ×2 (and therefore a total of 18). Corrected
+> against the live advisor on 2026-05-30.
 
 Remediation: https://supabase.com/docs/guides/database/database-linter?lint=0010_security_definer_view
 
-### 5.3 Security WARN findings (not blocking, but review)
+### 5.3 Security WARN findings — ×5 total  ✅ verified 2026-05-30
 
-- `function_search_path_mutable` ×19 — functions without a pinned `search_path`
-  (the P5 `match_entities()` already does this correctly). Includes
-  `create_product_full`, `log_audit`, `approve_grn`, `reject_grn`,
-  `advance_grn_status`, `handle_new_user`, `submit_qc_result`, `get_fefo_batches`,
-  `fn_receiving_lines_insert/update/delete`, `generate_return_no`, and others.
-- `anon_/authenticated_security_definer_function_executable` ×31 each — 28 SECURITY
-  DEFINER functions executable by anon/authenticated roles (e.g. `post_sales_invoice`,
-  `approve_grn`, `cancel_invoice`, `post_receiving_to_inventory`). Review whether
-  each should be callable by those roles.
-- `rls_policy_always_true` ×3 — `auto_match_feedback`, `customer_sku_mappings`,
-  `ocr_documents` have a `USING (true)` policy (may be intentional for shared
-  reference data — confirm).
-- `auth_leaked_password_protection` ×1 — enable leaked-password protection in Auth
-  settings.
+The live advisor returned exactly **five** WARN findings. An earlier draft of this
+file listed `function_search_path_mutable ×19`,
+`anon_/authenticated_security_definer_function_executable ×31`, and
+`rls_policy_always_true ×3` — **none of those appear in the live advisor output**;
+they were estimated, not measured, and have been removed (2026-05-30).
 
-### 5.4 Performance advisor — 0 ERROR, 35 WARN, 90 INFO
+- `function_search_path_mutable` **×3** — `update_updated_at_column`, `log_audit`,
+  `handle_new_user`. Functions without a pinned `search_path`. (The P5
+  `match_entities()` already sets one correctly.) Fix: add
+  `SET search_path = public, pg_temp` to each.
+- `extension_in_public` **×1** — `pg_trgm` is installed in the `public` schema; the
+  advisor recommends moving it to a dedicated schema (e.g. `extensions`).
+- `auth_leaked_password_protection` **×1** — enable leaked-password protection in
+  the Supabase Auth settings.
 
-- `auth_rls_initplan` (WARN ×8) — policies re-evaluating `auth.<fn>()` per row on
-  `audit_logs`, `profiles`, `sales_headers`, `sales_lines`, `inventory_batches`,
-  `stock_movements`, `qc_inspections`. Fix by wrapping in `(SELECT auth.uid())`
-  (the pattern P5 already uses for `assistant_sessions`).
-- `multiple_permissive_policies` (WARN ×22) — `brands`, `product_barcodes`,
-  `product_prices`, `products`, `sales_lines`, `salesmen` have overlapping permissive
-  policies that could be consolidated.
-- `duplicate_index` (WARN ×5) — notably `product_barcodes` (several pairs) and
-  `salesmen`; safe to drop the redundant index in each pair.
-- `unindexed_foreign_keys` (INFO ×39) — FKs without a covering index across 17
-  tables. The P4 migration adds several of these.
-- `unused_index` (INFO ×51) — **expected** for a pre-launch DB with little traffic;
-  do **not** drop based on this until after real production use.
+Remediation: https://supabase.com/docs/guides/database/database-linter?lint=0011_function_search_path_mutable
+· https://supabase.com/docs/guides/database/database-linter?lint=0014_extension_in_public
+· https://supabase.com/docs/guides/database/database-linter?lint=0015_auth_leaked_password_protection
 
-Remediation: https://supabase.com/docs/guides/database/database-linter?lint=0003_auth_rls_initplan
-· https://supabase.com/docs/guides/database/database-linter?lint=0001_unindexed_foreign_keys
+### 5.4 Performance advisor — counts NOT verified  ⚠️ TODO (human)
+
+The performance advisor output exceeds the MCP tool result-size limit and could
+**not** be fully enumerated in this session, so **no totals are recorded here**.
+Only these *categories* are confirmed present (from a partial read):
+
+- `unindexed_foreign_keys` (INFO) — FKs without a covering index. The P4 migration
+  adds covering indexes for several of these.
+- `unused_index` (INFO) — **expected** for a pre-launch DB with little traffic; do
+  **not** drop indexes based on this until after real production use.
+
+An earlier draft cited specific totals (`0 ERROR, 35 WARN, 90 INFO`,
+`auth_rls_initplan ×8`, `multiple_permissive_policies ×22`, `duplicate_index ×5`,
+`unindexed_foreign_keys ×39`, `unused_index ×51`). **Those numbers were not
+measured and must not be relied upon.** `auth_rls_initplan`,
+`multiple_permissive_policies`, and `duplicate_index` are *plausible* categories
+for this schema but are **unverified** until a full advisor read is captured.
+
+**TODO (human):** run `get_advisors(type:"performance")` from a context that can
+capture the full list and record exact totals here.
+
+Remediation: https://supabase.com/docs/guides/database/database-linter?lint=0001_unindexed_foreign_keys
 · https://supabase.com/docs/guides/database/database-linter?lint=0005_unused_index
 
 ### 5.5 Recommended remediation process (separate PR, not this one)

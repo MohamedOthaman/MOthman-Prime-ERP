@@ -72,4 +72,11 @@ applied in the P0 security pass. See `docs/ENTERPRISE-ROADMAP.md` for the broade
 | `npm run lint` | exit 0 |
 | `python3 -m py_compile services/extraction-service/main.py` | OK |
 | `tauri.conf.json` / `capabilities/default.json` JSON validity | valid |
+| `get_advisors(type:"security")` baseline (live, 2026-05-30) | 16 ERROR + 5 WARN + 0 INFO — see `docs/MIGRATION_NOTES.md` §5 |
+| `get_advisors(type:"performance")` baseline | **not captured** — output exceeds the MCP tool result-size limit; re-run required (`MIGRATION_NOTES.md` §5.4) |
 | Runtime smoke test of CSP in packaged app | **pending — requires desktop build** |
+
+> The security-advisor findings above are **pre-existing** and unrelated to the P0
+> hardening in this document; they are tracked for separate remediation in
+> `docs/MIGRATION_NOTES.md` §5. No specific count is asserted for the performance
+> advisor because its full output could not be captured in this session.
