@@ -1485,8 +1485,26 @@ export default function InvoiceEntryPage() {
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Failed to extract document.";
       console.error("[UPLOAD] Pipeline error:", err);
+      // No Lost Invoices: persist a durable record of the FAILED attempt so the
+      // upload is never silently lost. It surfaces in the Operations Dashboard
+      // OCR pipeline panel (status "failed") and can be retried or entered
+      // manually. Recording the failure must never itself throw.
+      try {
+        await supabase
+
+          .from("ocr_documents" as any)
+          .insert({
+            filename: file.name,
+            storage_path: storagePath,
+            document_type: "invoice",
+            status: "failed",
+            metadata: { error: msg, stage: "extraction" },
+          });
+      } catch (recErr) {
+        console.warn("[INVOICE] Failed to record failed ocr_document:", recErr);
+      }
       toast.error(msg);
-      setError(msg);
+      setError(`${msg}\n${t("ocrFailedSaved", "This document has been saved — retry extraction or enter the invoice manually below. Nothing was lost.")}`);
     } finally {
       setExtracting(false);
       setExtractionProgress("");
