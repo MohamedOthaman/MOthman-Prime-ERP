@@ -51,11 +51,36 @@ applied in the P0 security pass. See `docs/ENTERPRISE-ROADMAP.md` for the broade
   `allow_credentials=False`, and explicit method/header allow-lists. The service
   authenticates via the `X-Gemini-API-Key` header, not cookies.
 
+## Deferred: AI Assistant + Semantic Search (foundation only — NOT user-facing)
+
+`src/lib/ai/` (assistant + embeddings + hooks) is intentionally **not wired into any
+UI** (verified: no `.tsx` imports `@/lib/ai`). It is deferred for concrete, verified
+reasons — do **not** build a `/assistant` screen on it until these are fixed:
+
+1. **Wrong table names in the tool queries** (`src/lib/ai/assistant.ts`). The tools
+   query `invoice_headers` and `stock_batches`, but the real tables are
+   `sales_headers` and `inventory_batches`; it also reads a non-existent
+   `products.min_qty`. As written, the assistant's tools would error at runtime.
+2. **Browser-side Gemini key.** Both the assistant and `embeddings.ts` call
+   `generativelanguage.googleapis.com` directly from the client, exposing the API
+   key. Route through a backend proxy before any UI ships.
+3. **Semantic search needs an unapplied migration.** `semanticSearch()` depends on the
+   `match_entities` RPC + `entity_embeddings` table from
+   `20260529100000_p5_pgvector_embeddings.sql`, which is **not applied** to the live DB.
+
+**Fix plan (separate PR):** correct table/column names → add a server-side proxy for
+Gemini → apply the P5 migration in a maintenance window → only then add a read-only
+`/assistant` UI with explicit "no write/delete" boundaries.
+
 ## Known gaps / follow-ups (tracked, not yet addressed)
 
 - **CSP must be smoke-tested** with `npm run tauri:dev` and a real `tauri build` before
   release — a static CSP cannot be fully verified without running the desktop shell.
   If a legitimate origin is blocked, widen `connect-src`/`img-src` deliberately.
+- **Automation triggers `stock.low` and `sync.failed`** are defined but have no
+  producer yet (only `ocr.completed` and `invoice.posted` fire). The `/automation` UI
+  labels them "not fired yet". Wiring them is a small follow-up (emit from the stock
+  and sync layers).
 - The extraction `/extract` endpoint is currently **unauthenticated**; acceptable only
   when the service runs locally beside the client. Add a shared-secret/bearer check before
   exposing it on a network. (Roadmap P1/P3.)

@@ -74,6 +74,7 @@ const OCR_STATUS_COLOR: Record<string, { bar: string; text: string }> = {
   done: { bar: "bg-blue-500", text: "text-blue-400" },
   processing: { bar: "bg-amber-500", text: "text-amber-400" },
   pending: { bar: "bg-amber-500", text: "text-amber-400" },
+  needs_review: { bar: "bg-amber-500", text: "text-amber-400" },
   failed: { bar: "bg-rose-500", text: "text-rose-400" },
   error: { bar: "bg-rose-500", text: "text-rose-400" },
 };
