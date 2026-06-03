@@ -30,6 +30,7 @@
     "telemetry": "Telemetry",
     "operations": "Operations",
     "audit": "Audit",
-    "uploadCenter": "Upload Center"
+    "uploadCenter": "Upload Center",
+    "automation": "Automation"
   }
 }

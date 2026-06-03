@@ -77,6 +77,7 @@ const ExpiryAlertsReport = lazy(() => import("./pages/reports/ExpiryAlertsReport
 const AuditLogPage = lazy(() => import("./pages/audit/AuditLogPage"));
 const UploadCenterPage = lazy(() => import("./pages/admin/UploadCenterPage"));
 const OperationsDashboard = lazy(() => import("./pages/dashboards/OperationsDashboard"));
+const AutomationPage = lazy(() => import("./pages/automation/AutomationPage"));
 
 import { Loader2 } from "lucide-react";
 
@@ -685,6 +686,15 @@ function ProtectedRoutes() {
             element={
               <RoleGuard allowedRoles={["admin", "ops_manager"]}>
                 <OperationsDashboard />
+              </RoleGuard>
+            }
+          />
+
+          <Route
+            path="/automation"
+            element={
+              <RoleGuard allowedRoles={["admin", "ops_manager"]}>
+                <AutomationPage />
               </RoleGuard>
             }
           />

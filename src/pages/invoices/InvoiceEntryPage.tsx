@@ -41,6 +41,7 @@ import { parsePdf } from "@/lib/pdfParser";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { validateInvoiceRows } from "@/features/upload-center/validation";
+import { fireTrigger } from "@/lib/automation";
 import InvoiceLookupSelect, { type InvoiceLookupOption } from "./InvoiceLookupSelect";
 import InvoicePrintView, { type InvoicePrintData, type PrintLineItem } from "./InvoicePrintView";
 
@@ -1012,6 +1013,21 @@ export default function InvoiceEntryPage() {
       setError(null);
       await postSalesInvoice(targetHeaderId);
       setStatus("ready");
+
+      // Real producer for the invoice.posted automation trigger. Best-effort:
+      // a failure here must never break posting, and emit() is a no-op when no
+      // rules match, so this is safe even with automation unused.
+      try {
+        fireTrigger("invoice.posted", {
+          invoiceId: targetHeaderId,
+          total: grandTotal,
+          currency,
+          customerId,
+          customerName: selectedCustomer?.name ?? "",
+        });
+      } catch (autoErr) {
+        console.warn("[INVOICE] invoice.posted trigger failed (non-critical):", autoErr);
+      }
     } catch (postError) {
       setError(postError instanceof Error ? postError.message : "Failed to post invoice.");
     } finally {

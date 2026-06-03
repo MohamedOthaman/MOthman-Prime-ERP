@@ -15,6 +15,7 @@ import {
   ListChecks,
   Shield,
   FolderUp,
+  Workflow,
   type LucideIcon,
 } from "lucide-react";
 import type { Permissions } from "@/hooks/usePermissions";
@@ -260,6 +261,14 @@ export const sidebarConfig: SidebarSectionConfig[] = [
         fallbackLabel: "Operations",
         icon: Activity,
         path: "/operations",
+        permissions: ["isAdmin"],
+      },
+      {
+        id: "automation",
+        labelKey: "sidebar:item.automation",
+        fallbackLabel: "Automation",
+        icon: Workflow,
+        path: "/automation",
         permissions: ["isAdmin"],
       },
       {
