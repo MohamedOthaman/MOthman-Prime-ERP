@@ -5,14 +5,15 @@
 CREATE EXTENSION IF NOT EXISTS pg_trgm;
 
 -- ─── products ─────────────────────────────────────────────────────────────────
--- Fast fuzzy name/barcode/SKU search (ILIKE '%term%') used by item-lookup in
+-- Fast fuzzy name/code search (ILIKE '%term%') used by item-lookup in
 -- the invoice entry, POS, and the upcoming P5 AI autofill feature.
 CREATE INDEX IF NOT EXISTS idx_products_name_trgm
     ON products USING GIN (name gin_trgm_ops);
 
-CREATE INDEX IF NOT EXISTS idx_products_sku_trgm
-    ON products USING GIN (sku gin_trgm_ops)
-    WHERE sku IS NOT NULL;
+-- products.code is the unique business identifier (there is no separate SKU
+-- column on this schema); a trigram index enables fuzzy ILIKE matching on it.
+CREATE INDEX IF NOT EXISTS idx_products_code_trgm
+    ON products USING GIN (code gin_trgm_ops);
 
 -- Composite: brand × name is used by catalog-browsing filters.
 CREATE INDEX IF NOT EXISTS idx_products_brand_name

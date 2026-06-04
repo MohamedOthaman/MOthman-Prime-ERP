@@ -78,7 +78,8 @@ app = FastAPI(
 # X-Gemini-API-Key request header (not cookies); wildcard-origin + credentials
 # is both invalid per the CORS spec and insecure, so it is avoided entirely.
 _default_origins = (
-    "http://localhost:1420,http://127.0.0.1:1420,"
+    "http://localhost:1420,http://127.0.0.1:1420,"  # Tauri dev shell (vite --port 1420)
+    "http://localhost:8080,http://127.0.0.1:8080,"  # browser dev (vite default non-Tauri port)
     "tauri://localhost,http://tauri.localhost,https://tauri.localhost"
 )
 _allowed_origins = [

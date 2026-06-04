@@ -57,10 +57,14 @@ applied in the P0 security pass. See `docs/ENTERPRISE-ROADMAP.md` for the broade
 UI** (verified: no `.tsx` imports `@/lib/ai`). It is deferred for concrete, verified
 reasons — do **not** build a `/assistant` screen on it until these are fixed:
 
-1. **Wrong table names in the tool queries** (`src/lib/ai/assistant.ts`). The tools
-   query `invoice_headers` and `stock_batches`, but the real tables are
-   `sales_headers` and `inventory_batches`; it also reads a non-existent
-   `products.min_qty`. As written, the assistant's tools would error at runtime.
+1. **Some tool queries are schema-misaligned** (`src/lib/ai/assistant.ts`). The table
+   names are correct (`invoice_headers`, `stock_batches`, `products` all exist), but
+   some tools select columns the schema doesn't have. The `getStockLevel`/
+   `getLowStockProducts` column names were corrected in this PR
+   (`qty_available`/`batch_no`/`code`). The `getRecentInvoices` tool still selects
+   `invoice_number`/`total`, which `invoice_headers` does not have — invoice totals
+   must be derived from `invoice_lines` (`quantity * unit_price - discount`) and there
+   is no stored invoice number. That tool needs query work before use.
 2. **Browser-side Gemini key.** Both the assistant and `embeddings.ts` call
    `generativelanguage.googleapis.com` directly from the client, exposing the API
    key. Route through a backend proxy before any UI ships.
@@ -68,9 +72,10 @@ reasons — do **not** build a `/assistant` screen on it until these are fixed:
    `match_entities` RPC + `entity_embeddings` table from
    `20260529100000_p5_pgvector_embeddings.sql`, which is **not applied** to the live DB.
 
-**Fix plan (separate PR):** correct table/column names → add a server-side proxy for
-Gemini → apply the P5 migration in a maintenance window → only then add a read-only
-`/assistant` UI with explicit "no write/delete" boundaries.
+**Fix plan (separate PR):** finish aligning the remaining tool queries (derive invoice
+totals from `invoice_lines`) → add a server-side proxy for Gemini → apply the P5
+migration in a maintenance window → only then add a read-only `/assistant` UI with
+explicit "no write/delete" boundaries.
 
 ## Known gaps / follow-ups (tracked, not yet addressed)
 

@@ -96,16 +96,16 @@ async function callTool(
       case "getStockLevel": {
         const { data, error } = await supabase
           .from("stock_batches" as never)
-          .select("quantity, expiry_date, batch_number")
+          .select("qty_available, expiry_date, batch_no")
           .eq("product_id", String(args.productId))
-          .gt("quantity", 0)
+          .gt("qty_available", 0)
           .order("expiry_date", { ascending: true })
           .limit(10);
         if (error) return `Error: ${error.message}`;
         if (!data || !(data as unknown[]).length) return "No stock found for this product.";
-        const total = (data as Array<{ quantity: number }>).reduce((s, r) => s + r.quantity, 0);
-        const batches = (data as Array<{ quantity: number; expiry_date: string; batch_number: string }>)
-          .map((r) => `  Batch ${r.batch_number}: ${r.quantity} units, expires ${r.expiry_date}`)
+        const total = (data as Array<{ qty_available: number }>).reduce((s, r) => s + r.qty_available, 0);
+        const batches = (data as Array<{ qty_available: number; expiry_date: string; batch_no: string }>)
+          .map((r) => `  Batch ${r.batch_no}: ${r.qty_available} units, expires ${r.expiry_date}`)
           .join("\n");
         return `Total stock: ${total} units\n${batches}`;
       }
@@ -130,12 +130,12 @@ async function callTool(
       case "getLowStockProducts": {
         const { data, error } = await supabase
           .from("products" as never)
-          .select("id, name, sku, min_qty, current_stock:stock_batches(quantity.sum())")
+          .select("id, name, code")
           .limit(Number(args.limit ?? 20));
         if (error) return `Error: ${error.message}`;
         if (!data || !(data as unknown[]).length) return "No products found.";
-        return (data as Array<{ name: string; sku: string }>)
-          .map((r) => `• ${r.name} (${r.sku})`)
+        return (data as Array<{ name: string; code: string }>)
+          .map((r) => `• ${r.name} (${r.code})`)
           .join("\n");
       }
 
