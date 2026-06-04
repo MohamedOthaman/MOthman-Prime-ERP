@@ -39,7 +39,7 @@ These match the baseline documented in PR #7 (`docs/MIGRATION_NOTES.md`), confir
 
 ## Phase 1 — Safe Performance Fixes ✅ IMPLEMENTED (file only)
 
-**`supabase/migrations/20260604120000_p1_fk_covering_indexes.sql`** — 39 covering indexes for the 39 advisor-flagged unindexed FKs. Every column verified against live `pg_constraint`, every target cross-checked against live `pg_indexes` (no duplicates). All `CREATE INDEX IF NOT EXISTS` (idempotent, additive, reversible), each wrapped in a `to_regclass()` table-existence guard so it creates every index on LIVE and safely no-ops where a table is absent.
+**`supabase/migrations/20260604150000_p1_fk_covering_indexes.sql`** — 39 covering indexes for the 39 advisor-flagged unindexed FKs. Every column verified against live `pg_constraint`, every target cross-checked against live `pg_indexes` (no duplicates). All `CREATE INDEX IF NOT EXISTS` (idempotent, additive, reversible), each wrapped in a `to_regclass()` table-existence guard so it creates every index on LIVE and safely no-ops where a table is absent.
 
 > The non-reproducibility finding was **confirmed empirically by CI**: the Supabase Preview branch (which rebuilds schema from migration files) failed with `relation "public.customers" does not exist` because base tables aren't created by migrations. The `to_regclass()` guards make this migration pass in that drifted environment while remaining correct for live.
 
