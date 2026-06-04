@@ -35,6 +35,10 @@ declare global {
       isNativePlatform?: () => boolean;
     };
     __TAURI__?: Record<string, unknown>;
+    /** Always injected inside a Tauri webview, regardless of `withGlobalTauri`. */
+    __TAURI_INTERNALS__?: Record<string, unknown>;
+    /** Forward-compatible Tauri detection flag set by the runtime. */
+    isTauri?: boolean;
     __FOOD_CHOICE_NATIVE__?: FoodChoiceNativeBridge;
     __FOOD_CHOICE_RUNTIME__?: FoodChoiceRuntimeInfo;
   }
@@ -53,12 +57,26 @@ function isCapacitorNativePlatform(): boolean {
   return Boolean(window.Capacitor?.isNativePlatform?.());
 }
 
+/**
+ * Detect the Tauri desktop runtime independently of the `withGlobalTauri`
+ * config flag. Tauri always injects `__TAURI_INTERNALS__` (every plugin's
+ * `invoke()` routes through it), whereas `window.__TAURI__` only exists when
+ * `withGlobalTauri` is enabled — which we keep OFF for security hardening.
+ * `window.isTauri` is checked as a forward-compatible secondary signal.
+ */
+export function isTauriRuntime(): boolean {
+  if (typeof window === "undefined") {
+    return false;
+  }
+  return "__TAURI_INTERNALS__" in window || Boolean(window.isTauri);
+}
+
 export function getRuntimePlatform(): RuntimePlatform {
   if (typeof window === "undefined") {
     return "web";
   }
 
-  if (window.__TAURI__) {
+  if (isTauriRuntime()) {
     return "tauri";
   }
 

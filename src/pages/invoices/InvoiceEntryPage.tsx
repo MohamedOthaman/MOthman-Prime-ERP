@@ -40,6 +40,8 @@ import { useOfflineSaveDraft } from "@/features/invoices/queries/useOfflineSaveD
 import { parsePdf } from "@/lib/pdfParser";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { validateInvoiceRows } from "@/features/upload-center/validation";
+import { fireTrigger } from "@/lib/automation";
 import InvoiceLookupSelect, { type InvoiceLookupOption } from "./InvoiceLookupSelect";
 import InvoicePrintView, { type InvoicePrintData, type PrintLineItem } from "./InvoicePrintView";
 
@@ -191,9 +193,14 @@ export default function InvoiceEntryPage() {
   const [extracting, setExtracting] = useState(false);
   const [extractionProgress, setExtractionProgress] = useState("");
   const [serviceOnline, setServiceOnline] = useState<boolean | null>(null);
+  // Extraction review state (PR-R1/PR-R2): warnings surfaced from validation +
+  // match quality, and a review verdict so an AI-extracted invoice is never
+  // treated as clean without the user confirming. Cleared on each new upload.
+  const [extractionWarnings, setExtractionWarnings] = useState<string[]>([]);
+  const [reviewStatus, setReviewStatus] = useState<"needs_review" | "reviewed" | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const EXTRACT_SVC = "http://127.0.0.1:8000";
+  const EXTRACT_SVC = import.meta.env.VITE_EXTRACTION_SERVICE_URL ?? "http://127.0.0.1:8000";
 
   const checkExtractionService = async (): Promise<boolean> => {
     try {
@@ -1006,6 +1013,21 @@ export default function InvoiceEntryPage() {
       setError(null);
       await postSalesInvoice(targetHeaderId);
       setStatus("ready");
+
+      // Real producer for the invoice.posted automation trigger. Best-effort:
+      // a failure here must never break posting, and emit() is a no-op when no
+      // rules match, so this is safe even with automation unused.
+      try {
+        fireTrigger("invoice.posted", {
+          invoiceId: targetHeaderId,
+          total: grandTotal,
+          currency,
+          customerId,
+          customerName: selectedCustomer?.name ?? "",
+        });
+      } catch (autoErr) {
+        console.warn("[INVOICE] invoice.posted trigger failed (non-critical):", autoErr);
+      }
     } catch (postError) {
       setError(postError instanceof Error ? postError.message : "Failed to post invoice.");
     } finally {
@@ -1146,6 +1168,12 @@ export default function InvoiceEntryPage() {
 
     setExtracting(true);
     setExtractionProgress("Uploading document...");
+    setExtractionWarnings([]);
+    setReviewStatus(null);
+
+    // Hoisted so the catch block can record a failed document with its storage
+    // path (No Lost Invoices). Null until the storage upload step assigns it.
+    let storagePath: string | null = null;
 
     try {
       // ── Pre-flight: verify extraction service is reachable ─────────────────
@@ -1159,7 +1187,7 @@ export default function InvoiceEntryPage() {
       }
 
       // ── Step 1: Upload to Supabase storage (non-blocking) ──────────────────
-      const storagePath = `invoices/${Date.now()}_${file.name}`;
+      storagePath = `invoices/${Date.now()}_${file.name}`;
       try {
         const { error: uploadError } = await supabase.storage
           .from("documents")
@@ -1263,20 +1291,55 @@ export default function InvoiceEntryPage() {
       console.log("[INVOICE] Extraction received:", extractedHeader);
       console.log("[INVOICE] Item count:", extractedItems.length);
 
+      // ── PR-R1: validate the extracted lines (arithmetic / dates / signs) ───
+      // Reuse the tested validateInvoiceRows. Discount here is a percentage, so
+      // we only feed qty/unitPrice/total to the line-total check when there is
+      // no discount (otherwise qty×price ≠ total legitimately).
+      const validationRows = extractedItems.map((raw) => {
+        const it = raw as Record<string, unknown>;
+        const disc = nf<number>(it.discount, 0);
+        const row: Record<string, unknown> = {
+          itemName: nf<string>(it.itemName, ""),
+          qty: nf<number>(it.qty, 0),
+          unitPrice: nf<number>(it.unitPrice, 0),
+        };
+        if (!disc) row.total = nf<number>(it.total, 0);
+        return row;
+      });
+      let validationWarnings: string[] = [];
+      try {
+        validationWarnings = validateInvoiceRows(validationRows).map((iss) => iss.message);
+      } catch (vErr) {
+        console.warn("[INVOICE] validation skipped:", vErr);
+      }
+
+      // ── PR-R2: confidence. The extraction service does NOT return a real
+      // confidence score, so we do NOT fabricate one (was a hardcoded 0.85).
+      // Store null and treat it as unknown → invoice must be reviewed.
+      const extractionConfidence: number | null =
+        typeof (result as Record<string, unknown>).confidence === "number"
+          ? ((result as Record<string, unknown>).confidence as number)
+          : null;
+
       // Log OCR document
       let ocrDocId: string | null = null;
       try {
         const { data: ocrDoc, error: ocrErr } = await supabase
-           
+
           .from("ocr_documents" as any)
           .insert({
             filename: file.name,
             storage_path: storagePath,
             document_type: "invoice",
             status: "extracted",
-            confidence: 0.85,
+            confidence: extractionConfidence,
             raw_data: extData,
-            metadata: { source: result.source, text_length: result.text_length ?? 0 },
+            metadata: {
+              source: result.source,
+              text_length: result.text_length ?? 0,
+              confidence_known: extractionConfidence !== null,
+              validation_warnings: validationWarnings.length,
+            },
           })
           .select("id")
           .single();
@@ -1459,30 +1522,75 @@ export default function InvoiceEntryPage() {
       console.log("[INVOICE] Rows injected:", mappedLines.length - 1, "(+1 empty)");
       setLines(mappedLines);
 
-      // ── Step 6: Done ───────────────────────────────────────────────────────
+      // ── Step 6: Review verdict (PR-R1 + PR-R2) ─────────────────────────────
+      // An AI-extracted invoice is "Needs Review" — never silently clean — when
+      // ANY of: validation warnings, unmatched/ambiguous product lines, or the
+      // extraction confidence is unknown/low. The user must confirm before it is
+      // treated as reviewed. Manual entry is unaffected (this only runs on upload).
       setExtractionProgress("Completed");
+
+      const reviewReasons: string[] = [...validationWarnings];
+      if (extractionConfidence === null) {
+        reviewReasons.push("Extraction confidence is unknown — please verify every line.");
+      } else if (extractionConfidence < 0.6) {
+        reviewReasons.push(`Low extraction confidence (${Math.round(extractionConfidence * 100)}%) — verify carefully.`);
+      }
+      if (unmatchedCount > 0) {
+        reviewReasons.push(`${unmatchedCount} line(s) could not be matched to a product.`);
+      }
+      if (ambiguousCount > 0) {
+        reviewReasons.push(`${ambiguousCount} line(s) have ambiguous product matches — pick the correct one.`);
+      }
+
+      const needsReview = reviewReasons.length > 0;
+      setExtractionWarnings(reviewReasons);
+      setReviewStatus(needsReview ? "needs_review" : "reviewed");
 
       if (ocrDocId) {
         try {
           await supabase
-             
+
             .from("ocr_documents" as any)
-            .update({ status: "applied" })
+            .update({ status: needsReview ? "needs_review" : "extracted" })
             .eq("id", ocrDocId);
         } catch (e) {
           console.warn("[INVOICE] ocr_documents status update failed:", e);
         }
       }
 
-      toast.success(
-        `${extractedItems.length} line(s) extracted — ✓ ${matchedCount} matched · ⚠ ${ambiguousCount} ambiguous · ✗ ${unmatchedCount} unmatched`
-      );
+      if (needsReview) {
+        toast.warning(
+          `${extractedItems.length} line(s) extracted — needs review (${reviewReasons.length} item(s) to check)`
+        );
+      } else {
+        toast.success(
+          `${extractedItems.length} line(s) extracted — ✓ ${matchedCount} matched · ⚠ ${ambiguousCount} ambiguous · ✗ ${unmatchedCount} unmatched`
+        );
+      }
 
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Failed to extract document.";
       console.error("[UPLOAD] Pipeline error:", err);
+      // No Lost Invoices: persist a durable record of the FAILED attempt so the
+      // upload is never silently lost. It surfaces in the Operations Dashboard
+      // OCR pipeline panel (status "failed") and can be retried or entered
+      // manually. Recording the failure must never itself throw.
+      try {
+        await supabase
+
+          .from("ocr_documents" as any)
+          .insert({
+            filename: file.name,
+            storage_path: storagePath,
+            document_type: "invoice",
+            status: "failed",
+            metadata: { error: msg, stage: "extraction" },
+          });
+      } catch (recErr) {
+        console.warn("[INVOICE] Failed to record failed ocr_document:", recErr);
+      }
       toast.error(msg);
-      setError(msg);
+      setError(`${msg}\n${t("ocrFailedSaved", "This document has been saved — retry extraction or enter the invoice manually below. Nothing was lost.")}`);
     } finally {
       setExtracting(false);
       setExtractionProgress("");
@@ -1598,6 +1706,40 @@ export default function InvoiceEntryPage() {
           <div className="flex items-start gap-2 rounded-sm border border-destructive/30 bg-destructive/10 px-2 py-1.5">
             <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-destructive" />
             <p className="text-xs text-destructive whitespace-pre-wrap">{error}</p>
+          </div>
+        )}
+
+        {reviewStatus === "needs_review" && (
+          <div className="rounded-sm border border-amber-500/40 bg-amber-500/10 px-2.5 py-2">
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-amber-600" />
+              <span className="text-xs font-semibold text-amber-800">
+                {t("invoiceNeedsReview", "Needs Review — verify before posting")}
+              </span>
+              <button
+                type="button"
+                onClick={() => setReviewStatus("reviewed")}
+                className="ml-auto rounded-sm border border-amber-500/50 bg-amber-500/20 px-2 py-0.5 text-[10.5px] font-medium text-amber-800 hover:bg-amber-500/30"
+              >
+                {t("markReviewed", "I've reviewed these")}
+              </button>
+            </div>
+            {extractionWarnings.length > 0 && (
+              <ul className="mt-1.5 list-disc space-y-0.5 pl-7 text-[11px] text-amber-800/90">
+                {extractionWarnings.map((w, i) => (
+                  <li key={i}>{w}</li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
+
+        {reviewStatus === "reviewed" && (
+          <div className="flex items-center gap-2 rounded-sm border border-emerald-500/40 bg-emerald-500/10 px-2.5 py-1 text-[11px]">
+            <span className="h-2 w-2 shrink-0 rounded-full bg-emerald-500" />
+            <span className="font-medium text-emerald-800">
+              {t("invoiceReviewed", "Reviewed — extracted lines confirmed")}
+            </span>
           </div>
         )}
 

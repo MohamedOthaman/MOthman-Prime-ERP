@@ -8,6 +8,8 @@
  * Browser: cookie. Desktop (Tauri): app_data file (survives reinstalls).
  */
 
+import { isTauriRuntime } from "@/platform/runtime";
+
 export const SIDEBAR_WIDTH_DEFAULT = 248;
 export const SIDEBAR_WIDTH_MIN_EXPANDED = 180;
 export const SIDEBAR_WIDTH_MAX = 420;
@@ -18,10 +20,6 @@ export const SIDEBAR_COLLAPSE_THRESHOLD = 140;
 const COOKIE_NAME = "sidebar:width";
 const COOKIE_MAX_AGE_SECONDS = 60 * 60 * 24 * 365; // 1 year
 const TAURI_FILE = "sidebar_width";
-
-function isTauri(): boolean {
-  return typeof window !== "undefined" && !!window.__TAURI__;
-}
 
 function parseWidth(raw: string | null | undefined): number | null {
   if (!raw) return null;
@@ -83,7 +81,7 @@ export function readSidebarWidthSync(): number | null {
  * Returns `null` if no persisted value exists.
  */
 export async function loadSidebarWidth(): Promise<number | null> {
-  if (isTauri()) {
+  if (isTauriRuntime()) {
     const tauriValue = await readTauriFile();
     if (tauriValue !== null) return tauriValue;
   }
@@ -96,7 +94,7 @@ export async function loadSidebarWidth(): Promise<number | null> {
  */
 export function saveSidebarWidth(width: number): void {
   writeCookie(width);
-  if (isTauri()) {
+  if (isTauriRuntime()) {
     void writeTauriFile(width);
   }
 }
