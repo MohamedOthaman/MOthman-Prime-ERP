@@ -100,7 +100,7 @@ BEGIN
     WHERE line.header_id = NEW.id
       AND line.product_id IS NOT NULL
       AND COALESCE(line.received_quantity, line.quantity, line.qty, 0) > 0
-    ON CONFLICT (reference_type, reference_id, reference_line_id, type) DO NOTHING;
+    ON CONFLICT (reference_type, reference_id, reference_line_id, type) WHERE reference_line_id IS NOT NULL DO NOTHING;
 
     NEW.approved_at = COALESCE(NEW.approved_at, now());
   ELSIF NEW.status <> 'approved' THEN

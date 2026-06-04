@@ -214,7 +214,7 @@ FOR DELETE
 TO authenticated
 USING (true);
 
-DROP VIEW IF EXISTS public.products_overview;
+DROP VIEW IF EXISTS public.products_overview CASCADE;
 
 CREATE OR REPLACE VIEW public.products_overview AS
 SELECT

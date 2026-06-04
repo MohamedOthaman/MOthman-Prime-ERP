@@ -27,7 +27,11 @@ SET supplier_name = s.name
 FROM public.suppliers s
 WHERE s.id = g.supplier_id AND g.supplier_name IS NULL;
 
-DROP VIEW IF EXISTS public.receiving_headers CASCADE;
+-- A from-scratch apply runs the early phantom phase_3, which creates
+-- receiving_headers as a TABLE; production has it as a view. Drop whichever
+-- form exists, then (re)create the grn_headers-backed view.
+DROP TABLE IF EXISTS public.receiving_headers CASCADE;
+DROP VIEW  IF EXISTS public.receiving_headers CASCADE;
 CREATE VIEW public.receiving_headers AS SELECT * FROM public.grn_headers;
 
 -- ───────────────────────────────────────────────────────────────────
@@ -46,7 +50,8 @@ BEGIN
 EXCEPTION WHEN duplicate_object THEN NULL;
 END$$;
 
-DROP VIEW IF EXISTS public.receiving_lines CASCADE;
+DROP TABLE IF EXISTS public.receiving_lines CASCADE;
+DROP VIEW  IF EXISTS public.receiving_lines CASCADE;
 CREATE VIEW public.receiving_lines AS
 SELECT
   id,
