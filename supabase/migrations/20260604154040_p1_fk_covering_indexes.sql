@@ -99,7 +99,15 @@ DO $$ BEGIN
 END $$;
 
 DO $$ BEGIN
-  IF to_regclass('public.stock_movements') IS NOT NULL THEN
+  IF to_regclass('public.stock_movements') IS NOT NULL
+     AND EXISTS (
+       SELECT 1
+       FROM information_schema.columns
+       WHERE table_schema = 'public'
+         AND table_name = 'stock_movements'
+         AND column_name = 'created_by'
+     )
+  THEN
     CREATE INDEX IF NOT EXISTS idx_stock_movements_created_by ON public.stock_movements (created_by);
   END IF;
 END $$;
