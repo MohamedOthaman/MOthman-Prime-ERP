@@ -55,8 +55,13 @@ CREATE TABLE IF NOT EXISTS public.customers (
 
 CREATE TABLE IF NOT EXISTS public.salesmen (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  code TEXT,
+  name TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+ALTER TABLE public.salesmen ADD COLUMN IF NOT EXISTS code TEXT;
+ALTER TABLE public.salesmen ADD COLUMN IF NOT EXISTS name TEXT;
 
 CREATE TABLE IF NOT EXISTS public.products (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
