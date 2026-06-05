@@ -26,7 +26,7 @@ echo [OK]    Python %PYVER% found
 REM ── 2. Create venv if needed ─────────────────────────────────────────────────
 if not exist "venv\Scripts\activate.bat" (
     echo [SETUP] Creating virtual environment...
-    python -m venv venv
+    python -m venv --copies venv
     if errorlevel 1 (
         echo [ERROR] Failed to create venv.
         pause
@@ -40,13 +40,16 @@ call venv\Scripts\activate.bat
 
 REM ── 3. Upgrade pip silently ───────────────────────────────────────────────────
 echo [SETUP] Upgrading pip...
+python -m ensurepip --upgrade >nul 2>&1
 python -m pip install --upgrade pip --quiet
 
 REM ── 4. Install dependencies ───────────────────────────────────────────────────
 echo [SETUP] Installing/verifying dependencies (first run may take 2-5 minutes)...
-pip install -r requirements.txt --quiet
+python -m pip install -r requirements.txt --quiet
 if errorlevel 1 (
-    echo [ERROR] Dependency installation failed. Check internet connection.
+    echo [ERROR] Dependency installation failed.
+    echo         If you are using Python 3.13, PaddleOCR is skipped automatically;
+    echo         check the output above for the package that failed.
     pause
     exit /b 1
 )

@@ -10,10 +10,11 @@
 
 import { isTauriRuntime } from "@/platform/runtime";
 
-export const SIDEBAR_WIDTH_DEFAULT = 248;
-export const SIDEBAR_WIDTH_MIN_EXPANDED = 180;
+export const SIDEBAR_WIDTH_DEFAULT = 212;
+const SIDEBAR_WIDTH_LEGACY_DEFAULT = 248;
+export const SIDEBAR_WIDTH_MIN_EXPANDED = 172;
 export const SIDEBAR_WIDTH_MAX = 420;
-export const SIDEBAR_WIDTH_ICON = 64;
+export const SIDEBAR_WIDTH_ICON = 52;
 /** Drag below this width snaps to icon-only mode. */
 export const SIDEBAR_COLLAPSE_THRESHOLD = 140;
 
@@ -25,6 +26,7 @@ function parseWidth(raw: string | null | undefined): number | null {
   if (!raw) return null;
   const n = Number.parseInt(raw, 10);
   if (!Number.isFinite(n) || n <= 0) return null;
+  if (n === SIDEBAR_WIDTH_LEGACY_DEFAULT) return SIDEBAR_WIDTH_DEFAULT;
   return n;
 }
 

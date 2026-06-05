@@ -2,6 +2,7 @@ import os
 import io
 import json
 import base64
+import importlib.util
 import logging
 import time
 import urllib.request
@@ -80,6 +81,7 @@ app = FastAPI(
 _default_origins = (
     "http://localhost:1420,http://127.0.0.1:1420,"  # Tauri dev shell (vite --port 1420)
     "http://localhost:8080,http://127.0.0.1:8080,"  # browser dev (vite default non-Tauri port)
+    "http://localhost:5173,http://127.0.0.1:5173,"  # Vite dev fallback/default
     "tauri://localhost,http://tauri.localhost,https://tauri.localhost"
 )
 _allowed_origins = [
@@ -975,7 +977,6 @@ async def detect_objects(
 # ─── Health check ──────────────────────────────────────────────────────────────
 @app.get("/health")
 def health_check():
-    paddle_ar = get_paddle_ocr("ar")
     minicpm_up = _minicpm_available() if _USE_MINICPM_V else None
     structure_provider = "minicpm" if (_USE_MINICPM_V and minicpm_up) else "gemini"
 
@@ -987,7 +988,7 @@ def health_check():
         "pdfplumber": pdfplumber is not None,
         "pdf2image": convert_from_bytes is not None,
         "pytesseract": pytesseract is not None,
-        "paddleocr": paddle_ar is not None,
+        "paddleocr": importlib.util.find_spec("paddleocr") is not None and not _paddle_init_failed,
         # Structuring
         "structure_provider": structure_provider,
         "gemini_api_key_set": bool(os.environ.get("GEMINI_API_KEY")),

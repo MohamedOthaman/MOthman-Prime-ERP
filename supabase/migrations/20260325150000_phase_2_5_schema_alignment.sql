@@ -81,5 +81,11 @@ BEGIN
 END
 $$;
 
-CREATE INDEX IF NOT EXISTS idx_customers_salesman_id
-  ON public.customers (salesman_id);
+DO $$
+BEGIN
+  IF to_regclass('public.customers') IS NOT NULL THEN
+    CREATE INDEX IF NOT EXISTS idx_customers_salesman_id
+      ON public.customers (salesman_id);
+  END IF;
+END
+$$;

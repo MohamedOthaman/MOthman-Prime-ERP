@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef } from "react";
 import { useSidebarResize } from "@/components/layout/sidebarResizeContext";
 import { useLang } from "@/contexts/LanguageContext";
+import { SIDEBAR_WIDTH_DEFAULT } from "@/contexts/SidebarPersistence";
 
 /**
  * Thin draggable handle pinned to the right edge of the sidebar. Drag to
@@ -57,7 +58,7 @@ export function SidebarResizeHandle() {
       onPointerDown={handlePointerDown}
       onDoubleClick={() => {
         // Double-click resets to default width.
-        setWidth(248);
+        setWidth(SIDEBAR_WIDTH_DEFAULT);
         commitWidth();
       }}
       className={
