@@ -43,6 +43,28 @@ SELECT
 FROM public.inventory_transactions
 GROUP BY product_id;
 
+-- Preview-history bootstrap:
+-- Fresh Supabase Preview databases can reach this old invoice foundation
+-- migration before the later customer/salesman reference-data migration exists.
+-- Production already has these tables, so CREATE TABLE IF NOT EXISTS is a no-op
+-- there. These minimal prerequisites only satisfy the FKs used below.
+CREATE TABLE IF NOT EXISTS public.customers (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS public.salesmen (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS public.products (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  code TEXT,
+  name TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
 CREATE TABLE IF NOT EXISTS public.invoice_headers (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   customer_id UUID REFERENCES public.customers(id) ON DELETE RESTRICT,
