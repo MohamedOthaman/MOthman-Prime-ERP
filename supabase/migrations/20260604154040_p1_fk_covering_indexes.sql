@@ -114,9 +114,22 @@ END $$;
 
 DO $$ BEGIN
   IF to_regclass('public.outbound_execution_allocations') IS NOT NULL THEN
-    CREATE INDEX IF NOT EXISTS idx_oea_created_by ON public.outbound_execution_allocations (created_by);
     CREATE INDEX IF NOT EXISTS idx_oea_inventory_movement_id ON public.outbound_execution_allocations (inventory_movement_id);
     CREATE INDEX IF NOT EXISTS idx_oea_invoice_line_id ON public.outbound_execution_allocations (invoice_line_id);
+  END IF;
+END $$;
+
+DO $$ BEGIN
+  IF to_regclass('public.outbound_execution_allocations') IS NOT NULL
+     AND EXISTS (
+       SELECT 1
+       FROM information_schema.columns
+       WHERE table_schema = 'public'
+         AND table_name = 'outbound_execution_allocations'
+         AND column_name = 'created_by'
+     )
+  THEN
+    CREATE INDEX IF NOT EXISTS idx_oea_created_by ON public.outbound_execution_allocations (created_by);
   END IF;
 END $$;
 
