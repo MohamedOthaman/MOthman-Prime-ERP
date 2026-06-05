@@ -55,10 +55,10 @@ export function Sidebar() {
                         isActive={active}
                         tooltip={{ children: label, className: "z-[100]" }}
                         size="sm"
-                        className="rounded-md text-muted-foreground hover:bg-muted/50 hover:text-foreground data-[active=true]:bg-muted/60 data-[active=true]:text-foreground data-[active=true]:font-medium transition-colors group-data-[collapsible=icon]:!size-10 group-data-[collapsible=icon]:!p-2 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:mx-auto"
+                        className="rounded-md text-muted-foreground hover:bg-muted/50 hover:text-foreground data-[active=true]:bg-muted/60 data-[active=true]:text-foreground data-[active=true]:font-medium transition-colors group-data-[collapsible=icon]:!size-8 group-data-[collapsible=icon]:!p-1.5 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:mx-auto"
                       >
                         <NavLink to={item.path} end={item.end} className="group-data-[collapsible=icon]:!justify-center">
-                          <Icon className="w-4 h-4 shrink-0 group-data-[collapsible=icon]:!w-5 group-data-[collapsible=icon]:!h-5" />
+                          <Icon className="w-4 h-4 shrink-0" />
                           <span className="truncate group-data-[collapsible=icon]:hidden">{label}</span>
                         </NavLink>
                       </SidebarMenuButton>
