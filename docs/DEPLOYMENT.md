@@ -36,19 +36,22 @@ exposed directly to clients. See `docs/HOSTING.md` for the topology diagram.
 | `PORT` | `8000` | Set `8080` for the hosted target |
 | `EXTRACTION_RELOAD` | `false` | Dev auto-reload; keep `false` in production |
 | `LOG_LEVEL` | `info` | uvicorn log level |
-| `GEMINI_API_KEY` | — | Required for structuring unless `USE_MINICPM_V=true` (or per-request `X-Gemini-API-Key`) |
-| `EXTRACTION_PROVIDER` | `paddle` | `paddle` \| `tesseract` \| `minicpm` |
+| `GEMINI_API_KEY` | — | **Not required** — AI structuring is disabled at runtime. Retained in `.env.example` as a future reference option. Set `AI_STRUCTURING_ENABLED=true` to re-enable (separate future work). |
+| `AI_STRUCTURING_ENABLED` | `false` | Master switch for AI structuring. Keep `false`; local text parsing is used instead. |
+| `EXTRACTION_PROVIDER` | `paddle` | `paddle` \| `tesseract` |
 | `EXTRACTION_ALLOWED_ORIGINS` | Tauri+dev origins | Comma-separated CORS allow-list |
-| `USE_MINICPM_V` | `false` | Route structuring through MiniCPM-V → Gemini fallback |
-| `MINICPM_V_URL` | `http://127.0.0.1:8001` | MiniCPM-V upstream |
-| `MINICPM_V_MODEL` | `MiniCPM-V` | Model name reported by the upstream |
+| `USE_MINICPM_V` | `false` | MiniCPM-V is retained as a future option but inactive at runtime. |
+| `MINICPM_V_URL` | `http://127.0.0.1:8001` | MiniCPM-V upstream (future use) |
+| `MINICPM_V_MODEL` | `MiniCPM-V` | Model name reported by the upstream (future use) |
 | `USE_ULTRALYTICS` | `false` | Enable the `/detect` proxy endpoint |
 | `ULTRALYTICS_URL` | `http://127.0.0.1:8002` | Ultralytics upstream |
 | `POPPLER_PATH` | — | Windows-only, for scanned PDFs |
 
-> The extraction service never receives the Supabase service-role key. The
-> Gemini key is server-side here; the desktop client may also pass a per-request
-> `X-Gemini-API-Key` header (see the security note in §6).
+> **No API key is required.** AI structuring (Gemini / MiniCPM-V) is intentionally
+> disabled at runtime. The extraction service performs OCR only (pdfplumber +
+> PaddleOCR + Tesseract); the frontend runs local rule-based parsing on the
+> extracted text. Gemini and MiniCPM-V are kept in the codebase as documented
+> future options — they are not called.
 
 ## 3. Startup order
 
@@ -71,7 +74,7 @@ exposed directly to clients. See `docs/HOSTING.md` for the topology diagram.
 cd services/extraction-service
 python -m venv .venv && source .venv/bin/activate   # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
-cp .env.example .env   # fill in GEMINI_API_KEY etc.
+cp .env.example .env   # no API keys required — AI structuring is disabled
 # Local:
 python main.py
 # Hosted on 0.0.0.0:8080 (behind firewall/proxy):
@@ -96,7 +99,7 @@ Release (`.github/workflows/release.yml`) builds multi-platform Tauri bundles on
 | Endpoint | Purpose |
 | -------- | ------- |
 | `GET /ready` | Liveness — returns instantly, does not init PaddleOCR |
-| `GET /health` | Readiness — reports every provider's availability (OCR engines, Gemini key presence, MiniCPM-V reachability, Ultralytics reachability, pandas/numpy/pillow) |
+| `GET /health` | Readiness — reports every provider's availability (OCR engines, AI structuring status, MiniCPM-V reachability, Ultralytics reachability, pandas/numpy/pillow) |
 
 Wire `/ready` to your orchestrator's liveness probe and `/health` to readiness.
 
@@ -104,8 +107,8 @@ Wire `/ready` to your orchestrator's liveness probe and `/health` to readiness.
 
 - [ ] **Tauri CSP smoke test**: `npm run tauri:dev` and a real `tauri build`.
       Confirm the app loads, a Supabase request succeeds, an OCR upload reaches
-      the extraction service, the AI layer (if wired) can reach
-      `generativelanguage.googleapis.com`, and the console shows **no CSP violations**.
+      the extraction service (local text parsing only — no external AI calls),
+      and the console shows **no CSP violations**.
 - [ ] **Migrations applied** to the target Supabase project (`docs/MIGRATION_NOTES.md`).
 - [ ] **`/health` green** on the deployed extraction service.
 - [ ] If `HOST=0.0.0.0`: confirm a firewall/reverse proxy restricts access — the

@@ -1,5 +1,22 @@
+// =============================================================================
+// parse-pdf — Supabase Edge Function
+//
+// STATUS: AI EXTRACTION INTENTIONALLY DISABLED
+//
+// This function previously forwarded invoice/PDF/image content to the Gemini AI
+// gateway (LOVABLE_API_KEY) via:
+//   POST https://ai.gateway.lovable.dev/v1/chat/completions
+//   model: google/gemini-2.5-pro  (SKU)
+//   model: google/gemini-3-flash-preview  (invoices / packing lists)
+//
+// It also supported image-based (vision) extraction via the same gateway.
+//
+// Gemini and MiniCPM are retained in the codebase as future options.
+// They are NOT active. No data is sent to any AI service.
+// Re-enable by reverting the serve() handler below and restoring env var usage.
+// =============================================================================
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -7,6 +24,7 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+// DISABLED — declared but not used while AI is off (kept for reference/re-activation).
 const GATEWAY_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
 
 const invoiceTool = {
@@ -282,151 +300,40 @@ async function callAIWithRetry(
   return lastResult;
 }
 
+// =============================================================================
+// AI runtime — DISABLED
+//
+// The handlers below (callAI, callAIWithRetry, and the full serve logic) are
+// intentionally not active. They are preserved here as reference so the Gemini
+// integration can be restored later without rewriting the logic from scratch.
+//
+// Previous flow:
+//   1. Authenticated request arrives with { type, textChunks?, images? }
+//   2. LOVABLE_API_KEY read from Deno env
+//   3. Chunks / images forwarded to GATEWAY_URL with google/gemini-* model
+//   4. Tool-call response parsed and returned as { data: { invoices/products/items } }
+//
+// Models that were used:
+//   - google/gemini-2.5-pro        → SKU / stock reports (accuracy-critical)
+//   - google/gemini-3-flash-preview → invoices, packing lists (fast)
+//
+// To re-enable: restore the original serve() body, set LOVABLE_API_KEY in
+// Supabase project secrets, and remove the disabled serve() below.
+// =============================================================================
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
-  try {
-    // Authenticate the request
-    const authHeader = req.headers.get("Authorization");
-    if (!authHeader?.startsWith("Bearer ")) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+  const disabledBody = JSON.stringify({
+    error:
+      "AI PDF parsing is disabled. Gemini/MiniCPM are retained as future options but are not active.",
+    status: 503,
+  });
 
-    const supabase = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_ANON_KEY")!,
-      { global: { headers: { Authorization: authHeader } } }
-    );
-
-    const token = authHeader.replace("Bearer ", "");
-    const { data: claimsData, error: claimsError } = await supabase.auth.getClaims(token);
-    if (claimsError || !claimsData?.claims) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
-
-    const body = await req.json();
-    const { type, textChunks, images } = body as {
-      type: "invoices" | "sku" | "packing_list";
-      textChunks?: string[];
-      images?: string[];
-    };
-
-    if (!type) throw new Error("Missing 'type' parameter");
-
-    // Use pro for SKU (accuracy critical), flash-preview for others (fast + accurate)
-    const model = type === "sku" ? "google/gemini-2.5-pro" : "google/gemini-3-flash-preview";
-
-    // For image-based PDFs (packing lists, invoices, or scanned SKU reports), use vision
-    if (images && images.length > 0 && (type === "packing_list" || type === "invoices" || !textChunks || textChunks.length === 0)) {
-      const label = type === "packing_list" ? "packing list" : type === "invoices" ? "invoice/PO/quotation" : "stock report";
-      const content: Array<{ type: string; text?: string; image_url?: { url: string } }> = [
-        { type: "text", text: type === "invoices"
-          ? "Extract all documents and their item lines from these invoice/PO/quotation images. Identify headers and row details as defined in the function tool:"
-          : `Extract all products from these ${label} pages. Detect tables, reconstruct fragmented rows, and use semantic column matching:`
-        },
-      ];
-      for (const img of images) {
-        content.push({ type: "image_url", image_url: { url: img } });
-      }
-      // Add any partial text that was extracted alongside images
-      if (textChunks && textChunks.length > 0) {
-        content.push({ type: "text", text: `Additional extracted text for reference:\n${textChunks[0]}` });
-      }
-      const result = await callAIWithRetry(LOVABLE_API_KEY, type, content, model);
-      return new Response(JSON.stringify(result), {
-        status: result.status || 200,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    // For text-based PDFs
-    if (!textChunks || textChunks.length === 0) {
-      throw new Error("No text content provided");
-    }
-
-    // Process chunks SEQUENTIALLY for reliability (one at a time, no parallel)
-    const allResults: any[] = [];
-
-    for (let i = 0; i < textChunks.length; i++) {
-      console.log(`Processing chunk ${i + 1}/${textChunks.length} (${textChunks[i].length} chars)`);
-
-      const content = [{ type: "text" as const, text: textChunks[i] }];
-      const result = await callAIWithRetry(LOVABLE_API_KEY, type, content, model);
-
-      if (result?.error) {
-        return new Response(JSON.stringify({
-          error: `Chunk ${i + 1}/${textChunks.length} failed: ${result.error}`,
-          status: result.status || 500,
-        }), {
-          status: result.status || 500,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-
-      allResults.push(result.data);
-
-      // Small delay between chunks to avoid rate limits
-      if (i < textChunks.length - 1) {
-        await sleep(500);
-      }
-    }
-
-    if (allResults.length === 0) {
-      return new Response(
-        JSON.stringify({ error: "All chunks failed to process. Try a smaller file or retry." }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-      );
-    }
-
-    // Merge results
-    let merged: any;
-    if (type === "invoices") {
-      merged = { invoices: allResults.flatMap((r) => r.invoices || []) };
-    } else if (type === "sku") {
-      // Deduplicate products by itemCode (same product may appear in adjacent chunks)
-      const productMap = new Map<string, any>();
-      for (const r of allResults) {
-        for (const p of r.products || []) {
-          if (productMap.has(p.itemCode)) {
-            // Merge batches from duplicate products
-            const existing = productMap.get(p.itemCode);
-            const existingBatchNos = new Set(existing.batches.map((b: any) => b.batchNo));
-            for (const b of p.batches) {
-              if (!existingBatchNos.has(b.batchNo)) {
-                existing.batches.push(b);
-              }
-            }
-          } else {
-            productMap.set(p.itemCode, { ...p });
-          }
-        }
-      }
-      merged = { products: Array.from(productMap.values()) };
-    } else {
-      merged = { items: allResults.flatMap((r) => r.items || []) };
-    }
-
-    return new Response(JSON.stringify({ data: merged, status: 200 }), {
-      status: 200,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  } catch (e) {
-    console.error("parse-pdf error:", e);
-    const msg = e instanceof Error ? e.message : "Unknown error";
-    return new Response(JSON.stringify({ error: msg }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  }
+  return new Response(disabledBody, {
+    status: 503,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
 });

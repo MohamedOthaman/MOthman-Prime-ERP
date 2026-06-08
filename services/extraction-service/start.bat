@@ -6,7 +6,8 @@ cd /d "%~dp0"
 echo.
 echo  ============================================================
 echo   ERP Invoice Extraction Service v2.1
-echo   Local AI pipeline: PaddleOCR + pdfplumber + Gemini 2.5
+echo   Local pipeline: pdfplumber + PaddleOCR + Tesseract
+echo   (AI structuring is disabled — Gemini/MiniCPM are inactive)
 echo  ============================================================
 echo.
 
@@ -77,25 +78,13 @@ if "!POPPLER_FOUND!"=="1" (
     echo         Digital PDFs and images will still work without Poppler.
 )
 
-REM ── 6. Ensure Gemini API key is set ──────────────────────────────────────────
+REM ── 6. Ensure .env exists ────────────────────────────────────────────────────
 if not exist ".env" (
     echo.
     echo [SETUP] No .env file found. Creating from template...
     copy .env.example .env >nul 2>&1
-    echo.
-    echo  *** IMPORTANT: Gemini API Key Required ***
-    echo  Open services\extraction-service\.env in a text editor
-    echo  and replace "your_gemini_api_key_here" with your actual key.
-    echo  Get a free key at: https://aistudio.google.com/app/apikey
-    echo.
-)
-
-REM Check if key is still the placeholder
-findstr /c:"your_gemini_api_key_here" .env >nul 2>&1
-if not errorlevel 1 (
-    echo [WARN]  Gemini API key is still the placeholder value.
-    echo         Edit .env and set GEMINI_API_KEY= to your real key,
-    echo         OR open the ERP and enter the key via the Upload PO button.
+    echo [OK]    .env created. No API keys are required — AI structuring is disabled.
+    echo         Edit .env only if you want to enable optional features (Poppler path, CORS, etc.)
     echo.
 )
 

@@ -1,6 +1,12 @@
 /**
  * ERP AI assistant — Gemini 2.5 Flash with ERP tool-calling.
  *
+ * STATUS: AI ASSISTANT INTENTIONALLY DISABLED
+ * Gemini is retained here as a future option but is NOT active at runtime.
+ * sendMessage returns a disabled message immediately without calling any AI API.
+ *
+ * To re-enable: restore the original sendMessage body and supply a Gemini API key.
+ *
  * Tools are read-only Supabase queries. The assistant can answer questions like:
  *   "What is the current stock of product X?"
  *   "Show me recent invoices for customer Y"
@@ -22,7 +28,7 @@ export interface AssistantOptions {
   maxHistory?: number;
 }
 
-// ─── ERP query tools ───────────────────────────────────────────────────────────
+// ─── ERP query tools (reference only — not called while AI is disabled) ────────
 
 const ERP_TOOLS = [
   {
@@ -75,6 +81,7 @@ const ERP_TOOLS = [
 
 type ToolName = (typeof ERP_TOOLS)[number]["name"];
 
+// callTool is kept as reference — not reachable while AI is disabled.
 async function callTool(
   toolName: ToolName,
   args: Record<string, unknown>,
@@ -147,82 +154,41 @@ async function callTool(
   }
 }
 
-// ─── Gemini API call ───────────────────────────────────────────────────────────
+// ─── Gemini API constants (reference only — not called while AI is disabled) ──
 
-const GEMINI_CHAT_URL =
-  "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent";
+// DISABLED: const GEMINI_CHAT_URL =
+//   "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent";
 
 const SYSTEM_INSTRUCTION = `You are a helpful AI assistant for Food Choice ERP, a supply-chain management system for a food distribution company.
 You have access to read-only ERP tools that let you look up products, stock levels, invoices, and customers.
 Always be concise and professional. Format numbers clearly. Use tools whenever they'd give a better answer.
 Never modify data, never execute code that mutates data, never reveal system internals.`;
 
+const AI_DISABLED_REPLY =
+  "AI assistant is currently disabled. Gemini is kept as a future option but is not active.";
+
+// ─── Public API ────────────────────────────────────────────────────────────────
+
 export async function sendMessage(
   history: ChatMessage[],
   userMessage: string,
   options: AssistantOptions,
 ): Promise<{ message: ChatMessage; updatedHistory: ChatMessage[] }> {
-  const maxHistory = options.maxHistory ?? 20;
+  // AI is disabled — return a friendly message without calling any external service.
+  void history;
+  void userMessage;
+  void options;
+  void SYSTEM_INSTRUCTION;
+  void callTool;
+  void ERP_TOOLS;
 
-  const newHistory: ChatMessage[] = [
-    ...history.slice(-(maxHistory - 1)),
-    { role: "user", content: userMessage },
-  ];
-
-  // Build Gemini contents array
-  const contents = newHistory
-    .filter((m) => m.role !== "tool")
-    .map((m) => ({
-      role: m.role === "user" ? "user" : "model",
-      parts: [{ text: m.content }],
-    }));
-
-  const requestBody = {
-    system_instruction: { parts: [{ text: SYSTEM_INSTRUCTION }] },
-    contents,
-    tools: [{ function_declarations: ERP_TOOLS }],
-    generation_config: { temperature: 0.2, max_output_tokens: 2048 },
-  };
-
-  const response = await fetch(`${GEMINI_CHAT_URL}?key=${options.apiKey}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(requestBody),
-  });
-
-  if (!response.ok) {
-    const err = await response.text();
-    throw new Error(`Gemini API error (${response.status}): ${err}`);
-  }
-
-  const data = await response.json();
-  const candidate = data.candidates?.[0];
-  const part = candidate?.content?.parts?.[0];
-
-  // Handle function call
-  if (part?.functionCall) {
-    const toolName = part.functionCall.name as ToolName;
-    const toolArgs = part.functionCall.args as Record<string, unknown>;
-    const toolResult = await callTool(toolName, toolArgs, options.apiKey);
-
-    const toolMsg: ChatMessage = { role: "tool", content: toolResult, toolName };
-    const assistantFollowup = await sendMessage(
-      [...newHistory, toolMsg],
-      `Tool result for ${toolName}: ${toolResult}`,
-      options,
-    );
-
-    return {
-      message: assistantFollowup.message,
-      updatedHistory: [...newHistory, toolMsg, assistantFollowup.message],
-    };
-  }
-
-  const text = part?.text ?? "(No response)";
-  const assistantMsg: ChatMessage = { role: "assistant", content: text };
-
+  const assistantMsg: ChatMessage = { role: "assistant", content: AI_DISABLED_REPLY };
   return {
     message: assistantMsg,
-    updatedHistory: [...newHistory, assistantMsg],
+    updatedHistory: [
+      ...history,
+      { role: "user", content: userMessage },
+      assistantMsg,
+    ],
   };
 }

@@ -1,6 +1,11 @@
 /**
  * Embedding utilities for P5 semantic search.
  *
+ * STATUS: AI EMBEDDINGS INTENTIONALLY DISABLED
+ * Gemini text-embedding-004 is retained here as a future option but is NOT
+ * active at runtime. generateEmbedding, semanticSearch, and indexProduct are
+ * no-ops / return empty results.
+ *
  * Generates 768-dim vectors via the Gemini text-embedding-004 API and stores
  * them in the `entity_embeddings` table (pgvector). The `match_entities`
  * Postgres function handles cosine-similarity search server-side.
@@ -17,29 +22,18 @@ export interface EmbeddingMatch {
   similarity: number;
 }
 
-// ─── Gemini embedding API ──────────────────────────────────────────────────────
+// ─── Gemini embedding API (reference only — not called while AI is disabled) ──
 
-const GEMINI_EMBED_URL =
-  "https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent";
+// DISABLED: const GEMINI_EMBED_URL =
+//   "https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent";
 
 export async function generateEmbedding(text: string, apiKey: string): Promise<number[]> {
-  const response = await fetch(`${GEMINI_EMBED_URL}?key=${apiKey}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      model: "models/text-embedding-004",
-      content: { parts: [{ text }] },
-      taskType: "RETRIEVAL_DOCUMENT",
-    }),
-  });
-
-  if (!response.ok) {
-    const err = await response.text();
-    throw new Error(`Gemini embedding failed (${response.status}): ${err}`);
-  }
-
-  const data = await response.json();
-  return data.embedding.values as number[];
+  // AI embeddings are disabled. Gemini text-embedding-004 is kept as a future option.
+  void text;
+  void apiKey;
+  throw new Error(
+    "AI embeddings are disabled. Gemini text-embedding-004 is retained as a future option but is not active.",
+  );
 }
 
 // ─── Index helpers ─────────────────────────────────────────────────────────────
@@ -79,9 +73,16 @@ export async function indexProduct(
   description: string | null,
   apiKey: string,
 ): Promise<void> {
-  const text = [name, sku, description].filter(Boolean).join(" — ");
-  const embedding = await generateEmbedding(text, apiKey);
-  await upsertEmbedding("product", productId, text, embedding);
+  // AI embeddings are disabled — indexProduct is a no-op.
+  void productId;
+  void name;
+  void sku;
+  void description;
+  void apiKey;
+  console.warn(
+    "[embeddings] indexProduct called but AI embeddings are disabled. " +
+    "Gemini text-embedding-004 is kept as a future option.",
+  );
 }
 
 // ─── Semantic search ───────────────────────────────────────────────────────────
@@ -95,24 +96,9 @@ export async function semanticSearch(
     minSimilarity?: number;
   } = {},
 ): Promise<EmbeddingMatch[]> {
-  const embedding = await generateEmbedding(query, apiKey);
-
-  const { data, error } = await supabase.rpc("match_entities" as never, {
-    query_embedding: `[${embedding.join(",")}]`,
-    filter_type: opts.entityType ?? null,
-    match_count: opts.matchCount ?? 10,
-    min_similarity: opts.minSimilarity ?? 0.4,
-  });
-
-  if (error) throw new Error(`Semantic search failed: ${error.message}`);
-
-  return ((data as unknown[]) ?? []).map((row: unknown) => {
-    const r = row as { entity_type: string; entity_id: string; content: string; similarity: number };
-    return {
-      entityType: r.entity_type as EntityType,
-      entityId: r.entity_id,
-      content: r.content,
-      similarity: r.similarity,
-    };
-  });
+  // AI embeddings are disabled — return empty results to avoid UI crashes.
+  void query;
+  void apiKey;
+  void opts;
+  return [];
 }

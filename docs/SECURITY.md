@@ -20,9 +20,11 @@ applied in the P0 security pass. See `docs/ENTERPRISE-ROADMAP.md` for the broade
   secrecy of the anon key.
 - **Never** place server-only secrets (e.g. `SUPABASE_SERVICE_ROLE_KEY`, `GEMINI_API_KEY`)
   in `.env`/any `VITE_*` variable. They belong only to backend/service environments.
-- The Gemini API key for OCR structuring lives only in the extraction service environment
-  (`services/extraction-service/.env`) or is passed per-request via the `X-Gemini-API-Key`
-  header — never in the client bundle.
+- **No API key is required for OCR / document upload.** AI structuring (Gemini /
+  MiniCPM-V) is intentionally disabled at runtime. The extraction service performs
+  OCR only; the frontend applies local rule-based parsing. `GEMINI_API_KEY` in
+  `services/extraction-service/.env` is retained as a future reference option — it
+  is not read at runtime while `AI_STRUCTURING_ENABLED=false`.
 
 ## Desktop (Tauri v2)
 
@@ -48,8 +50,9 @@ applied in the P0 security pass. See `docs/ENTERPRISE-ROADMAP.md` for the broade
 - **CORS hardened.** Replaced `allow_origins=["*"] + allow_credentials=True` (an invalid,
   insecure combination) with an env-configurable allow-list
   (`EXTRACTION_ALLOWED_ORIGINS`, default = Tauri desktop + Vite dev origins),
-  `allow_credentials=False`, and explicit method/header allow-lists. The service
-  authenticates via the `X-Gemini-API-Key` header, not cookies.
+  `allow_credentials=False`, and explicit method/header allow-lists. No
+  authentication header is required — AI structuring is disabled and the service
+  does not accept or forward any API key.
 
 ## Deferred: AI Assistant + Semantic Search (foundation only — NOT user-facing)
 
@@ -65,9 +68,11 @@ reasons — do **not** build a `/assistant` screen on it until these are fixed:
    `invoice_number`/`total`, which `invoice_headers` does not have — invoice totals
    must be derived from `invoice_lines` (`quantity * unit_price - discount`) and there
    is no stored invoice number. That tool needs query work before use.
-2. **Browser-side Gemini key.** Both the assistant and `embeddings.ts` call
-   `generativelanguage.googleapis.com` directly from the client, exposing the API
-   key. Route through a backend proxy before any UI ships.
+2. **Browser-side Gemini key (deferred, not active).** `src/lib/ai/assistant.ts` and
+   `embeddings.ts` previously called `generativelanguage.googleapis.com` directly
+   from the client. Both are now disabled at runtime (they return no-op / empty
+   results). The fix — routing through a backend proxy — is tracked for the future
+   AI re-enablement PR. No Gemini calls are made from the browser today.
 3. **Semantic search needs an unapplied migration.** `semanticSearch()` depends on the
    `match_entities` RPC + `entity_embeddings` table from
    `20260529100000_p5_pgvector_embeddings.sql`, which is **not applied** to the live DB.

@@ -4,6 +4,7 @@ import {
   AlertTriangle,
   ArrowLeft,
   CheckCircle2,
+  ChevronDown,
   ChevronsUpDown,
   Loader2,
   Printer,
@@ -44,6 +45,7 @@ import { validateInvoiceRows } from "@/features/upload-center/validation";
 import { fireTrigger } from "@/lib/automation";
 import InvoiceLookupSelect, { type InvoiceLookupOption } from "./InvoiceLookupSelect";
 import InvoicePrintView, { type InvoicePrintData, type PrintLineItem } from "./InvoicePrintView";
+import { parsePOLocalText } from "@/features/invoices/poLocalParser";
 
 interface InvoiceLineForm {
   id?: string;
@@ -95,11 +97,27 @@ const lineInputClass =
 const fieldLabelClass =
   "shrink-0 text-[11px] font-medium text-foreground/80 whitespace-nowrap";
 
-// Sales Master compact field styles
+// Sales Master compact field styles (kept for items table header / misc usage)
 const ML = "text-[10px] font-semibold text-foreground/55 whitespace-nowrap shrink-0";
 const MF = "h-[24px] rounded-[2px] border border-border bg-background px-1.5 text-[11px] text-foreground focus:outline-none focus:ring-1 focus:ring-ring";
 const MR = "h-[24px] rounded-[2px] border border-border/50 bg-muted/40 px-1.5 text-[11px] text-foreground/70 select-none cursor-default";
 const MD = "h-3.5 w-px bg-border/60 mx-1 shrink-0";
+
+// Card-based grid field styles (new Sales Master layout)
+const SL = "text-[11px] font-medium text-foreground/60 mb-0.5 block leading-tight";
+const SF = "h-8 w-full rounded-[3px] border border-border bg-background px-2 text-[12px] text-foreground focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-60";
+const SR = "h-8 w-full rounded-[3px] border border-border/50 bg-muted/40 px-2 text-[12px] text-foreground/70 select-none cursor-default";
+
+// Returns true when errorText contains known Gemini-flow keywords from the old service
+function isStaleGeminiServiceError(errorText: string): boolean {
+  const lower = errorText.toLowerCase();
+  return (
+    lower.includes("gemini api key") ||
+    lower.includes("x-gemini-api-key") ||
+    lower.includes("gemini_api_key") ||
+    lower.includes("lovable_api_key")
+  );
+}
 
 function createDraftInvoiceNo() {
   const now = new Date();
@@ -199,6 +217,8 @@ export default function InvoiceEntryPage() {
   // treated as clean without the user confirming. Cleared on each new upload.
   const [extractionWarnings, setExtractionWarnings] = useState<string[]>([]);
   const [reviewStatus, setReviewStatus] = useState<"needs_review" | "reviewed" | null>(null);
+  const [rawExtractedText, setRawExtractedText] = useState<string | null>(null);
+  const [showRawText, setShowRawText] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const EXTRACT_SVC = import.meta.env.VITE_EXTRACTION_SERVICE_URL ?? "http://127.0.0.1:8000";
@@ -1349,6 +1369,8 @@ export default function InvoiceEntryPage() {
     setExtractionProgress("Uploading document...");
     setExtractionWarnings([]);
     setReviewStatus(null);
+    setRawExtractedText(null);
+    setShowRawText(false);
 
     // Hoisted so the catch block can record a failed document with its storage
     // path (No Lost Invoices). Null until the storage upload step assigns it.
@@ -1383,9 +1405,8 @@ export default function InvoiceEntryPage() {
       // ── Step 2: OCR Processing via extraction service ──────────────────────
       setExtractionProgress("OCR Processing...");
 
-      const geminiApiKey = localStorage.getItem("GEMINI_API_KEY") || "";
+      // AI structuring is disabled — no API key header is sent.
       const headers: Record<string, string> = {};
-      if (geminiApiKey) headers["X-Gemini-API-Key"] = geminiApiKey;
 
       console.log("[PDF] OCR started for:", file.name, "size:", file.size);
 
@@ -1424,41 +1445,281 @@ export default function InvoiceEntryPage() {
         const errorText = await response.text().catch(() => "");
         console.error("[API] Error response:", errorText);
 
+        // Guard: stale service still running old Gemini code → raw JSON leak prevention
+        if (isStaleGeminiServiceError(errorText)) {
+          throw new Error(
+            "The extraction service is still using an old Gemini flow.\n" +
+            "Stop and restart services/extraction-service/start.bat, then retry.",
+          );
+        }
+
+        // Parse FastAPI detail without exposing raw JSON
+        let detail = "";
+        try {
+          const parsed = JSON.parse(errorText);
+          detail = parsed.detail || parsed.message || parsed.error || "";
+        } catch { /* not JSON — fine */ }
+
         let userMsg = "Could not extract document.";
         if (response.status === 400) {
-          userMsg = `Unsupported file or bad request: ${errorText || response.statusText}`;
+          userMsg = detail || "Unsupported file type or bad request.";
+        } else if (response.status === 422) {
+          userMsg = detail || "Invalid request format.";
         } else if (response.status === 500) {
-          // Try to parse detail from FastAPI error body
-          try {
-            const parsed = JSON.parse(errorText);
-            userMsg = parsed.detail || "AI extraction format invalid.";
-          } catch {
-            userMsg = errorText || "AI extraction format invalid.";
-          }
+          userMsg = detail || "Extraction service error — check the service log.";
+        } else if (response.status === 503) {
+          userMsg = detail || "Extraction service unavailable — it may be starting up.";
+        } else {
+          userMsg = detail || `Extraction failed (HTTP ${response.status}).`;
         }
         throw new Error(userMsg);
       }
 
-      // ── Step 3: AI Structuring ─────────────────────────────────────────────
-      setExtractionProgress("AI Structuring...");
+      // ── Step 3: Parse document ─────────────────────────────────────────────
+      setExtractionProgress("Parsing...");
 
       let result: Record<string, unknown>;
       try {
         result = await response.json();
       } catch {
-        throw new Error("AI extraction format invalid — server returned non-JSON response.");
+        throw new Error("Extraction service returned a non-JSON response — check the service log.");
       }
 
       console.log("[API] OCR complete");
       console.log("[API] Source method:", result.source);
       console.log("[PDF] Text length:", result.text_length ?? "N/A");
 
+      // ── New path: AI disabled → local text parsing ─────────────────────────
+      if (result.ai_structuring_enabled === false) {
+        // Guard: stale service body still mentioning Gemini
+        const errStr = typeof result.error === "string" ? result.error : "";
+        if (isStaleGeminiServiceError(errStr)) {
+          throw new Error(
+            "The extraction service is still using an old Gemini flow.\n" +
+            "Stop and restart services/extraction-service/start.bat, then retry.",
+          );
+        }
+
+        const rawText = typeof result.raw_text === "string" ? result.raw_text : "";
+        if (!rawText) {
+          throw new Error(
+            "Extraction service returned no text content.\n" +
+            "The document may be image-only with no OCR result — check the service log.",
+          );
+        }
+        setRawExtractedText(rawText);
+
+        // Log OCR document record (non-blocking)
+        let ocrDocId: string | null = null;
+        try {
+          const { data: ocrDoc, error: ocrErr } = await supabase
+            .from("ocr_documents" as any)
+            .insert({
+              filename: file.name,
+              storage_path: storagePath,
+              document_type: "invoice",
+              status: "extracted",
+              confidence: null,
+              raw_data: { raw_text: rawText.substring(0, 2000) },
+              metadata: {
+                source: result.source,
+                text_length: result.text_length ?? 0,
+                confidence_known: false,
+                ai_structuring_enabled: false,
+              },
+            })
+            .select("id")
+            .single();
+          if (!ocrErr && ocrDoc) ocrDocId = (ocrDoc as { id: string }).id;
+          else if (ocrErr) console.warn("[INVOICE] ocr_documents insert warning:", ocrErr.message);
+        } catch (err) {
+          console.warn("[INVOICE] Failed to register ocr_document:", err);
+        }
+
+        // ── Step 4: Local PO parsing ──────────────────────────────────────────
+        setExtractionProgress("Matching Products...");
+        const parsedPO = parsePOLocalText(rawText);
+
+        // Populate header fields
+        if (parsedPO.poNumber) {
+          setPoNumber(parsedPO.poNumber);
+          setInvoiceNo(`PO-${parsedPO.poNumber}`);
+        }
+        if (parsedPO.date) setInvoiceDate(parsedPO.date);
+        if (parsedPO.comments) setNotes(parsedPO.comments);
+
+        if (parsedPO.customerName || parsedPO.customerCode) {
+          const lcSearch = (parsedPO.customerCode || parsedPO.customerName || "").toLowerCase().trim();
+          const matchedCust = customers.find(
+            (c) =>
+              (c.code ?? "").toLowerCase() === lcSearch ||
+              c.name.toLowerCase().includes(lcSearch) ||
+              lcSearch.includes(c.name.toLowerCase()),
+          );
+          if (matchedCust) {
+            setCustomerId(matchedCust.id);
+            if (matchedCust.salesman_id) setSalesmanId(matchedCust.salesman_id);
+          }
+        }
+
+        // ── Step 5: Build invoice lines ───────────────────────────────────────
+        setExtractionProgress("Injecting Invoice Lines...");
+        const mappedLines: InvoiceLineForm[] = [];
+        let matchedCount = 0, ambiguousCount = 0, unmatchedCount = 0;
+
+        for (const item of parsedPO.items) {
+          const extBarcode = (item.barcode ?? "").trim();
+          const extItemCode = item.itemCode.trim();
+          const extItemName = item.itemName.trim();
+          const extQty = item.qty;
+          const extPrice = item.unitPrice ?? 0;
+          const extUnit = item.unit;
+
+          let matchedProduct: ProductLookup | null = null;
+          if (extBarcode) matchedProduct = resolveProductByCodeOrBarcode(extBarcode, "barcode");
+          if (!matchedProduct && extItemCode) matchedProduct = resolveProductByCodeOrBarcode(extItemCode, "code");
+          if (!matchedProduct && extItemName && customerId) {
+            const mappedId = customerMappings[extItemName.toLowerCase()];
+            if (mappedId) matchedProduct = productsById.get(mappedId) ?? null;
+          }
+
+          let suggestions: ProductLookup[] = [];
+          if (!matchedProduct && extItemName) {
+            const sims = products.map((p) => {
+              const label = getProductLabel(p, lang);
+              return {
+                product: p,
+                similarity: Math.max(
+                  getStringSimilarity(extItemName, label),
+                  p.item_code ? getStringSimilarity(extItemName, p.item_code) : 0,
+                ),
+              };
+            });
+            sims.sort((a, b) => b.similarity - a.similarity);
+            suggestions = sims.filter((s) => s.similarity >= 0.45).slice(0, 5).map((s) => s.product);
+            if (sims[0] && sims[0].similarity > 0.75) {
+              matchedProduct = sims[0].product;
+              console.log(`[MATCH] item "${extItemName}": fuzzy ${(sims[0].similarity * 100).toFixed(0)}% → ${matchedProduct.item_code}`);
+            }
+          }
+
+          if (matchedProduct) matchedCount++;
+          else if (suggestions.length > 0) ambiguousCount++;
+          else if (extItemName) unmatchedCount++;
+
+          if (matchedProduct && extItemName) {
+            try {
+              if (customerId) {
+                await supabase.from("customer_sku_mappings" as any).upsert(
+                  { customer_id: customerId, external_name: extItemName, product_id: matchedProduct.id },
+                  { onConflict: "customer_id,external_name" },
+                );
+              }
+              await supabase.from("auto_match_feedback" as any).upsert(
+                {
+                  external_name: extItemName,
+                  matched_product_id: matchedProduct.id,
+                  usage_count: 1,
+                  last_used: new Date().toISOString(),
+                },
+                { onConflict: "external_name,matched_product_id" },
+              );
+            } catch (e) {
+              console.warn("[MATCH] Feedback save failed:", e);
+            }
+          }
+
+          const quantity = String(extQty > 0 ? extQty : 1);
+          const unitPrice = String(
+            extPrice || (matchedProduct?.selling_price != null ? Number(matchedProduct.selling_price) : 0),
+          );
+          let availableStock: number | null = null;
+          let fefoPreview: FefoPreviewAllocation[] = [];
+          if (matchedProduct) {
+            try {
+              const inv = await loadLineInventoryPreview(matchedProduct.id, quantity);
+              availableStock = inv.availableStock;
+              fefoPreview = inv.fefoPreview;
+            } catch (e) {
+              console.error("[INVOICE] FEFO preview failed for", matchedProduct.item_code, e);
+            }
+          }
+
+          mappedLines.push({
+            search: matchedProduct ? formatProductLookup(matchedProduct) : "",
+            product_id: matchedProduct?.id ?? "",
+            product_code: matchedProduct?.item_code ?? extItemCode,
+            product_barcode: matchedProduct?.primary_barcode ?? extBarcode,
+            product_name: matchedProduct ? getProductLabel(matchedProduct, lang) : extItemName,
+            unit: matchedProduct?.uom ?? extUnit,
+            quantity,
+            unit_price: unitPrice,
+            discount: "0",
+            available_stock: availableStock,
+            fefo_preview: fefoPreview,
+            fefo_preview_open: false,
+            product_picker_open: false,
+            originalName: extItemName || undefined,
+            isUnmatched: !matchedProduct,
+            suggestions: suggestions.length > 0 ? suggestions : undefined,
+            is_foc: false,
+            store: "MAIN",
+            batch: fefoPreview[0]?.batch_no ?? "",
+            expiry: fefoPreview[0]?.expiry_date ?? "",
+          });
+        }
+
+        mappedLines.push({ ...EMPTY_LINE });
+        console.log("[INVOICE] Rows injected:", mappedLines.length - 1, "(+1 empty)");
+        setLines(mappedLines);
+        setExtractionProgress("Completed");
+
+        // Review verdict: local parsing always requires review
+        const reviewReasons: string[] = [
+          "Local text parsing (no AI structuring). Verify all fields and lines before posting.",
+          ...parsedPO.warnings,
+        ];
+        if (unmatchedCount > 0) reviewReasons.push(`${unmatchedCount} line(s) could not be matched to a product.`);
+        if (ambiguousCount > 0) reviewReasons.push(`${ambiguousCount} line(s) have ambiguous product matches — pick the correct one.`);
+
+        setExtractionWarnings(reviewReasons);
+        setReviewStatus("needs_review");
+
+        if (ocrDocId) {
+          try {
+            await supabase.from("ocr_documents" as any).update({ status: "needs_review" }).eq("id", ocrDocId);
+          } catch (e) {
+            console.warn("[INVOICE] ocr_documents status update failed:", e);
+          }
+        }
+
+        const itemCount = parsedPO.items.length;
+        if (itemCount > 0) {
+          toast.warning(
+            `${itemCount} line(s) parsed locally — ` +
+            `${matchedCount} matched · ${ambiguousCount} ambiguous · ${unmatchedCount} unmatched — review required`,
+          );
+        } else {
+          toast.warning("No items auto-extracted. Enter lines manually or check the raw text preview.");
+        }
+        return; // local-parse path complete
+      }
+
+      // ── Legacy AI-structured path (ai_structuring_enabled: true) ──────────
+      // Kept as reference; not reached while AI structuring is disabled.
       if (!result.success || !result.data) {
-        throw new Error((result.error as string) || "AI extraction returned no structured data.");
+        const errMsg = (result.error as string) || "Could not extract structured data from document.";
+        if (isStaleGeminiServiceError(errMsg)) {
+          throw new Error(
+            "The extraction service is still using an old Gemini flow.\n" +
+            "Stop and restart services/extraction-service/start.bat, then retry.",
+          );
+        }
+        throw new Error(errMsg);
       }
 
       const extData = result.data as Record<string, unknown>;
-      console.log("[API] Gemini raw response:", extData);
+      console.log("[API] Extraction raw response:", extData);
 
       const extractedItems: unknown[] = Array.isArray(extData.items) ? extData.items : [];
       const extractedHeader: Record<string, unknown> = (extData.header as Record<string, unknown>) ?? {};
@@ -1925,7 +2186,7 @@ export default function InvoiceEntryPage() {
         {serviceOnline === false && !extracting && (
           <div className="flex items-center gap-2 rounded-sm border border-amber-500/40 bg-amber-500/8 px-2.5 py-1 text-[10.5px]">
             <span className="h-2 w-2 shrink-0 rounded-full bg-amber-500" />
-            <span className="text-amber-800 font-medium">AI extraction service offline</span>
+            <span className="text-amber-800 font-medium">Extraction service offline</span>
             <span className="text-amber-700/70">— run <code className="font-mono bg-amber-100 px-1 rounded-[2px]">services/extraction-service/start.bat</code> to enable PO / quotation upload</span>
           </div>
         )}
@@ -1934,8 +2195,8 @@ export default function InvoiceEntryPage() {
           <div className="flex items-center gap-2 rounded-sm border border-primary/30 bg-primary/5 px-3 py-1.5 text-[11px]">
             <Loader2 className="h-3.5 w-3.5 animate-spin text-primary shrink-0" />
             <div className="flex items-center gap-1.5 flex-1 min-w-0">
-              {(["Uploading document...", "OCR Processing...", "AI Structuring...", "Matching Products...", "Injecting Invoice Lines...", "Completed"] as const).map((step, idx) => {
-                const steps = ["Uploading document...", "OCR Processing...", "AI Structuring...", "Matching Products...", "Injecting Invoice Lines...", "Completed"];
+              {(["Uploading document...", "OCR Processing...", "Parsing...", "Matching Products...", "Injecting Invoice Lines...", "Completed"] as const).map((step, idx) => {
+                const steps = ["Uploading document...", "OCR Processing...", "Parsing...", "Matching Products...", "Injecting Invoice Lines...", "Completed"];
                 const currentIdx = steps.indexOf(extractionProgress);
                 const isDone = currentIdx > idx;
                 const isActive = currentIdx === idx;
@@ -1957,14 +2218,32 @@ export default function InvoiceEntryPage() {
           </div>
         )}
 
-        {/* Sales Master — Dense Oracle Forms Style */}
-        <section className="rounded-sm border border-border bg-card shadow-sm">
-          {/* Section header bar */}
-          <div className="flex items-center justify-between border-b border-border bg-muted px-2.5 py-[4px]">
-            <h2 className="text-[10px] font-bold text-foreground/60 uppercase tracking-[0.12em] select-none">
-              {t("salesMaster", "Sales Master")}
+        {/* Raw extracted text — collapsible preview for manual review */}
+        {rawExtractedText && reviewStatus && (
+          <div className="rounded-sm border border-border bg-muted/20">
+            <button
+              type="button"
+              onClick={() => setShowRawText((v) => !v)}
+              className="flex w-full items-center gap-2 px-3 py-1.5 text-[10.5px] font-medium text-foreground/60 hover:bg-muted/40 transition-colors"
+            >
+              <ChevronDown className={cn("h-3 w-3 transition-transform shrink-0", showRawText && "rotate-180")} />
+              <span>{showRawText ? "Hide" : "Show"} extracted raw text</span>
+              <span className="ml-auto font-mono text-[9.5px] text-foreground/40">{rawExtractedText.length.toLocaleString()} chars</span>
+            </button>
+            {showRawText && (
+              <pre className="max-h-52 overflow-y-auto border-t border-border/50 bg-muted/30 px-3 py-2 text-[9.5px] leading-relaxed font-mono text-foreground/70 whitespace-pre-wrap">
+                {rawExtractedText}
+              </pre>
+            )}
+          </div>
+        )}
+
+        {/* ── Document Header card ─────────────────────────────────────────────── */}
+        <section className="rounded-md border border-border bg-card shadow-sm">
+          <div className="flex items-center justify-between border-b border-border bg-muted/50 px-3 py-2">
+            <h2 className="text-[11px] font-bold text-foreground/60 uppercase tracking-[0.1em] select-none">
+              {t("documentHeader", "Document Header")}
             </h2>
-            {/* Upload PO / Ref Trigger */}
             <div className="flex items-center gap-2">
               <input
                 ref={fileInputRef}
@@ -1978,16 +2257,16 @@ export default function InvoiceEntryPage() {
                 variant="outline"
                 onClick={handleUploadClick}
                 disabled={isReadOnly || extracting}
-                className="h-[22px] flex items-center gap-1.5 bg-primary/5 text-primary border-primary/25 hover:bg-primary/10 text-[10px] font-semibold rounded-sm px-2"
+                className="h-7 flex items-center gap-1.5 bg-primary/5 text-primary border-primary/25 hover:bg-primary/10 text-[10px] font-semibold rounded-sm px-2.5"
               >
                 {extracting ? (
                   <>
-                    <Loader2 className="h-2.5 w-2.5 animate-spin" />
+                    <Loader2 className="h-3 w-3 animate-spin" />
                     <span className="truncate max-w-[120px]">{extractionProgress || t("extracting", "Extracting...")}</span>
                   </>
                 ) : (
                   <>
-                    <Upload className="h-2.5 w-2.5" />
+                    <Upload className="h-3 w-3" />
                     <span>{t("uploadPoQuotation", "Upload PO / Ref")}</span>
                   </>
                 )}
@@ -1995,203 +2274,185 @@ export default function InvoiceEntryPage() {
             </div>
           </div>
 
-          {/* Field rows */}
-          <div className="px-2.5 py-1.5 space-y-[3px]">
-
-            {/* ── Row 1: Document reference ──────────────────────────────────────── */}
-            <div className="flex items-center gap-x-2.5 overflow-x-auto">
-
-              <label className="flex items-center gap-x-1 shrink-0">
-                <span className={ML}>Invoice No</span>
+          <div className="p-3 space-y-3">
+            {/* Row 1: Invoice No | Date | Payment | Type | COPY / Find Invoice */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+              <div>
+                <span className={SL}>Invoice No</span>
                 <input value={invoiceNo} onChange={(e) => setInvoiceNo(e.target.value)}
-                  readOnly={isReadOnly} className={cn(MF, "w-[116px] font-mono")} />
-              </label>
-
-              <label className="flex items-center gap-x-1 shrink-0">
-                <span className={ML}>Date</span>
+                  readOnly={isReadOnly} className={cn(SF, "font-mono")} />
+              </div>
+              <div>
+                <span className={SL}>Date</span>
                 <input type="date" value={invoiceDate} onChange={(e) => setInvoiceDate(e.target.value)}
-                  readOnly={isReadOnly} className={cn(MF, "w-[116px]")} />
-              </label>
-
-              <span className={MD} />
-
-              <label className="flex items-center gap-x-1 shrink-0">
-                <span className={ML}>Payment</span>
-                <input value="CREDIT" readOnly
-                  className={cn(MR, "w-[60px] text-center font-medium")} />
-              </label>
-
-              <label className="flex items-center gap-x-1 shrink-0">
-                <span className={ML}>Cust. Com.</span>
-                <input value={custCom1} onChange={(e) => setCustCom1(e.target.value)}
-                  readOnly={isReadOnly} className={cn(MF, "w-[88px]")} />
-                <input value={custCom2} onChange={(e) => setCustCom2(e.target.value)}
-                  readOnly={isReadOnly} className={cn(MF, "w-[42px] ml-0.5")} />
-              </label>
-
-              <div className="ml-auto flex items-center gap-1.5 shrink-0">
+                  readOnly={isReadOnly} className={SF} />
+              </div>
+              <div>
+                <span className={SL}>Payment</span>
+                <input value="CREDIT" readOnly className={cn(SR, "text-center font-medium")} />
+              </div>
+              <div>
+                <span className={SL}>Type</span>
+                <input value={invoiceType} onChange={(e) => setInvoiceType(e.target.value)}
+                  readOnly={isReadOnly} className={cn(SF, "font-mono text-center")} />
+              </div>
+              <div className="col-span-2 flex items-end gap-2">
                 <Button type="button" variant="outline"
-                  className="h-[24px] text-[10px] font-bold px-2.5 rounded-[2px] border-border bg-background hover:bg-muted/60 tracking-wide"
+                  className="h-8 flex-1 text-[11px] font-bold rounded-[3px] border-border bg-background hover:bg-muted/60 tracking-wide"
                   onClick={() => toast.info("Copy action triggered")}>
                   COPY
                 </Button>
                 <Button type="button" variant="outline"
-                  className="h-[24px] text-[10px] font-bold px-2.5 rounded-[2px] border-border bg-background hover:bg-muted/60"
+                  className="h-8 flex-1 text-[11px] font-bold rounded-[3px] border-border bg-background hover:bg-muted/60"
                   onClick={() => navigate("/invoice-list")}>
                   Find Invoice
                 </Button>
               </div>
             </div>
 
-            {/* ── Row 2: Customer ────────────────────────────────────────────────── */}
-            <div className="flex items-center gap-x-2.5 overflow-x-auto">
-
-              <label className="flex items-center gap-x-1 shrink-0">
-                <span className={ML}>Code</span>
-                <input value={selectedCustomer?.code ?? ""} readOnly
-                  className={cn(MR, "w-[68px] font-mono")} placeholder="—" />
-              </label>
-
-              <label className="flex items-center gap-x-1 shrink-0">
-                <span className={ML}>Customer</span>
-                <div className="w-[232px]">
-                  <InvoiceLookupSelect
-                    value={customerId} options={customerOptions}
-                    placeholder={t("selectCustomer", "Select customer")}
-                    searchPlaceholder={t("searchByCodeOrName", "Search by code or name...")}
-                    emptyText={t("noCustomerFound", "No customer found.")}
-                    disabled={isReadOnly} onSelect={handleCustomerChange}
-                    triggerClassName="h-[24px] text-[11px] px-2 py-0 rounded-[2px]"
-                  />
-                </div>
-              </label>
-
-              <label className="flex items-center gap-x-1 shrink-0">
-                <span className={ML}>Child</span>
-                <input value={customerChild} onChange={(e) => setCustomerChild(e.target.value)}
-                  readOnly={isReadOnly} placeholder="—"
-                  className={cn(MF, "w-[80px]")} />
-              </label>
-
-              <span className={MD} />
-
-              <label className="flex items-center gap-x-1 shrink-0">
-                <span className={ML}>Salesman</span>
-                <input value={selectedSalesman?.code ?? ""} readOnly
-                  className={cn(MR, "w-[46px] font-mono text-center")} placeholder="—" />
-                <div className="w-[158px] ml-0.5">
-                  <InvoiceLookupSelect
-                    value={salesmanId} options={salesmanOptions}
-                    placeholder={t("selectSalesman", "Select salesman")}
-                    searchPlaceholder={t("searchSalesman", "Search salesman...")}
-                    emptyText={t("noSalesmanFound", "No salesman found.")}
-                    disabled={isReadOnly} onSelect={handleSalesmanSelect}
-                    triggerClassName="h-[24px] text-[11px] px-2 py-0 rounded-[2px]"
-                  />
-                </div>
-              </label>
-            </div>
-
-            {/* ── Row 3: Currency / PO Ref / Dates / Type ───────────────────────── */}
-            <div className="flex items-center gap-x-2.5 overflow-x-auto">
-
-              <label className="flex items-center gap-x-1 shrink-0">
-                <span className={ML}>Currency</span>
-                <input value={currency} onChange={(e) => setCurrency(e.target.value)}
-                  readOnly={isReadOnly}
-                  className={cn(MF, "w-[46px] font-mono text-center")} />
-              </label>
-
-              <label className="flex items-center gap-x-1 shrink-0">
-                <span className={ML}>Rate</span>
-                <input type="number" step="0.000001" value={exchangeRate}
-                  onChange={(e) => setExchangeRate(e.target.value)}
-                  readOnly={isReadOnly}
-                  className={cn(MF, "w-[88px] font-mono text-right")} />
-              </label>
-
-              <span className={MD} />
-
-              <label className="flex items-center gap-x-1 shrink-0">
-                <span className={ML}>PO / Ref #</span>
+            {/* Row 2: PO/Ref | Order Date | Delivery Date | Currency | Rate */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+              <div>
+                <span className={SL}>PO / Ref #</span>
                 <input value={poNumber} onChange={(e) => setPoNumber(e.target.value)}
                   readOnly={isReadOnly} placeholder="PO / Ref No"
-                  className={cn(MF, "w-[120px] font-mono")} />
-              </label>
-
-              <span className={MD} />
-
-              <label className="flex items-center gap-x-1 shrink-0">
-                <span className={ML}>Order Date</span>
+                  className={cn(SF, "font-mono")} />
+              </div>
+              <div>
+                <span className={SL}>Order Date</span>
                 <input type="date" value={orderDate} onChange={(e) => setOrderDate(e.target.value)}
-                  readOnly={isReadOnly} className={cn(MF, "w-[116px]")} />
-              </label>
-
-              <label className="flex items-center gap-x-1 shrink-0">
-                <span className={ML}>Del. Date</span>
+                  readOnly={isReadOnly} className={SF} />
+              </div>
+              <div>
+                <span className={SL}>Delivery Date</span>
                 <input type="date" value={deliveryDate} onChange={(e) => setDeliveryDate(e.target.value)}
-                  readOnly={isReadOnly} className={cn(MF, "w-[116px]")} />
-              </label>
+                  readOnly={isReadOnly} className={SF} />
+              </div>
+              <div>
+                <span className={SL}>Currency</span>
+                <input value={currency} onChange={(e) => setCurrency(e.target.value)}
+                  readOnly={isReadOnly} className={cn(SF, "font-mono text-center")} />
+              </div>
+              <div>
+                <span className={SL}>Rate</span>
+                <input type="number" step="0.000001" value={exchangeRate}
+                  onChange={(e) => setExchangeRate(e.target.value)}
+                  readOnly={isReadOnly} className={cn(SF, "font-mono text-right")} />
+              </div>
+            </div>
+          </div>
+        </section>
 
-              <span className={MD} />
+        {/* ── Customer & Sales card ──────────────────────────────────────────────── */}
+        <section className="rounded-md border border-border bg-card shadow-sm">
+          <div className="border-b border-border bg-muted/50 px-3 py-2">
+            <h2 className="text-[11px] font-bold text-foreground/60 uppercase tracking-[0.1em] select-none">
+              {t("customerSales", "Customer & Sales")}
+            </h2>
+          </div>
 
-              <label className="flex items-center gap-x-1 shrink-0">
-                <span className={ML}>Type</span>
-                <input value={invoiceType} onChange={(e) => setInvoiceType(e.target.value)}
-                  readOnly={isReadOnly}
-                  className={cn(MF, "w-[42px] font-mono text-center")} />
-              </label>
+          <div className="p-3 space-y-3">
+            {/* Row 1: Code | Customer | Child | Cust. Comments */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-12 gap-3">
+              <div className="lg:col-span-2">
+                <span className={SL}>Code</span>
+                <input value={selectedCustomer?.code ?? ""} readOnly
+                  className={cn(SR, "font-mono")} placeholder="—" />
+              </div>
+              <div className="lg:col-span-5">
+                <span className={SL}>{t("customer", "Customer")}</span>
+                <InvoiceLookupSelect
+                  value={customerId} options={customerOptions}
+                  placeholder={t("selectCustomer", "Select customer")}
+                  searchPlaceholder={t("searchByCodeOrName", "Search by code or name...")}
+                  emptyText={t("noCustomerFound", "No customer found.")}
+                  disabled={isReadOnly} onSelect={handleCustomerChange}
+                  triggerClassName="h-8 text-[12px] px-2.5 rounded-[3px]"
+                />
+              </div>
+              <div className="lg:col-span-2">
+                <span className={SL}>{t("childAccount", "Child Account")}</span>
+                <input value={customerChild} onChange={(e) => setCustomerChild(e.target.value)}
+                  readOnly={isReadOnly} placeholder="—" className={SF} />
+              </div>
+              <div className="lg:col-span-3">
+                <span className={SL}>{t("custComments", "Cust. Comments")}</span>
+                <div className="flex gap-1.5">
+                  <input value={custCom1} onChange={(e) => setCustCom1(e.target.value)}
+                    readOnly={isReadOnly} className={cn(SF, "flex-1 min-w-0")} />
+                  <input value={custCom2} onChange={(e) => setCustCom2(e.target.value)}
+                    readOnly={isReadOnly} className={cn(SF, "w-16 shrink-0")} />
+                </div>
+              </div>
             </div>
 
-            {/* ── Row 4: Discount / Comments / FOC ──────────────────────────────── */}
-            <div className="flex items-center gap-x-2.5 overflow-x-auto">
+            {/* Row 2: Salesman Code | Salesman | Invoice Notes */}
+            <div className="grid grid-cols-2 sm:grid-cols-12 gap-3">
+              <div className="sm:col-span-2">
+                <span className={SL}>{t("salesmanCode", "Salesman Code")}</span>
+                <input value={selectedSalesman?.code ?? ""} readOnly
+                  className={cn(SR, "font-mono text-center")} placeholder="—" />
+              </div>
+              <div className="sm:col-span-4">
+                <span className={SL}>{t("salesman", "Salesman")}</span>
+                <InvoiceLookupSelect
+                  value={salesmanId} options={salesmanOptions}
+                  placeholder={t("selectSalesman", "Select salesman")}
+                  searchPlaceholder={t("searchSalesman", "Search salesman...")}
+                  emptyText={t("noSalesmanFound", "No salesman found.")}
+                  disabled={isReadOnly} onSelect={handleSalesmanSelect}
+                  triggerClassName="h-8 text-[12px] px-2.5 rounded-[3px]"
+                />
+              </div>
+              <div className="sm:col-span-6">
+                <span className={SL}>{t("invoiceNotes", "Invoice Notes")}</span>
+                <input value={notes} onChange={(e) => setNotes(e.target.value)}
+                  readOnly={isReadOnly}
+                  className={SF}
+                  placeholder={t("invoiceNotesPlaceholder", "Invoice notes...")} />
+              </div>
+            </div>
+          </div>
+        </section>
 
-              <label className="flex items-center gap-x-1 shrink-0">
-                <span className={ML}>Disc. Type</span>
+        {/* ── Discount & FOC card ────────────────────────────────────────────────── */}
+        <section className="rounded-md border border-border bg-card shadow-sm">
+          <div className="border-b border-border bg-muted/50 px-3 py-2">
+            <h2 className="text-[11px] font-bold text-foreground/60 uppercase tracking-[0.1em] select-none">
+              {t("discountFoc", "Discount & FOC")}
+            </h2>
+          </div>
+
+          <div className="p-3">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div>
+                <span className={SL}>{t("discType", "Disc. Type")}</span>
                 <select value={discountType} onChange={(e) => setDiscountType(e.target.value)}
                   disabled={isReadOnly}
-                  className={cn(MF, "w-[98px] px-1 cursor-pointer")}>
+                  className={cn(SF, "cursor-pointer")}>
                   <option value="Percentage">Percentage</option>
                   <option value="Amount">Amount</option>
                 </select>
-              </label>
-
-              <label className="flex items-center gap-x-1 shrink-0">
-                <span className={ML}>Disc.</span>
+              </div>
+              <div>
+                <span className={SL}>{t("discount", "Discount")}</span>
                 <input type="number" step="0.001" value={discountValue}
                   onChange={(e) => setDiscountValue(e.target.value)}
                   readOnly={isReadOnly}
-                  className={cn(MF, "w-[76px] font-mono text-right")} />
-              </label>
-
-              <span className={MD} />
-
-              <label className="flex items-center gap-x-1 flex-1 min-w-0">
-                <span className={cn(ML, "shrink-0")}>Comments</span>
-                <input value={notes} onChange={(e) => setNotes(e.target.value)}
-                  readOnly={isReadOnly}
-                  className={cn(MF, "flex-1 min-w-0")}
-                  placeholder={t("invoiceNotesPlaceholder", "Invoice notes...")} />
-              </label>
-
-              <span className={MD} />
-
-              <label className="flex items-center gap-x-1 shrink-0">
-                <span className={ML}>FOC</span>
+                  className={cn(SF, "font-mono text-right")} />
+              </div>
+              <div>
+                <span className={SL}>FOC</span>
                 <input value={focCode} onChange={(e) => setFocCode(e.target.value)}
-                  readOnly={isReadOnly}
-                  className={cn(MF, "w-[42px] font-mono text-center")} />
-              </label>
-
-              <label className="flex items-center gap-x-1 shrink-0">
-                <span className={ML}>FOC Name</span>
+                  readOnly={isReadOnly} className={cn(SF, "font-mono text-center")} />
+              </div>
+              <div>
+                <span className={SL}>FOC Name</span>
                 <input value={focName} onChange={(e) => setFocName(e.target.value)}
-                  readOnly={isReadOnly}
-                  className={cn(MF, "w-[148px]")} />
-              </label>
+                  readOnly={isReadOnly} className={SF} />
+              </div>
             </div>
-
-          </div>{/* end field rows */}
+          </div>
         </section>
 
         {/* Sales Detail — dense ERP table */}

@@ -42,7 +42,9 @@ interface ExtractionHealth {
   pytesseract: boolean;
   paddleocr: boolean;
   structure_provider: string;
-  gemini_api_key_set: boolean;
+  ai_structuring_enabled: boolean;
+  gemini_runtime_enabled: boolean;
+  minicpm_runtime_enabled: boolean;
   minicpm_v_enabled: boolean;
   minicpm_v_available: boolean | null;
   ultralytics_enabled: boolean;
@@ -270,16 +272,16 @@ export default function OperationsDashboard() {
         { label: "pdfplumber", ok: health.pdfplumber, detail: stateText(health.pdfplumber) },
         { label: "pdf2image", ok: health.pdf2image, detail: stateText(health.pdf2image) },
         {
-          label: t("opsGeminiKey", "Gemini API key"),
-          ok: health.gemini_api_key_set,
-          detail: health.gemini_api_key_set
-            ? t("opsConfigured", "configured")
-            : t("opsMissing", "missing"),
+          label: t("opsAiStructuring", "AI structuring"),
+          ok: health.ai_structuring_enabled ?? false,
+          detail: (health.ai_structuring_enabled ?? false)
+            ? t("opsEnabled", "enabled")
+            : t("opsDisabled", "disabled"),
         },
         {
           label: "MiniCPM-V",
-          ok: health.minicpm_v_enabled ? health.minicpm_v_available : null,
-          detail: health.minicpm_v_enabled
+          ok: health.minicpm_runtime_enabled ? health.minicpm_v_available : null,
+          detail: health.minicpm_runtime_enabled
             ? stateText(health.minicpm_v_available)
             : t("opsDisabled", "disabled"),
         },

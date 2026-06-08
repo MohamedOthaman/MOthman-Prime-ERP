@@ -8,7 +8,7 @@ import urllib.request
 import urllib.error
 import concurrent.futures
 from typing import Dict, Any, List, Optional
-from fastapi import FastAPI, UploadFile, File, Form, Header, HTTPException
+from fastapi import FastAPI, UploadFile, File, Form, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 from dotenv import load_dotenv
@@ -69,14 +69,18 @@ load_dotenv()
 # ─── FastAPI app ──────────────────────────────────────────────────────────────
 app = FastAPI(
     title="ERP Invoice Extraction Service",
-    description="Production OCR pipeline: pdfplumber → PaddleOCR/Tesseract → Gemini 2.5 Flash",
+    description="Local extraction pipeline: pdfplumber → PaddleOCR/Tesseract. AI structuring (Gemini/MiniCPM) is disabled.",
     version="3.0.0"
 )
 
+# AI structuring runtime flags — read from env, default to disabled.
+_AI_STRUCTURING_ENABLED = os.environ.get("AI_STRUCTURING_ENABLED", "false").lower() in ("1", "true", "yes")
+_GEMINI_RUNTIME_ENABLED = os.environ.get("GEMINI_RUNTIME_ENABLED", "false").lower() in ("1", "true", "yes")
+_MINICPM_RUNTIME_ENABLED = os.environ.get("MINICPM_RUNTIME_ENABLED", "false").lower() in ("1", "true", "yes")
+
 # CORS — origins are configurable via EXTRACTION_ALLOWED_ORIGINS (comma-separated).
-# Credentials are disabled because the service authenticates via the
-# X-Gemini-API-Key request header (not cookies); wildcard-origin + credentials
-# is both invalid per the CORS spec and insecure, so it is avoided entirely.
+# Credentials are disabled; wildcard-origin + credentials is both invalid per
+# the CORS spec and insecure, so it is avoided entirely.
 _default_origins = (
     "http://localhost:1420,http://127.0.0.1:1420,"  # Tauri dev shell (vite --port 1420)
     "http://localhost:8080,http://127.0.0.1:8080,"  # browser dev (vite default non-Tauri port)
@@ -92,7 +96,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=_allowed_origins,
     allow_credentials=False,
-    allow_headers=["Content-Type", "X-Gemini-API-Key"],
+    allow_headers=["Content-Type"],
     allow_methods=["GET", "POST", "OPTIONS"],
 )
 
@@ -241,13 +245,12 @@ def run_tesseract_ocr(image_bytes: bytes) -> str:
 
 # ─── Provider abstraction ──────────────────────────────────────────────────────
 # Providers are selected at startup via environment variables:
-#   EXTRACTION_PROVIDER = paddle (default) | tesseract | minicpm
-#   USE_MINICPM_V       = true  → use MiniCPM-V for document structuring
-#   MINICPM_V_URL       = base URL of the MiniCPM-V HTTP service
-#   MINICPM_V_MODEL     = model name reported by the service (default: MiniCPM-V)
+#   EXTRACTION_PROVIDER = paddle (default) | tesseract
+#   (minicpm option retained as reference but maps to the paddle chain — not active)
 #
 # The provider chain always falls back: preferred → alternatives → empty string.
-# The structuring step falls back from MiniCPM-V → Gemini if MiniCPM-V is unreachable.
+# AI structuring (MiniCPM-V / Gemini) is intentionally disabled at runtime.
+# USE_MINICPM_V, MINICPM_V_URL, MINICPM_V_MODEL are kept as reference only.
 
 _MINICPM_V_URL = os.environ.get("MINICPM_V_URL", "http://127.0.0.1:8001").rstrip("/")
 _MINICPM_V_MODEL = os.environ.get("MINICPM_V_MODEL", "MiniCPM-V")
@@ -336,8 +339,9 @@ _OCR_CHAIN: Dict[str, list] = {
         ("tesseract", _tesseract_available, run_tesseract_ocr),
         ("paddle", _paddle_available, run_paddle_ocr),
     ],
+    # NOTE: "minicpm" is disabled at runtime — maps to the paddle chain.
+    # _run_minicpm_ocr is kept as reference only and must not be invoked.
     "minicpm": [
-        ("minicpm", _minicpm_available, _run_minicpm_ocr),
         ("paddle", _paddle_available, run_paddle_ocr),
         ("tesseract", _tesseract_available, run_tesseract_ocr),
     ],
@@ -572,8 +576,22 @@ def parse_excel_directly(file_bytes: bytes, filename: str) -> Dict[str, Any]:
     }
 
 
-# ─── Structuring providers ──────────────────────────────────────────────────────
-# The prompt is shared across all structuring backends.
+# ─── Structuring providers ────────────────────────────────────────────────────
+# =============================================================================
+# AI STRUCTURING IS INTENTIONALLY DISABLED
+#
+# run_gemini_structuring() and run_minicpm_structuring() are kept here as
+# reference for future re-activation. They must NOT be called at runtime.
+# run_structuring() raises HTTPException 503 immediately.
+#
+# To re-enable:
+#   1. Set AI_STRUCTURING_ENABLED=true in .env
+#   2. Set GEMINI_RUNTIME_ENABLED=true and supply GEMINI_API_KEY, or
+#      set MINICPM_RUNTIME_ENABLED=true and configure MINICPM_V_URL
+#   3. Restore the original run_structuring() body
+# =============================================================================
+
+# The prompt is shared across all structuring backends (reference only).
 GEMINI_PROMPT = """You are a world-class data extraction specialist for ERP supply-chain systems.
 Your task: parse raw text from a supplier invoice, purchase order (PO), or quotation — which may be in English, Arabic, or a mix of both — and return a single clean JSON object.
 
@@ -794,23 +812,30 @@ def run_structuring(
     custom_api_key: Optional[str],
     image_bytes: Optional[bytes],
 ) -> Dict[str, Any]:
-    """Route to the active structuring provider; fall back from MiniCPM-V → Gemini."""
-    if _USE_MINICPM_V:
-        if _minicpm_available():
-            logger.info("[STRUCTURE] Using MiniCPM-V provider")
-            return run_minicpm_structuring(text_content, image_bytes)
-        logger.warning("[STRUCTURE] MiniCPM-V unavailable — falling back to Gemini")
-    return run_gemini_structuring(text_content, custom_api_key, image_bytes)
+    """AI structuring is disabled. Gemini and MiniCPM are retained as future options."""
+    _ = text_content, custom_api_key, image_bytes  # kept for future re-activation
+    raise HTTPException(
+        status_code=503,
+        detail=(
+            "AI structuring is disabled. "
+            "Gemini and MiniCPM are kept as future options but are not active."
+        ),
+    )
 
 
 # ─── Main extraction endpoint ──────────────────────────────────────────────────
 SUPPORTED_EXTENSIONS = {"pdf", "jpg", "jpeg", "png", "webp", "bmp", "tiff", "xlsx", "xls", "csv"}
 
+_AI_DISABLED_DETAIL = (
+    "AI structuring is disabled. "
+    "Gemini and MiniCPM are kept as future options but are not active. "
+    "Raw text has been extracted locally but not structured into invoice fields."
+)
+
 @app.post("/extract")
 async def extract_document(
     file: UploadFile = File(...),
     doc_type: str = Form("invoice"),
-    x_gemini_api_key: Optional[str] = Header(None),
 ):
     filename = file.filename or "uploaded_file"
     ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
@@ -826,17 +851,16 @@ async def extract_document(
     file_bytes = await file.read()
     logger.info(f"[API] File size: {len(file_bytes):,} bytes")
 
-    # ── Excel / CSV: direct parse, no AI needed ────────────────────────────────
+    # ── Excel / CSV: direct parse — AI not required ────────────────────────────
     if ext in {"xlsx", "xls", "csv"}:
         logger.info("[EXCEL] Direct extraction (no AI)")
         result = parse_excel_directly(file_bytes, filename)
         logger.info(f"[EXCEL] Complete — {len(result['items'])} items")
         return {"success": True, "source": "excel", "data": result}
 
-    # ── Determine text content ─────────────────────────────────────────────────
+    # ── Determine text content via local OCR only ──────────────────────────────
     text_content = ""
     source_method = "unknown"
-    vision_fallback_bytes: Optional[bytes] = None
 
     if ext == "pdf":
         logger.info("[PDF] Analysing...")
@@ -862,37 +886,29 @@ async def extract_document(
         logger.info(f"[OCR] Image ({ext.upper()})")
         text_content = perform_ocr(file_bytes)
         source_method = f"image_{_EXTRACTION_PROVIDER}"
-        vision_fallback_bytes = file_bytes
 
-    # ── Sanity check ───────────────────────────────────────────────────────────
     if not text_content.strip():
-        if vision_fallback_bytes:
-            logger.warning("[API] OCR empty — will try vision structuring fallback")
-        else:
-            raise HTTPException(
-                status_code=400,
-                detail=(
-                    "No readable text could be extracted from this document. "
-                    "The scan may be too low quality or the file may be corrupted."
-                ),
-            )
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "No readable text could be extracted from this document. "
+                "The scan may be too low quality or the file may be corrupted."
+            ),
+        )
 
-    # ── Structuring ────────────────────────────────────────────────────────────
-    logger.info(f"[API] Structuring {len(text_content):,} chars...")
-    structured = run_structuring(
-        text_content=text_content,
-        custom_api_key=x_gemini_api_key,
-        image_bytes=vision_fallback_bytes if not text_content.strip() else None,
+    # ── AI structuring is disabled — return raw text with a clear message ──────
+    logger.info(
+        f"[API] Local extraction complete ({len(text_content):,} chars, source={source_method!r}). "
+        "AI structuring disabled — returning raw text."
     )
 
-    item_count = len(structured.get("items", []))
-    logger.info(f"[API] Complete — {item_count} item(s) from {source_method}")
-
     return {
-        "success": True,
+        "success": False,
         "source": source_method,
         "text_length": len(text_content),
-        "data": structured,
+        "ai_structuring_enabled": False,
+        "raw_text": text_content[:4000] if text_content else "",
+        "error": _AI_DISABLED_DETAIL,
     }
 
 
@@ -976,24 +992,25 @@ async def detect_objects(
 @app.get("/health")
 def health_check():
     paddle_ar = get_paddle_ocr("ar")
-    minicpm_up = _minicpm_available() if _USE_MINICPM_V else None
-    structure_provider = "minicpm" if (_USE_MINICPM_V and minicpm_up) else "gemini"
 
     return {
         "status": "healthy",
         "version": "3.0.0",
-        # OCR
+        # OCR (local — always enabled)
         "ocr_provider": _EXTRACTION_PROVIDER,
         "pdfplumber": pdfplumber is not None,
         "pdf2image": convert_from_bytes is not None,
         "pytesseract": pytesseract is not None,
         "paddleocr": paddle_ar is not None,
-        # Structuring
-        "structure_provider": structure_provider,
-        "gemini_api_key_set": bool(os.environ.get("GEMINI_API_KEY")),
-        "minicpm_v_enabled": _USE_MINICPM_V,
-        "minicpm_v_url": _MINICPM_V_URL if _USE_MINICPM_V else None,
-        "minicpm_v_available": minicpm_up,
+        # AI structuring — disabled
+        "ai_structuring_enabled": _AI_STRUCTURING_ENABLED,
+        "gemini_runtime_enabled": _GEMINI_RUNTIME_ENABLED,
+        "minicpm_runtime_enabled": _MINICPM_RUNTIME_ENABLED,
+        "structure_provider": "disabled",
+        # MiniCPM-V reference (not active)
+        "minicpm_v_enabled": False,
+        "minicpm_v_url": None,
+        "minicpm_v_available": None,
         # Ultralytics
         "ultralytics_enabled": _USE_ULTRALYTICS,
         "ultralytics_url": _ULTRALYTICS_URL if _USE_ULTRALYTICS else None,
@@ -1023,33 +1040,20 @@ SERVICE_RELOAD = os.environ.get("EXTRACTION_RELOAD", "").lower() in ("1", "true"
 
 @app.on_event("startup")
 def _startup_validation() -> None:
-    """Log effective configuration and warn about missing providers at boot."""
+    """Log effective configuration at boot."""
     logger.info("=" * 70)
     logger.info(f"[STARTUP] Extraction service v3.0.0 binding {SERVICE_HOST}:{SERVICE_PORT}")
     logger.info(f"[STARTUP] OCR provider chain: {_EXTRACTION_PROVIDER}")
     logger.info(f"[STARTUP] CORS allowed origins: {_allowed_origins}")
+    logger.info(
+        "[STARTUP] AI structuring: DISABLED "
+        "(Gemini/MiniCPM retained as future options — not active at runtime)"
+    )
 
     if SERVICE_HOST == "0.0.0.0":
         logger.warning(
             "[STARTUP] Bound to 0.0.0.0 — /extract and /detect are UNAUTHENTICATED. "
             "Ensure a firewall or reverse proxy restricts access."
-        )
-
-    # Structuring provider availability
-    has_gemini = bool(os.environ.get("GEMINI_API_KEY"))
-    if _USE_MINICPM_V:
-        up = _minicpm_available()
-        logger.info(f"[STARTUP] MiniCPM-V enabled at {_MINICPM_V_URL} (reachable={up})")
-        if not up and not has_gemini:
-            logger.warning(
-                "[STARTUP] MiniCPM-V unreachable AND no GEMINI_API_KEY — "
-                "structuring will fail until one is available "
-                "(a per-request X-Gemini-API-Key header also works)."
-            )
-    elif not has_gemini:
-        logger.warning(
-            "[STARTUP] No GEMINI_API_KEY set — structuring relies on a per-request "
-            "X-Gemini-API-Key header. Set GEMINI_API_KEY or USE_MINICPM_V to avoid 400s."
         )
 
     if _USE_ULTRALYTICS:

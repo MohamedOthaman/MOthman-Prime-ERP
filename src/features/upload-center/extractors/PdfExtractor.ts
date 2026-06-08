@@ -10,7 +10,7 @@ const DOC_TO_PDF: Record<DocumentType, PdfType> = {
 };
 
 export class PdfExtractor implements ExtractorProvider {
-  readonly id = "gemini-pdf";
+  readonly id = "local-pdf";
   readonly supportedMimeTypes = ["application/pdf"];
 
   async extract(file: File, hints?: ExtractionHints, onProgress?: (msg: string) => void): Promise<ExtractionResult> {
@@ -31,7 +31,7 @@ export class PdfExtractor implements ExtractorProvider {
       confidence: rows.length > 0 ? 0.85 : 0.2,
       rows,
       warnings,
-      providerMetadata: { provider: "gemini", pdfType },
+      providerMetadata: { provider: "local-pdf", aiEnabled: false, pdfType },
     };
   }
 }

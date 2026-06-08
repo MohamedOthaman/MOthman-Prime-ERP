@@ -1,11 +1,16 @@
 import * as pdfjsLib from "pdfjs-dist";
-import { supabase } from "@/integrations/supabase/client";
 
 // Configure worker
 pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`;
 
-// Smaller chunks = more reliable AI processing for large files
+// NOTE: AI extraction (Gemini / MiniCPM) is intentionally disabled.
+// All AI-related helpers below are kept as reference for future re-activation.
+// The application will not call any AI APIs or send any data to external services.
+
 const MAX_CHARS_PER_CHUNK = 8000;
+
+const AI_DISABLED_MESSAGE =
+  "AI extraction is currently disabled. Gemini and MiniCPM are kept in the project as future options, but they are not active.";
 
 export type PdfType = "invoices" | "sku" | "packing_list";
 
@@ -160,70 +165,15 @@ function mergeSkuProducts(products: ParsedProduct[]): ParsedProduct[] {
   return Array.from(productMap.values());
 }
 
-async function normalizeInvokeError(error: any) {
-  const baseMessage = String(error?.message || "Failed to process PDF");
-  let status: number | undefined;
-  let details = "";
+// ---------------------------------------------------------------------------
+// AI invocation helpers — DISABLED. Kept as reference for future use.
+// These functions previously called supabase.functions.invoke("parse-pdf")
+// which forwarded requests to the Gemini AI gateway (LOVABLE_API_KEY).
+// They must not be called while AI extraction is disabled.
+// ---------------------------------------------------------------------------
 
-  const responseLike = error?.context;
-  if (responseLike && typeof responseLike.status === "number") {
-    status = responseLike.status;
-
-    if (typeof responseLike.clone === "function") {
-      try {
-        details = await responseLike.clone().text();
-      } catch {
-        // ignore body parse issues
-      }
-    }
-  }
-
-  const combined = `${baseMessage} ${details}`.toLowerCase();
-
-  if (status === 402 || combined.includes("402") || combined.includes("credits exhausted")) {
-    return {
-      message: "AI credits exhausted. Please add credits from Settings → Workspace → Usage then retry.",
-      status: 402,
-      retryable: false,
-    };
-  }
-
-  if (status === 429 || combined.includes("429") || combined.includes("rate limit")) {
-    return {
-      message: "Too many AI requests right now. Please wait a minute and retry.",
-      status: 429,
-      retryable: true,
-    };
-  }
-
-  const retryable =
-    combined.includes("failed to fetch") ||
-    combined.includes("failed to send a request") ||
-    combined.includes("network");
-
-  return {
-    message: baseMessage,
-    status,
-    retryable,
-  };
-}
-
-async function invokeParsePdfWithRetry(body: Record<string, unknown>, retries = 2) {
-  let lastError: { message: string; status?: number; retryable?: boolean } | null = null;
-
-  for (let attempt = 0; attempt <= retries; attempt++) {
-    const { data, error } = await supabase.functions.invoke("parse-pdf", { body });
-    if (!error) return { data, error: null };
-
-    const normalizedError = await normalizeInvokeError(error);
-    lastError = normalizedError;
-
-    if (!normalizedError.retryable || attempt === retries) break;
-    await sleep(1000 * (attempt + 1));
-  }
-
-  return { data: null, error: lastError };
-}
+// async function normalizeInvokeError(error: any) { ... }   // AI error normalizer — disabled
+// async function invokeParsePdfWithRetry(body, retries) { } // Supabase edge fn caller — disabled
 
 export async function parsePdf(
   file: File,
@@ -234,99 +184,37 @@ export async function parsePdf(
   const isImage = file.type.startsWith("image/") || ["jpg", "jpeg", "png", "webp", "gif"].includes(ext);
 
   if (isImage) {
-    onProgress?.("Reading image file...");
-    try {
-      const dataUrl = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result as string);
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
-      });
-      onProgress?.("Sending image to AI vision...");
-      const { data, error } = await invokeParsePdfWithRetry({ type, images: [dataUrl] }, 2);
-      if (error) return { error: error.message || "Failed to process image" };
-      return data?.data || data;
-    } catch (err: any) {
-      return { error: err.message || "Failed to read image file" };
-    }
+    // AI vision is disabled — do not read or send image data to any external service.
+    onProgress?.(AI_DISABLED_MESSAGE);
+    return { error: AI_DISABLED_MESSAGE };
   }
 
   onProgress?.("Reading PDF...");
 
-  // Try text extraction first
+  // Local text extraction via pdfjs-dist — no network calls.
   const { text, hasText, numPages } = await extractTextFromPdf(file, onProgress);
 
-  let body: any;
-
-  if (hasText && type !== "packing_list") {
-    // Text-based PDF (Oracle reports)
-    const textChunks = chunkText(text);
-
-    if (type === "sku" && textChunks.length > 1) {
-      onProgress?.(`Extracted text from ${numPages} pages → ${textChunks.length} chunks. Processing in reliable mode...`);
-
-      const collected: ParsedProduct[] = [];
-
-      for (let i = 0; i < textChunks.length; i++) {
-        onProgress?.(`Processing chunk ${i + 1}/${textChunks.length}...`);
-
-        const { data, error } = await invokeParsePdfWithRetry(
-          { type, textChunks: [textChunks[i]] },
-          2,
-        );
-
-        if (error) {
-          console.error(`Chunk ${i + 1} failed:`, error);
-          return { error: `Failed at chunk ${i + 1}/${textChunks.length}. Please retry.` };
-        }
-
-        const chunkResult = data?.data || data;
-        const products = chunkResult?.products || [];
-        collected.push(...products);
-
-        if (i < textChunks.length - 1) {
-          await sleep(250);
-        }
-      }
-
-      const merged = mergeSkuProducts(collected);
-      console.log(`SKU import: ${merged.length} products after merge, from ${textChunks.length} chunks`);
-      return { products: merged };
-    }
-
-    onProgress?.(`Extracted text from ${numPages} pages → ${textChunks.length} chunks. Sending to AI...`);
-    body = { type, textChunks };
-  } else if (!hasText) {
-    // Image-based / scanned PDF — render pages for OCR
-    onProgress?.("Rendering PDF pages for OCR...");
-    const images = await renderPagesToImages(file);
-    onProgress?.(`Analyzing ${images.length} page(s) with AI vision...`);
-    body = { type, images };
+  if (!hasText) {
+    // Scanned / image-based PDF — local OCR is not available; AI vision is disabled.
+    onProgress?.(AI_DISABLED_MESSAGE);
+    return { error: AI_DISABLED_MESSAGE };
   }
 
-  onProgress?.("Processing with AI (this may take a few minutes for large files)...");
+  // Text was extracted successfully. Structured parsing requires AI which is disabled.
+  // Return empty results with a warning so callers can display a meaningful message.
+  const textChunks = chunkText(text);
+  onProgress?.(
+    `Extracted text from ${numPages} page(s) (${textChunks.length} chunk(s)). ${AI_DISABLED_MESSAGE}`,
+  );
+  console.info(
+    `parsePdf: local text extracted (${text.length} chars, ${numPages} pages). AI structuring disabled.`,
+  );
 
-  const { data, error } = await invokeParsePdfWithRetry(body, 2);
-
-  if (error) {
-    console.error("Edge function error:", error);
-    return { error: error.message || "Failed to process PDF" };
+  if (type === "sku") {
+    return { products: [], error: AI_DISABLED_MESSAGE };
   }
-
-  if (data?.error) {
-    return { error: data.error };
+  if (type === "packing_list") {
+    return { items: [], error: AI_DISABLED_MESSAGE };
   }
-
-  const result = data?.data || data;
-
-  // Log summary
-  if (type === "sku" && result?.products) {
-    const flagged = result.products.filter((p: any) => p.flagged);
-    console.log(`SKU import: ${result.products.length} products, ${result.products.reduce((s: number, p: any) => s + (p.batches?.length || 0), 0)} batches, ${flagged.length} flagged for review`);
-    if (flagged.length > 0) {
-      console.warn("Flagged products:", flagged.map((p: any) => `${p.itemCode || "?"}: ${p.flagReason}`));
-    }
-  }
-
-  return result;
+  return { invoices: [], error: AI_DISABLED_MESSAGE };
 }
