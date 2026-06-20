@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
-use tauri::{AppHandle, Emitter, Manager};
+use tauri::{AppHandle, Emitter, Manager, Url};
 
 const CHANNEL_FILE: &str = "update_channel";
 
@@ -91,11 +91,11 @@ pub async fn check_update(app: AppHandle) -> Result<Option<UpdateInfo>, String> 
         channel
     };
 
-    let endpoint = endpoint_for_channel(&channel);
+    let endpoint = Url::parse(endpoint_for_channel(&channel)).map_err(|e| e.to_string())?;
 
     let updater = app
         .updater_builder()
-        .endpoints([endpoint])
+        .endpoints(vec![endpoint])
         .map_err(|e| e.to_string())?
         .build()
         .map_err(|e| e.to_string())?;
@@ -104,7 +104,7 @@ pub async fn check_update(app: AppHandle) -> Result<Option<UpdateInfo>, String> 
         Ok(Some(update)) => Ok(Some(UpdateInfo {
             version: update.version.clone(),
             body: update.body.clone(),
-            date: update.date.map(|d| d.to_rfc3339()),
+            date: update.date.map(|d| d.to_string()),
             channel: channel.clone(),
         })),
         Ok(None) => Ok(None),
@@ -123,11 +123,11 @@ pub async fn install_update(app: AppHandle) -> Result<(), String> {
         channel
     };
 
-    let endpoint = endpoint_for_channel(&channel);
+    let endpoint = Url::parse(endpoint_for_channel(&channel)).map_err(|e| e.to_string())?;
 
     let updater = app
         .updater_builder()
-        .endpoints([endpoint])
+        .endpoints(vec![endpoint])
         .map_err(|e| e.to_string())?
         .build()
         .map_err(|e| e.to_string())?;
