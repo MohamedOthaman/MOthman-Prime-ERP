@@ -87,24 +87,28 @@ export default function ProductTracePage() {
     const [prodRes, batchRes] = await Promise.allSettled([
       supabase
         .from("products_overview")
-        .select("id, name, code, category")
+        .select("id, name, code, category, storage_type")
         .eq("id", productId)
         .single(),
 
+      // Real inventory_batches columns: batch_no (not batch_number),
+      // receiving_line_id (not grn_id), location_ref (not putaway_location_ref).
+      // Storage type lives on the product; status is derived below.
       supabase
         .from("inventory_batches")
         .select(`
-          id, batch_number, grn_id,
+          id, batch_no, receiving_line_id,
           received_date, expiry_date,
-          qty_received, qty_available,
-          storage_type, putaway_location_ref, status
+          qty_received, qty_available, location_ref
         `)
         .eq("product_id", productId)
         .order("expiry_date", { ascending: true, nullsFirst: false }),
     ]);
 
+    let productStorage: string | null = null;
     if (prodRes.status === "fulfilled" && (prodRes.value as any).data) {
       const raw = (prodRes.value as any).data;
+      productStorage = raw.storage_type ?? null;
       setProduct({
         id:       raw.id,
         name:     raw.name ?? null,
@@ -116,19 +120,23 @@ export default function ProductTracePage() {
     }
 
     if (batchRes.status === "fulfilled") {
-      const rows: BatchRow[] = ((batchRes.value as any).data ?? []).map((r: any) => ({
-        id:               r.id,
-        batch_number:     r.batch_number ?? null,
-        grn_id:           r.grn_id ?? null,
-        received_date:    r.received_date ?? null,
-        expiry_date:      r.expiry_date ?? null,
-        qty_received:     Number(r.qty_received ?? 0),
-        qty_available:    Number(r.qty_available ?? 0),
-        storage_type:     r.storage_type ?? null,
-        putaway_location: r.putaway_location_ref ?? null,
-        status:           r.status ?? "active",
-        days_to_expiry:   daysBetween(r.expiry_date),
-      }));
+      const rows: BatchRow[] = ((batchRes.value as any).data ?? []).map((r: any) => {
+        const days = daysBetween(r.expiry_date);
+        const qty = Number(r.qty_available ?? 0);
+        return {
+          id:               r.id,
+          batch_number:     r.batch_no ?? null,
+          grn_id:           r.receiving_line_id ?? null,
+          received_date:    r.received_date ?? null,
+          expiry_date:      r.expiry_date ?? null,
+          qty_received:     Number(r.qty_received ?? 0),
+          qty_available:    qty,
+          storage_type:     productStorage,
+          putaway_location: r.location_ref ?? null,
+          status:           days != null && days < 0 ? "expired" : qty <= 0 ? "depleted" : "active",
+          days_to_expiry:   days,
+        };
+      });
       setBatches(rows);
     }
 

@@ -91,12 +91,14 @@ export default function FridgeStoragePage() {
     setLoading(true);
     setError(null);
 
+    // Storage type lives on the product (inventory_batches has no such column);
+    // location is location_ref; the batch number column is batch_no.
     const { data, error: err } = await supabase
       .from("inventory_batches")
       .select(`
-        id, product_id, batch_number, grn_id,
-        expiry_date, qty_available, storage_type, putaway_location_ref,
-        products_overview:product_id ( name, code )
+        id, product_id, batch_no, receiving_line_id,
+        expiry_date, qty_available, location_ref,
+        products:product_id ( name, code, storage_type )
       `)
       .gt("qty_available", 0)
       .order("expiry_date", { ascending: true, nullsFirst: false });
@@ -108,19 +110,19 @@ export default function FridgeStoragePage() {
     }
 
     const rows: BatchRow[] = ((data ?? []) as any[]).map((r) => {
-      const prod = r.products_overview as any;
+      const prod = r.products as any;
       const days = daysBetween(r.expiry_date);
       return {
         id:               r.id,
         product_id:       r.product_id,
         product_name:     prod?.name ?? null,
         product_code:     prod?.code ?? null,
-        batch_number:     r.batch_number ?? null,
+        batch_number:     r.batch_no ?? null,
         expiry_date:      r.expiry_date ?? null,
         qty_available:    Number(r.qty_available ?? 0),
-        storage_type:     r.storage_type ?? "Dry",
-        putaway_location: r.putaway_location_ref ?? null,
-        grn_id:           r.grn_id ?? null,
+        storage_type:     prod?.storage_type ?? "Dry",
+        putaway_location: r.location_ref ?? null,
+        grn_id:           r.receiving_line_id ?? null,
         days_to_expiry:   days,
       };
     });

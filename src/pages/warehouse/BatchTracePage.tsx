@@ -108,20 +108,22 @@ export default function BatchTracePage() {
     setError(null);
 
     const [batchRes, movRes] = await Promise.allSettled([
+      // Real inventory_batches columns: batch_no / receiving_line_id /
+      // location_ref; storage type comes from the product, status is derived.
       supabase
         .from("inventory_batches")
         .select(`
-          id, product_id, batch_number, grn_id,
-          received_date, expiry_date, qty_received, qty_available,
-          storage_type, putaway_location_ref, status,
-          products_overview:product_id ( name, code )
+          id, product_id, batch_no, receiving_line_id,
+          received_date, expiry_date, qty_received, qty_available, location_ref,
+          products:product_id ( name, code, storage_type )
         `)
         .eq("id", batchId)
         .single(),
 
+      // inventory_movements records qty_in / qty_out; qty_change is derived.
       supabase
         .from("inventory_movements")
-        .select("id, movement_type, qty_change, performed_at, reference_type, reference_id, notes, performed_by")
+        .select("id, movement_type, qty_in, qty_out, performed_at, reference_type, reference_id, notes, performed_by")
         .eq("batch_id", batchId)
         .order("performed_at", { ascending: false })
         .limit(200),
@@ -129,41 +131,52 @@ export default function BatchTracePage() {
 
     if (batchRes.status === "fulfilled" && (batchRes.value as any).data) {
       const raw = (batchRes.value as any).data;
-      const product = raw.products_overview as any;
+      const product = raw.products as any;
+      const qty = Number(raw.qty_available ?? 0);
+      const expiredNow = raw.expiry_date && new Date(raw.expiry_date).getTime() < Date.now();
       setBatch({
         id:               raw.id,
         product_id:       raw.product_id,
         product_name:     product?.name ?? null,
         product_code:     product?.code ?? null,
-        batch_number:     raw.batch_number ?? null,
-        grn_id:           raw.grn_id ?? null,
-        grn_no:           null, // resolved separately if needed
+        batch_number:     raw.batch_no ?? null,
+        grn_id:           null, // resolved from receiving_line_id below
+        grn_no:           null,
         received_date:    raw.received_date ?? null,
         expiry_date:      raw.expiry_date ?? null,
         qty_received:     Number(raw.qty_received ?? 0),
-        qty_available:    Number(raw.qty_available ?? 0),
-        storage_type:     raw.storage_type ?? null,
-        putaway_location: raw.putaway_location_ref ?? null,
-        status:           raw.status ?? "active",
+        qty_available:    qty,
+        storage_type:     product?.storage_type ?? null,
+        putaway_location: raw.location_ref ?? null,
+        status:           expiredNow ? "expired" : qty <= 0 ? "depleted" : "active",
       });
     } else if (batchRes.status === "rejected") {
       setError(t("batchNotFound", "Batch not found or access denied"));
     }
 
     if (movRes.status === "fulfilled") {
-      setMovements(((movRes.value as any).data ?? []) as MovementRow[]);
+      setMovements(
+        (((movRes.value as any).data ?? []) as any[]).map((m) => ({
+          ...m,
+          qty_change: Number(m.qty_in ?? 0) - Number(m.qty_out ?? 0),
+        })) as MovementRow[]
+      );
     }
 
-    // Resolve GRN number if grn_id exists
-    if (batchRes.status === "fulfilled" && (batchRes.value as any).data?.grn_id) {
-      const grnId = (batchRes.value as any).data.grn_id;
-      const { data: grn } = await supabase
-        .from("grn_headers")
-        .select("grn_no")
-        .eq("id", grnId)
-        .single();
-      if (grn) {
-        setBatch((prev) => prev ? { ...prev, grn_no: (grn as any).grn_no ?? null } : prev);
+    // Resolve the GRN (header id + number) through the receiving line
+    const lineId = batchRes.status === "fulfilled" ? (batchRes.value as any).data?.receiving_line_id : null;
+    if (lineId) {
+      const { data: line } = await supabase
+        .from("grn_lines")
+        .select("grn_id, grn_headers:grn_id ( grn_no )")
+        .eq("id", lineId)
+        .maybeSingle();
+      if (line) {
+        setBatch((prev) => prev ? {
+          ...prev,
+          grn_id: (line as any).grn_id ?? null,
+          grn_no: (line as any).grn_headers?.grn_no ?? null,
+        } : prev);
       }
     }
 

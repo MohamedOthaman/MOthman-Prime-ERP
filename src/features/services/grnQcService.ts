@@ -102,16 +102,18 @@ function normalizeQcStatus(value: string | null | undefined): QcLineStatus {
 
 export async function fetchGrnQcQueue(): Promise<GrnQcQueueRow[]> {
   const [headersResult, linesResult] = await Promise.all([
+    // Real receiving_headers columns: received_date/created_at/supplier_invoice_no
+    // (po_no / arrival_date / transaction_date never existed on the live view).
     supabase
       .from("receiving_headers")
       .select(
-        "id, grn_no, supplier_name, po_no, arrival_date, transaction_date, status, municipality_reference_no, municipality_notes"
+        "id, grn_no, supplier_name, supplier_invoice_no, received_date, created_at, status, municipality_reference_no, municipality_notes"
       )
       .in("status", ["received","inspected","municipality_pending","approved","partial_hold","completed"])
       .order("created_at", { ascending: false }),
     supabase
       .from("receiving_lines")
-      .select("id, header_id, qc_status, received_quantity, quantity, qty"),
+      .select("id, header_id, qc_status, received_quantity, quantity"),
   ]);
 
   if (headersResult.error) throw new Error(`Failed to load GRN queue: ${headersResult.error.message}`);
@@ -126,7 +128,7 @@ export async function fetchGrnQcQueue(): Promise<GrnQcQueueRow[]> {
     const headerId = line.header_id as string | null;
     if (!headerId) return;
 
-    const receivedQty = toNumber(line.received_quantity ?? line.quantity ?? line.qty);
+    const receivedQty = toNumber(line.received_quantity ?? line.quantity);
     if (receivedQty <= 0) return;
 
     const cur = summaryByHeader.get(headerId) ?? {
@@ -149,9 +151,9 @@ export async function fetchGrnQcQueue(): Promise<GrnQcQueueRow[]> {
       id: row.id,
       grn_no: row.grn_no ?? "",
       supplier_name: row.supplier_name ?? null,
-      po_no: row.po_no ?? null,
-      arrival_date: row.arrival_date ?? null,
-      transaction_date: row.transaction_date ?? null,
+      po_no: row.supplier_invoice_no ?? null,
+      arrival_date: row.received_date ?? null,
+      transaction_date: row.created_at ?? null,
       status: normalizeStatus(row.status ?? "draft"),
       municipality_reference_no: row.municipality_reference_no ?? null,
       municipality_notes: row.municipality_notes ?? null,
@@ -166,12 +168,14 @@ export async function fetchGrnQcRecord(headerId: string) {
   const [headerResult, linesResult] = await Promise.all([
     supabase
       .from("receiving_headers")
-      .select("id, grn_no, supplier_name, po_no, arrival_date, transaction_date, remarks, manual_invoice_no, status, municipality_reference_no, municipality_notes, inspected_at, municipality_submitted_at, municipality_approved_at, approved_at, completed_at, completed_by")
+      .select("id, grn_no, supplier_name, supplier_invoice_no, received_date, created_at, notes, status, municipality_reference_no, municipality_notes, inspected_at, municipality_submitted_at, municipality_approved_at, approved_at, completed_at, completed_by")
       .eq("id", headerId)
       .single(),
+    // Product code/name/uom/barcode are not on the view — enriched from
+    // products_overview below.
     supabase
       .from("receiving_lines")
-      .select("id, line_no, product_id, product_code, product_name, store, uom, barcode, batch_no, production_date, expiry_date, received_quantity, quantity, qty, short_excess_quantity, short_excess_reason, qc_status, qc_reason, qc_notes, qc_checked_quantity, qc_inspected_at, qty_damaged, qty_missing, qty_sample, qty_accepted, putaway_warehouse_id, putaway_zone_id, putaway_location_ref")
+      .select("id, line_no, product_id, batch_no, production_date, expiry_date, received_quantity, quantity, qc_status, qc_reason, qc_notes, qc_checked_quantity, qc_inspected_at, qty_damaged, qty_missing, qty_sample, qty_accepted, putaway_warehouse_id, putaway_zone_id, putaway_location_ref")
       .eq("header_id", headerId)
       .order("line_no", { ascending: true }),
   ]);
@@ -185,16 +189,29 @@ export async function fetchGrnQcRecord(headerId: string) {
 
   const h = headerResult.data as any;
 
+  // Enrich lines with product info (code/name/uom/barcode live on the product,
+  // not on the receiving line).
+  const lineRows = (linesResult.data ?? []) as any[];
+  const productIds = [...new Set(lineRows.map((r) => r.product_id).filter(Boolean))];
+  const productById = new Map<string, any>();
+  if (productIds.length > 0) {
+    const { data: prods } = await supabase
+      .from("products_overview")
+      .select("id, item_code, code, name, name_ar, uom, primary_barcode")
+      .in("id", productIds);
+    ((prods ?? []) as any[]).forEach((p) => productById.set(p.id, p));
+  }
+
   return {
     header: {
       id:                         h.id,
       grn_no:                     h.grn_no ?? "",
       supplier_name:              h.supplier_name ?? null,
-      po_no:                      h.po_no ?? null,
-      arrival_date:               h.arrival_date ?? null,
-      transaction_date:           h.transaction_date ?? null,
-      remarks:                    h.remarks ?? null,
-      manual_invoice_no:          h.manual_invoice_no ?? null,
+      po_no:                      h.supplier_invoice_no ?? null,
+      arrival_date:               h.received_date ?? null,
+      transaction_date:           h.created_at ?? null,
+      remarks:                    h.notes ?? null,
+      manual_invoice_no:          h.supplier_invoice_no ?? null,
       status:                     normalizeStatus(h.status ?? "draft"),
       municipality_reference_no:  h.municipality_reference_no ?? null,
       municipality_notes:         h.municipality_notes ?? null,
@@ -205,21 +222,23 @@ export async function fetchGrnQcRecord(headerId: string) {
       completed_at:               h.completed_at ?? null,
       completed_by:               h.completed_by ?? null,
     } satisfies GrnQcHeaderRecord,
-    lines: ((linesResult.data ?? []) as any[]).map((row): GrnQcLineRecord => ({
+    lines: lineRows.map((row): GrnQcLineRecord => {
+      const prod = productById.get(row.product_id) ?? {};
+      return {
       id:                    row.id,
       line_no:               Number(row.line_no ?? 0),
       product_id:            row.product_id ?? null,
-      product_code:          row.product_code ?? null,
-      product_name:          row.product_name ?? "",
-      store:                 row.store ?? null,
-      uom:                   row.uom ?? null,
-      barcode:               row.barcode ?? null,
+      product_code:          prod.item_code ?? prod.code ?? null,
+      product_name:          prod.name ?? "",
+      store:                 row.putaway_location_ref ?? null,
+      uom:                   prod.uom ?? null,
+      barcode:               prod.primary_barcode ?? null,
       batch_no:              row.batch_no ?? null,
       production_date:       row.production_date ?? null,
       expiry_date:           row.expiry_date ?? null,
-      received_quantity:     toNumber(row.received_quantity ?? row.quantity ?? row.qty),
-      short_excess_quantity: toNumber(row.short_excess_quantity),
-      short_excess_reason:   row.short_excess_reason ?? null,
+      received_quantity:     toNumber(row.received_quantity ?? row.quantity),
+      short_excess_quantity: toNumber(row.qty_missing) + toNumber(row.qty_damaged),
+      short_excess_reason:   row.qc_reason ?? null,
       qc_status:             normalizeQcStatus(row.qc_status),
       qc_reason:             row.qc_reason ?? null,
       qc_notes:              row.qc_notes ?? null,
@@ -232,7 +251,8 @@ export async function fetchGrnQcRecord(headerId: string) {
       putaway_warehouse_id:  row.putaway_warehouse_id ?? null,
       putaway_zone_id:       row.putaway_zone_id ?? null,
       putaway_location_ref:  row.putaway_location_ref ?? null,
-    })),
+      };
+    }),
   };
 }
 
@@ -313,11 +333,11 @@ export async function saveGrnQcRecord(input: {
 
 export async function postReceivingToInventory(grnId: string): Promise<ReceivingPostResult> {
   const { data, error } = await supabase.rpc(
-    "post_receiving_to_inventory" as any,
+    "post_receiving_to_inventory",
     { p_grn_id: grnId }
   );
   if (error) throw new Error(error.message);
-  return data as ReceivingPostResult;
+  return data as unknown as ReceivingPostResult;
 }
 
 // ─── Posting summary (batches created for a GRN) ─────────────────────────────
