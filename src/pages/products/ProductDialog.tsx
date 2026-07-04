@@ -496,43 +496,20 @@ async function updateProductWithCompatibility(
 }
 
 async function loadProductBatches(productId: string, fallbackUnit: string) {
-  const primaryResult = await supabase
-    .from("batches")
-    .select("id, batch_no, unit, production_date, expiry_date, qty, received_date")
-    .eq("product_id", productId)
-    .order("expiry_date", { ascending: true });
-
-  if (!primaryResult.error) {
-    return ((primaryResult.data || []) as any[]).map((row) => ({
-      clientId: row.id || createBatchClientId(),
-      id: row.id,
-      batchNo: row.batch_no || "",
-      unit: row.unit || fallbackUnit,
-      productionDate: row.production_date || "",
-      expiryDate: row.expiry_date || "",
-      qty: Number(row.qty || 0),
-      receivedDate: row.received_date || todayIso(),
-    }));
-  }
-
-  if (!isMissingRelation(primaryResult.error, "batches")) {
-    throw primaryResult.error;
-  }
-
-  const fallbackResult = await supabase
+  const result = await supabase
     .from("inventory_batches")
-    .select("id, product_id, batch_no, qty_available, qty_received, expiry_date, received_date")
+    .select("id, product_id, batch_no, production_date, qty_available, qty_received, expiry_date, received_date")
     .eq("product_id", productId)
     .order("expiry_date", { ascending: true });
 
-  if (fallbackResult.error) throw fallbackResult.error;
+  if (result.error) throw result.error;
 
-  return ((fallbackResult.data || []) as any[]).map((row) => ({
+  return ((result.data || []) as any[]).map((row) => ({
     clientId: row.id || createBatchClientId(),
     id: row.id,
     batchNo: row.batch_no || "",
     unit: fallbackUnit,
-    productionDate: "",
+    productionDate: row.production_date || "",
     expiryDate: row.expiry_date || "",
     qty: Number(row.qty_available ?? row.qty_received ?? 0),
     receivedDate: row.received_date || todayIso(),
@@ -708,54 +685,46 @@ export default function ProductDialog({ open, onClose, onSaved, editingProduct }
     closeBatchEditor();
   };
 
+  /**
+   * Persist batch edits WITHOUT destroying stock history.
+   * - New rows (no id) are inserted as opening stock.
+   * - Existing rows get metadata updates only (batch_no / dates) — quantities
+   *   change exclusively through GRN receiving, invoice posting, returns and
+   *   (future) adjustment movements, never by overwriting qty here.
+   * - Rows removed in the editor are intentionally NOT deleted: existing
+   *   batches carry movement history and must be corrected via movements.
+   */
   async function persistBatches(productId: string) {
     const rows = batches.filter((batch) => batch.batchNo.trim() && batch.expiryDate);
 
-    const primaryDelete = await supabase.from("batches").delete().eq("product_id", productId);
-    if (primaryDelete.error && !isMissingRelation(primaryDelete.error, "batches")) {
-      throw primaryDelete.error;
-    }
-
-    if (!primaryDelete.error) {
-      if (rows.length === 0) return;
-
-      const { error: insertError } = await supabase.from("batches").insert(
-        rows.map((batch) => ({
+    const newRows = rows.filter((batch) => !batch.id);
+    if (newRows.length > 0) {
+      const { error: insertError } = await supabase.from("inventory_batches").insert(
+        newRows.map((batch) => ({
           product_id: productId,
           batch_no: batch.batchNo.trim(),
-          unit: batch.unit,
           production_date: batch.productionDate || null,
           expiry_date: batch.expiryDate,
-          qty: Number(batch.qty || 0),
+          qty_received: Number(batch.qty || 0),
+          qty_available: Number(batch.qty || 0),
           received_date: batch.receivedDate || todayIso(),
         }))
       );
-
       if (insertError) throw insertError;
-      return;
     }
 
-    const fallbackDelete = await supabase
-      .from("inventory_batches")
-      .delete()
-      .eq("product_id", productId);
-
-    if (fallbackDelete.error) throw fallbackDelete.error;
-
-    if (rows.length === 0) return;
-
-    const { error: fallbackInsertError } = await supabase.from("inventory_batches").insert(
-      rows.map((batch) => ({
-        product_id: productId,
-        batch_no: batch.batchNo.trim(),
-        expiry_date: batch.expiryDate,
-        qty_received: Number(batch.qty || 0),
-        qty_available: Number(batch.qty || 0),
-        received_date: batch.receivedDate || todayIso(),
-      }))
-    );
-
-    if (fallbackInsertError) throw fallbackInsertError;
+    for (const batch of rows.filter((row) => row.id)) {
+      const { error: updateError } = await supabase
+        .from("inventory_batches")
+        .update({
+          batch_no: batch.batchNo.trim(),
+          production_date: batch.productionDate || null,
+          expiry_date: batch.expiryDate,
+          received_date: batch.receivedDate || todayIso(),
+        })
+        .eq("id", batch.id);
+      if (updateError) throw updateError;
+    }
   }
 
   async function handleSave() {

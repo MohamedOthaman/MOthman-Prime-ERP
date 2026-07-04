@@ -102,7 +102,7 @@ async function callTool(
 
       case "getStockLevel": {
         const { data, error } = await supabase
-          .from("stock_batches" as never)
+          .from("inventory_batches")
           .select("qty_available, expiry_date, batch_no")
           .eq("product_id", String(args.productId))
           .gt("qty_available", 0)
@@ -119,8 +119,8 @@ async function callTool(
 
       case "getRecentInvoices": {
         let query = supabase
-          .from("invoice_headers" as never)
-          .select("id, invoice_number, created_at, total, status, customer_id")
+          .from("sales_headers")
+          .select("id, invoice_no, created_at, total_amount, status, customer_id")
           .order("created_at", { ascending: false })
           .limit(Number(args.limit ?? 10));
         if (args.customerId) {
@@ -129,8 +129,8 @@ async function callTool(
         const { data, error } = await query;
         if (error) return `Error: ${error.message}`;
         if (!data || !(data as unknown[]).length) return "No invoices found.";
-        return (data as Array<{ invoice_number: string; created_at: string; total: number; status: string }>)
-          .map((r) => `• #${r.invoice_number} — ${r.created_at.slice(0, 10)} — ${r.total} (${r.status})`)
+        return (data as Array<{ invoice_no: string; created_at: string; total_amount: number; status: string }>)
+          .map((r) => `• #${r.invoice_no} — ${r.created_at.slice(0, 10)} — ${r.total_amount} (${r.status})`)
           .join("\n");
       }
 

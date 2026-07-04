@@ -5,7 +5,6 @@ import { useLang } from "@/contexts/LanguageContext";
 import { Brand, recalcDaysLeft } from "@/data/stockData";
 import { toast } from "sonner";
 import { WheelPicker } from "@/components/WheelPicker";
-import { PdfImportSection } from "@/components/PdfImportSection";
 import { MovementEntry } from "@/features/reports/hooks/useStock";
 import { inferStorageType } from "@/lib/productStorage";
 import * as XLSX from "xlsx";
@@ -519,12 +518,6 @@ export default function ImportExport() {
 
         {tab === "import" && (
           <div className="space-y-3">
-            {/* AI-Powered PDF Import */}
-            <div className="mb-2">
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">{t("pdfImportAiPowered", "PDF Import (AI-Powered)")}</p>
-              <PdfImportSection />
-            </div>
-
             {/* Excel Import */}
             <div className="mt-4">
               <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">{t("importProducts", "Import Products")}</p>

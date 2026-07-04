@@ -52,7 +52,6 @@ import Unauthorized from "./pages/Unauthorized";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
 
 // Lazy-loaded: heavy deps (recharts / jspdf / exceljs) or rarely visited.
-const InvoiceScan = lazy(() => import("./pages/InvoiceScan"));
 const ImportExport = lazy(() => import("./pages/ImportExport"));
 const Reports = lazy(() => import("./pages/Reports"));
 const UsersPage = lazy(() => import("./pages/admin/UsersPage"));
@@ -188,14 +187,9 @@ function ProtectedRoutes() {
             }
           />
 
-          <Route
-            path="/invoice-scan"
-            element={
-              <RoleGuard allowedRoles={["admin", "invoice_team", "accountant"]}>
-                <InvoiceScan />
-              </RoleGuard>
-            }
-          />
+          {/* Legacy /invoice-scan flow removed — invoice entry (with upload
+              auto-fill) lives at /invoices/new via InvoiceEntryPage. */}
+          <Route path="/invoice-scan" element={<Navigate to="/invoice-entry" replace />} />
 
           {/* ── Import / Export ───────────────────────────────── */}
           <Route

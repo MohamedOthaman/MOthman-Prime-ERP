@@ -209,94 +209,34 @@ async function getInventoryBatchStockRows(): Promise<InventoryBatchStockRow[]> {
     throw new Error(`Failed to load stock batches: ${batchResult.error.message}`);
   }
 
+  // Fallback: read the base table directly (view missing/renamed).
   const fallbackResult = await fetchAllRows((from, to) =>
     supabase
-        .from("inventory_stock_by_batch")
-        .select("product_id, batch_no, expiry_date, available_quantity")
-      .gt("available_quantity", 0)
+      .from("inventory_batches")
+      .select("product_id, batch_no, production_date, expiry_date, qty_received, qty_available, received_date")
+      .gt("qty_available", 0)
       .order("expiry_date", { ascending: true, nullsFirst: false })
-      .order("batch_no", { ascending: true, nullsFirst: false })
       .range(from, to)
   );
 
-  if (!fallbackResult.error) {
-    return ((fallbackResult.data ?? []) as any[]).map((row) =>
-      normalizeBatchRow({
-        ...row,
-        remaining_quantity: row.available_quantity,
-        received_quantity: row.available_quantity,
-        issued_quantity: 0,
-        receiving_reference: row.batch_no ?? null,
-      })
-    );
-  }
-
-  if (!isMissingRelation(fallbackResult.error, "inventory_stock_by_batch")) {
+  if (fallbackResult.error) {
     throw new Error(`Failed to load stock batches: ${fallbackResult.error.message}`);
   }
 
-  const legacyResult = await fetchAllRows((from, to) =>
-    supabase
-      .from("inventory_batches")
-      .select("*")
-      .order("expiry_date", { ascending: true, nullsFirst: false })
-      .range(from, to)
+  return ((fallbackResult.data ?? []) as any[]).map((row) =>
+    normalizeBatchRow({
+      product_id: row.product_id,
+      batch_no: row.batch_no ?? null,
+      production_date: row.production_date ?? null,
+      expiry_date: row.expiry_date ?? null,
+      received_quantity: row.qty_received ?? 0,
+      issued_quantity: Math.max(0, Number(row.qty_received ?? 0) - Number(row.qty_available ?? 0)),
+      remaining_quantity: row.qty_available ?? 0,
+      first_received_date: row.received_date ?? null,
+      last_received_date: row.received_date ?? null,
+      receiving_reference: row.batch_no ?? null,
+    })
   );
-
-  if (!legacyResult.error) {
-    return ((legacyResult.data ?? []) as any[])
-      .map((row) =>
-        normalizeBatchRow({
-          product_id: row.product_id,
-          batch_no: row.batch_no ?? null,
-          production_date: row.production_date ?? null,
-          expiry_date: row.expiry_date ?? null,
-          received_quantity: row.qty_received ?? row.received_quantity ?? row.quantity ?? row.qty ?? 0,
-          issued_quantity: 0,
-          remaining_quantity:
-            row.qty_available ?? row.available_quantity ?? row.quantity_on_hand ?? row.quantity ?? row.qty ?? 0,
-          first_received_date: row.received_date ?? null,
-          last_received_date: row.received_date ?? null,
-          receiving_reference: row.batch_no ?? null,
-        })
-      )
-      .filter((row) => row.remaining_quantity > 0);
-  }
-
-  if (!isMissingRelation(legacyResult.error, "inventory_batches")) {
-    throw new Error(`Failed to load stock batches: ${legacyResult.error.message}`);
-  }
-
-  const batchesTableResult = await fetchAllRows((from, to) =>
-    supabase
-      .from("batches")
-      .select("product_id, batch_no, qty, unit, production_date, expiry_date, received_date")
-      .gt("qty", 0)
-      .order("expiry_date", { ascending: true, nullsFirst: false })
-      .order("batch_no", { ascending: true, nullsFirst: false })
-      .range(from, to)
-  );
-
-  if (batchesTableResult.error) {
-    throw new Error(`Failed to load stock batches: ${batchesTableResult.error.message}`);
-  }
-
-  return ((batchesTableResult.data ?? []) as any[])
-    .map((row) =>
-      normalizeBatchRow({
-        product_id: row.product_id,
-        batch_no: row.batch_no ?? null,
-        production_date: row.production_date ?? null,
-        expiry_date: row.expiry_date ?? null,
-        received_quantity: row.quantity ?? row.qty ?? row.available_quantity ?? 0,
-        issued_quantity: 0,
-        remaining_quantity: row.qty ?? row.quantity ?? row.available_quantity ?? 0,
-        first_received_date: row.received_date ?? null,
-        last_received_date: row.received_date ?? null,
-        receiving_reference: row.batch_no ?? null,
-      })
-    )
-    .filter((row) => row.remaining_quantity > 0);
 }
 
 async function getProductBarcodeMap() {
