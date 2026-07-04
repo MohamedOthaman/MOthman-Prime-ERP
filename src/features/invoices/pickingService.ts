@@ -32,7 +32,7 @@ export async function startOrGetPickingSession(invoiceId: string): Promise<{
   session: PickingSession;
   lines: PickingExecLine[];
 }> {
-  const { data, error } = await supabase.rpc("start_or_get_picking_session" as any, {
+  const { data, error } = await supabase.rpc("start_or_get_picking_session", {
     p_invoice_id: invoiceId,
   });
   if (error) throw new Error(error.message);
@@ -59,7 +59,7 @@ export async function recordOutboundScan(
   remaining: number;
   line_complete: boolean;
 }> {
-  const { data, error } = await supabase.rpc("record_outbound_scan" as any, {
+  const { data, error } = await supabase.rpc("record_outbound_scan", {
     p_invoice_id: invoiceId,
     p_barcode: barcode,
     p_qty: qty,
@@ -81,7 +81,7 @@ export async function recordOutboundScan(
 }
 
 export async function confirmPickingDone(invoiceId: string): Promise<void> {
-  const { data, error } = await supabase.rpc("confirm_picking_done" as any, {
+  const { data, error } = await supabase.rpc("confirm_picking_done", {
     p_invoice_id: invoiceId,
   });
   if (error) throw new Error(error.message);
@@ -98,7 +98,7 @@ export async function fetchExecutionSummary(invoiceId: string): Promise<{
   lines: PickingExecLineFull[];
 } | null> {
   const { data: session, error: sErr } = await supabase
-    .from("outbound_execution_sessions" as any)
+    .from("outbound_execution_sessions")
     .select("id, status, started_by, started_at, confirmed_by, confirmed_at")
     .eq("invoice_id", invoiceId)
     .maybeSingle();
@@ -107,7 +107,7 @@ export async function fetchExecutionSummary(invoiceId: string): Promise<{
   if (!session) return null;
 
   const { data: lines, error: lErr } = await supabase
-    .from("outbound_execution_lines" as any)
+    .from("outbound_execution_lines")
     .select(
       "id, invoice_line_id, product_id, qty_required, qty_scanned, qty_confirmed, picked_at, loaded_at, batch_no, expiry_date, inventory_batch_id, inventory_movement_id, returned_qty"
     )

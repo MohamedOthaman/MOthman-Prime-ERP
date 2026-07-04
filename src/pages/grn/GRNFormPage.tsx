@@ -103,14 +103,20 @@ export default function GRNFormPage() {
   useEffect(() => {
     void (async () => {
       const [sRes, pRes] = await Promise.all([
-        supabase.from("suppliers" as any).select("id, name").order("name"),
+        supabase.from("suppliers").select("id, name").order("name"),
         supabase
-          .from("products")
-          .select("id, code, name, name_ar, uom, primary_barcode, all_barcodes, buying_price")
+          .from("products_overview")
+          .select("id, code, name, name_ar, uom, primary_barcode, all_barcodes, cost_price")
           .order("code"),
       ]);
       if (!sRes.error && sRes.data) setSuppliers(sRes.data as any[]);
-      if (!pRes.error && pRes.data) setProducts(pRes.data as ProductLookup[]);
+      if (!pRes.error && pRes.data)
+        setProducts(
+          pRes.data.map((p) => ({
+            ...p,
+            buying_price: p.cost_price != null ? Number(p.cost_price) : undefined,
+          })) as ProductLookup[]
+        );
     })();
     setTimeout(() => grnNoRef.current?.focus(), 100);
   }, []);
@@ -349,7 +355,7 @@ export default function GRNFormPage() {
     setError(null);
 
     const { data: header, error: hErr } = await supabase
-      .from("receiving_headers" as any)
+      .from("receiving_headers")
       .insert({
         grn_no: grnNo.trim().toUpperCase(),
         supplier_id: supplierId || null,
@@ -369,7 +375,7 @@ export default function GRNFormPage() {
       return;
     }
 
-    const { error: lErr } = await supabase.from("receiving_lines" as any).insert(
+    const { error: lErr } = await supabase.from("receiving_lines").insert(
       validLines.map((l, i) => ({
         header_id: (header as { id: string }).id,
         line_no: i + 1,

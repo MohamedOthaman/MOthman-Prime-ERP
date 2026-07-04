@@ -592,7 +592,7 @@ export default function InvoiceDetailsPage() {
 
 // ─── Timeline ──────────────────────────────────────────────────────────────
 
-function InvoiceTimeline({ header }: { header: ReturnType<typeof fetchInvoiceDetail> extends Promise<infer T> ? T["header"] : never }) {
+function InvoiceTimeline({ header }: { header: Awaited<ReturnType<typeof fetchInvoiceDetail>>["header"] }) {
   const { t } = useLang();
   const STEPS = [
     { key: "draft",    label: t("draft", "Draft"),       at: header.created_at,  color: "text-muted-foreground", ring: "border-border bg-muted/30" },

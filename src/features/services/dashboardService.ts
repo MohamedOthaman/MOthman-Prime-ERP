@@ -121,7 +121,7 @@ export interface SalesmanSummary {
  */
 export async function fetchInvoiceStatusCounts(): Promise<InvoiceStatusCounts> {
   const { data, error } = await supabase
-    .from("sales_headers" as any)
+    .from("sales_headers")
     .select("id, invoice_no, status, total_amount, created_at, customer_id")
     .order("created_at", { ascending: false })
     .limit(500);
@@ -160,7 +160,7 @@ export async function fetchInvoiceStatusCounts(): Promise<InvoiceStatusCounts> {
  */
 export async function fetchGrnStatusCounts(): Promise<GrnStatusCounts> {
   const { data, error } = await supabase
-    .from("grn_headers" as any)
+    .from("grn_headers")
     .select("id, grn_no, supplier_name, status, created_at")
     .order("created_at", { ascending: false })
     .limit(500);
@@ -198,17 +198,17 @@ export async function fetchGrnStatusCounts(): Promise<GrnStatusCounts> {
 export async function fetchQcLineCounts(): Promise<QcLineCounts> {
   const [holdRes, rejectRes, approvedRes] = await Promise.allSettled([
     supabase
-      .from("grn_lines" as any)
+      .from("grn_lines")
       .select("id", { count: "exact", head: true })
       .eq("qc_status", "hold"),
 
     supabase
-      .from("grn_lines" as any)
+      .from("grn_lines")
       .select("id", { count: "exact", head: true })
       .eq("qc_status", "reject"),
 
     supabase
-      .from("grn_headers" as any)
+      .from("grn_headers")
       .select("id", { count: "exact", head: true })
       .eq("status", "approved"),
   ]);
@@ -226,12 +226,12 @@ export async function fetchQcLineCounts(): Promise<QcLineCounts> {
 export async function fetchPickingStats(): Promise<PickingStats> {
   const [readyRes, sessionsRes] = await Promise.allSettled([
     supabase
-      .from("sales_headers" as any)
+      .from("sales_headers")
       .select("id", { count: "exact", head: true })
       .eq("status", "ready"),
 
     supabase
-      .from("outbound_execution_sessions" as any)
+      .from("outbound_execution_sessions")
       .select("id, status, confirmed_at")
       .in("status", ["in_progress", "completed"]),
   ]);
@@ -258,7 +258,7 @@ export async function fetchPickingStats(): Promise<PickingStats> {
  */
 export async function fetchReturnCounts(): Promise<ReturnCounts> {
   const { data, error } = await supabase
-    .from("sales_returns" as any)
+    .from("sales_returns")
     .select("id, status")
     .limit(500);
 
@@ -279,7 +279,7 @@ export async function fetchReturnCounts(): Promise<ReturnCounts> {
 export async function fetchMovementsSummary(): Promise<MovementsSummary> {
   const today = todayIso();
   const { data, error } = await supabase
-    .from("inventory_movements" as any)
+    .from("inventory_movements")
     .select("movement_type")
     .gte("performed_at", `${today}T00:00:00Z`)
     .lte("performed_at", `${today}T23:59:59Z`);
@@ -309,11 +309,11 @@ export async function fetchSalesContext(): Promise<{
 }> {
   const [custRes, salesmenRes] = await Promise.allSettled([
     supabase
-      .from("customers" as any)
+      .from("customers")
       .select("id", { count: "exact", head: true }),
 
     supabase
-      .from("salesmen" as any)
+      .from("salesmen")
       .select("id, name, code")
       .limit(30),
   ]);

@@ -66,12 +66,12 @@ function sanitizeBarcodes(values: string[] | undefined) {
 async function syncImportedBarcodes(productId: string, barcodes: string[]) {
   const normalizedBarcodes = sanitizeBarcodes(barcodes);
 
-  const { error: deleteError } = await supabase.from("product_barcodes" as any).delete().eq("product_id", productId);
+  const { error: deleteError } = await supabase.from("product_barcodes").delete().eq("product_id", productId);
   if (deleteError && deleteError.code !== "PGRST205") throw deleteError;
 
   if (normalizedBarcodes.length === 0) return;
 
-  const { error: insertError } = await supabase.from("product_barcodes" as any).insert(
+  const { error: insertError } = await supabase.from("product_barcodes").insert(
     normalizedBarcodes.map((barcode, index) => ({
       product_id: productId,
       barcode,
@@ -86,7 +86,7 @@ async function syncImportedBarcodes(productId: string, barcodes: string[]) {
 async function replaceImportedBatches(productId: string, batches: Batch[]) {
   const validRows = batches.filter((batch) => batch.batchNo.trim() && Number(batch.qty || 0) > 0);
 
-  const primaryDelete = await supabase.from("batches" as any).delete().eq("product_id", productId);
+  const primaryDelete = await supabase.from("batches").delete().eq("product_id", productId);
   if (primaryDelete.error && !isMissingRelation(primaryDelete.error, "batches")) {
     throw primaryDelete.error;
   }
@@ -94,7 +94,7 @@ async function replaceImportedBatches(productId: string, batches: Batch[]) {
   if (!primaryDelete.error) {
     if (validRows.length === 0) return;
 
-    const { error: insertError } = await supabase.from("batches" as any).insert(
+    const { error: insertError } = await supabase.from("batches").insert(
       validRows.map((batch) => ({
         product_id: productId,
         batch_no: batch.batchNo.trim(),
@@ -110,12 +110,12 @@ async function replaceImportedBatches(productId: string, batches: Batch[]) {
     return;
   }
 
-  const fallbackDelete = await supabase.from("inventory_batches" as any).delete().eq("product_id", productId);
+  const fallbackDelete = await supabase.from("inventory_batches").delete().eq("product_id", productId);
   if (fallbackDelete.error) throw fallbackDelete.error;
 
   if (validRows.length === 0) return;
 
-  const { error: fallbackInsertError } = await supabase.from("inventory_batches" as any).insert(
+  const { error: fallbackInsertError } = await supabase.from("inventory_batches").insert(
     validRows.map((batch) => ({
       product_id: productId,
       batch_no: batch.batchNo.trim(),
@@ -356,7 +356,7 @@ export function useStock() {
       }
     } else {
       const { data: newProd } = await supabase.from("products").insert({
-        code: product.code, name: product.name, brand_id: brand.id, packaging: product.packaging,
+        code: product.code, item_code: product.code, name: product.name, brand_id: brand.id, packaging: product.packaging,
         storage_type: product.storageType, barcodes: product.barcodes || [], carton_holds: product.cartonHolds,
         name_ar: product.nameAr || "",
       }).select("id").single();
@@ -611,14 +611,14 @@ export function useStock() {
 
       for (const newProd of newBrand.products) {
         let { data: prod } = await supabase
-          .from("products" as any)
+          .from("products")
           .select("id")
           .or(`code.eq.${newProd.code},item_code.eq.${newProd.code}`)
           .maybeSingle();
 
         if (!prod) {
           const { data: created, error: createError } = await supabase
-            .from("products" as any)
+            .from("products")
             .insert({
               code: newProd.code,
               item_code: newProd.itemCode || newProd.code,
@@ -654,7 +654,7 @@ export function useStock() {
             is_active: true,
           };
 
-          const primaryUpdate = await supabase.from("products" as any).update(updatePayload).eq("id", prod.id);
+          const primaryUpdate = await supabase.from("products").update(updatePayload).eq("id", prod.id);
           if (primaryUpdate.error) throw primaryUpdate.error;
         }
         if (!prod) continue;

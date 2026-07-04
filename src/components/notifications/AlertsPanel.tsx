@@ -37,7 +37,7 @@ export function AlertsPanel() {
       try {
         // 1. Pending GRN approvals (municipality_pending or inspected)
         const { data: pendingGRNs, error: grnErr } = await supabase
-          .from("receiving_headers" as any)
+          .from("receiving_headers")
           .select("id, status")
           .in("status", ["municipality_pending", "inspected", "received"])
           .limit(100);
@@ -83,7 +83,7 @@ export function AlertsPanel() {
 
         // 2. Rejected GRNs (recent)
         const { data: rejectedGRNs, error: rejErr } = await supabase
-          .from("receiving_headers" as any)
+          .from("receiving_headers")
           .select("id")
           .eq("status", "rejected")
           .limit(100);

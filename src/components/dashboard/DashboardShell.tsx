@@ -31,6 +31,11 @@ import {
 // ─── Accent color palette ─────────────────────────────────────────────────────
 
 export const ACCENT = {
+  red: {
+    iconBg: "bg-red-500/10", iconBorder: "border-red-500/20", iconText: "text-red-400",
+    cardBg: "bg-red-500/8",  cardBorder: "border-red-500/20", bar: "bg-red-500",
+    badge: "bg-red-500/15 text-red-400 border-red-500/25",
+  },
   amber: {
     iconBg: "bg-amber-500/10", iconBorder: "border-amber-500/20", iconText: "text-amber-400",
     cardBg: "bg-amber-500/8",  cardBorder: "border-amber-500/20", bar: "bg-amber-500",

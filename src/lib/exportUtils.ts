@@ -28,6 +28,19 @@ function escapeHtml(value: unknown) {
     .replace(/'/g, "&#39;");
 }
 
+/**
+ * Convenience wrapper: export plain row objects to Excel, deriving columns
+ * from the first row's keys (underscores become spaces in headers).
+ */
+export async function exportRowsExcel(rows: Record<string, any>[], filename: string) {
+  const columns: ExportColumn[] = Object.keys(rows[0] ?? {}).map((key) => ({
+    header: key.replace(/_/g, " "),
+    key,
+    width: 18,
+  }));
+  await exportExcel({ title: filename.replace(/_/g, " "), filename, sheetName: filename.slice(0, 31), columns, rows });
+}
+
 // ─── Excel Export (styled like PDF) ───
 export async function exportExcel(config: ExportConfig) {
   const { columns, rows, filename, sheetName, title, subtitle } = config;

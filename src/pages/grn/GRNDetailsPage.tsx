@@ -1106,13 +1106,13 @@ export default function GRNDetailsPage() {
 
       try {
         const suppliersWithCode = await supabase
-          .from("suppliers" as any)
+          .from("suppliers")
           .select("id, name, code")
           .order("name");
 
         const suppliersFallback = suppliersWithCode.error
           ? await supabase
-              .from("suppliers" as any)
+              .from("suppliers")
               .select("id, name")
               .order("name")
           : suppliersWithCode;
@@ -1152,12 +1152,12 @@ export default function GRNDetailsPage() {
 
         const [headerResult, linesResult] = await Promise.all([
           supabase
-            .from("receiving_headers" as any)
+            .from("receiving_headers")
             .select("*")
             .eq("id", id)
             .single(),
           supabase
-            .from("receiving_lines" as any)
+            .from("receiving_lines")
             .select("*")
             .eq("header_id", id)
             .order("line_no"),
@@ -1497,7 +1497,7 @@ export default function GRNDetailsPage() {
 
       if (!currentHeaderId) {
         const insertHeader = await supabase
-          .from("receiving_headers" as any)
+          .from("receiving_headers")
           .insert({
             ...headerPayload,
             status: "draft",
@@ -1513,7 +1513,7 @@ export default function GRNDetailsPage() {
         setHeaderId(currentHeaderId);
       } else {
         const updateHeader = await supabase
-          .from("receiving_headers" as any)
+          .from("receiving_headers")
           .update(headerPayload)
           .eq("id", currentHeaderId);
 
@@ -1523,7 +1523,7 @@ export default function GRNDetailsPage() {
       }
 
       const deleteLines = await supabase
-        .from("receiving_lines" as any)
+        .from("receiving_lines")
         .delete()
         .eq("header_id", currentHeaderId);
 
@@ -1533,7 +1533,7 @@ export default function GRNDetailsPage() {
 
       if (activeLines.length > 0) {
         const insertLines = await supabase
-          .from("receiving_lines" as any)
+          .from("receiving_lines")
           .insert(
             activeLines.map((line, index) =>
               normalizeLine(line, index + 1, currentHeaderId!)
@@ -1549,7 +1549,7 @@ export default function GRNDetailsPage() {
 
       const previousStatus = header.status;
       const finalizeHeader = await supabase
-        .from("receiving_headers" as any)
+        .from("receiving_headers")
         .update({ status: targetStatus })
         .eq("id", currentHeaderId);
 

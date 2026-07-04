@@ -235,62 +235,62 @@ function useOwnerData() {
       ] = await Promise.allSettled([
         // 1. All profiles
         supabase
-          .from("profiles" as any)
+          .from("profiles")
           .select("id, full_name, email, role, created_at, is_active")
           .order("created_at", { ascending: true }),
 
         // 2. Product count
         supabase
-          .from("product_master" as any)
+          .from("product_master")
           .select("id", { count: "exact", head: true }),
 
         // 3. Active SKUs in stock
         supabase
-          .from("inventory_product_stock_summary" as any)
+          .from("inventory_product_stock_summary")
           .select("product_id", { count: "exact", head: true })
           .gt("available_quantity", 0),
 
         // 4. Recent GRNs
         supabase
-          .from("receiving_headers" as any)
+          .from("receiving_headers")
           .select("id, grn_no, supplier_name, status, created_at")
           .order("created_at", { ascending: false })
           .limit(10),
 
         // 5. Recent invoices
         supabase
-          .from("sales_invoices" as any)
+          .from("sales_invoices")
           .select("id, invoice_number, customer_name, total_amount, status, created_at, salesman_id")
           .order("created_at", { ascending: false })
           .limit(20),
 
         // 6. Customer count
         supabase
-          .from("customers" as any)
+          .from("customers")
           .select("id", { count: "exact", head: true }),
 
         // 7. Active salesmen
         supabase
-          .from("salesmen" as any)
+          .from("salesmen")
           .select("id, name, code")
           .eq("is_active", true)
           .limit(20),
 
         // 8. Customer ↔ salesman mapping
         supabase
-          .from("customers" as any)
+          .from("customers")
           .select("salesman_id"),
 
         // 9. Expired stock SKUs
         supabase
-          .from("inventory_product_stock_summary" as any)
+          .from("inventory_product_stock_summary")
           .select("product_id", { count: "exact", head: true })
           .gt("available_quantity", 0)
           .lt("nearest_expiry", today),
 
         // 10. Expiring ≤ 30 days
         supabase
-          .from("inventory_product_stock_summary" as any)
+          .from("inventory_product_stock_summary")
           .select("product_id", { count: "exact", head: true })
           .gt("available_quantity", 0)
           .gte("nearest_expiry", today)
@@ -298,7 +298,7 @@ function useOwnerData() {
 
         // 11. Recent audit log (last activity per user)
         supabase
-          .from("audit_logs" as any)
+          .from("audit_logs")
           .select("performed_by, created_at")
           .not("performed_by", "is", null)
           .order("created_at", { ascending: false })
@@ -565,7 +565,7 @@ export default function OwnerDashboard() {
       if ("role"      in fields) payload.role      = fields.role;
       if ("is_active" in fields) payload.is_active = fields.is_active;
       if (!Object.keys(payload).length) continue;
-      const { error } = await supabase.from("profiles" as any).update(payload).eq("id", userId);
+      const { error } = await supabase.from("profiles").update(payload).eq("id", userId);
       if (error) { err++; }
       else {
         ok++;

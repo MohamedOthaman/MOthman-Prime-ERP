@@ -189,7 +189,7 @@ export default function BrandManagerDashboard() {
       <KpiGrid items={kpiItems} />
 
       <SectionCard title={t("storageTypeDistribution", "Storage Type Distribution")} icon={ThermometerSnowflake} iconClass="text-cyan-400">
-        {loading ? <LoadingRows rows={3} /> : (
+        {loading ? <LoadingRows count={3} /> : (
           <div className="grid grid-cols-3 gap-3">
             {(data?.storageBreakdown ?? []).map(({ type, count }) => {
               const Icon  = STORAGE_ICON[type]  ?? Package;
@@ -219,7 +219,7 @@ export default function BrandManagerDashboard() {
           </button>
         }
       >
-        {loading ? <LoadingRows rows={5} /> : (
+        {loading ? <LoadingRows count={5} /> : (
           data?.brandBreakdown.length === 0
             ? <EmptyState icon={Package} message={t("noProductData", "No product data")} sub={t("importProductsBrand", "Import products to see brand breakdown")} />
             : (

@@ -99,7 +99,7 @@ export default function ReturnIntakePage() {
       const allocCountMap: Record<string, number> = {};
       if (execLineIds.length > 0) {
         const { data: allocData } = await supabase
-          .from("outbound_execution_allocations" as any)
+          .from("outbound_execution_allocations")
           .select("outbound_execution_line_id")
           .in("outbound_execution_line_id", execLineIds);
         if (allocData) {
@@ -153,7 +153,7 @@ export default function ReturnIntakePage() {
       setSearchLoading(true);
       try {
         const { data } = await supabase
-          .from("sales_invoices" as any)
+          .from("sales_invoices")
           .select("id, invoice_number, customer_name")
           .ilike("invoice_number", `%${q}%`)
           .in("status", ["received", "done"])

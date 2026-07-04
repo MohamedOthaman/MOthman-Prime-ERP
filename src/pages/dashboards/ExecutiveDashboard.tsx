@@ -162,57 +162,57 @@ function useExecutiveData() {
         ] = await Promise.allSettled([
           // 1. SKU distribution by storage type
           supabase
-            .from("inventory_product_stock_summary" as any)
+            .from("inventory_product_stock_summary")
             .select("storage_type")
             .gt("available_quantity", 0),
 
           // 2. Recent GRNs
           supabase
-            .from("receiving_headers" as any)
+            .from("receiving_headers")
             .select("id, grn_no, supplier_name, status, created_at, transport_mode")
             .order("created_at", { ascending: false })
             .limit(12),
 
           // 3. Recent invoices
           supabase
-            .from("sales_headers" as any)
+            .from("sales_headers")
             .select("id, invoice_no, customer_id, total_amount, status, created_at")
             .order("created_at", { ascending: false })
             .limit(8),
 
           // 4. Customer count
           supabase
-            .from("customers" as any)
+            .from("customers")
             .select("id", { count: "exact", head: true }),
 
           // 5. Salesmen list
           supabase
-            .from("salesmen" as any)
+            .from("salesmen")
             .select("id, name, code")
             .eq("is_active", true)
             .limit(20),
 
           // 6. Customers per salesman
           supabase
-            .from("customers" as any)
+            .from("customers")
             .select("salesman_id"),
 
           // 7. User count
           supabase
-            .from("profiles" as any)
+            .from("profiles")
             .select("id", { count: "exact", head: true })
             .eq("is_active", true),
 
           // 8. Expired stock
           supabase
-            .from("inventory_product_stock_summary" as any)
+            .from("inventory_product_stock_summary")
             .select("product_id", { count: "exact", head: true })
             .gt("available_quantity", 0)
             .lt("nearest_expiry", today),
 
           // 9. Expiring within 30 days
           supabase
-            .from("inventory_product_stock_summary" as any)
+            .from("inventory_product_stock_summary")
             .select("product_id", { count: "exact", head: true })
             .gt("available_quantity", 0)
             .gte("nearest_expiry", today)
@@ -220,7 +220,7 @@ function useExecutiveData() {
 
           // 10. Expiring within 6 months
           supabase
-            .from("inventory_product_stock_summary" as any)
+            .from("inventory_product_stock_summary")
             .select("product_id", { count: "exact", head: true })
             .gt("available_quantity", 0)
             .gte("nearest_expiry", today)

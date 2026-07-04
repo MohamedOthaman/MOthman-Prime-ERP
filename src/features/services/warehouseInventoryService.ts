@@ -40,7 +40,7 @@ export async function fetchInventoryMovementsLog(filters?: {
   offset?: number;
 }): Promise<InventoryMovementLogRow[]> {
   let query = supabase
-    .from("inventory_movements_log" as any)
+    .from("inventory_movements_log")
     .select(
       "id, movement_type, reference_type, reference_id, batch_id, batch_no, expiry_date, qty_in, qty_out, balance_after, unit_cost, location_ref, notes, performed_at, performed_by, product_id, product_code, product_name, product_name_ar, uom, brand, grn_no, invoice_no"
     )

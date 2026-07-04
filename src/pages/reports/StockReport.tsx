@@ -14,7 +14,7 @@ import {
   getInventoryOperationalBatches,
   type InventoryOperationalBatchRow,
 } from "@/features/services/warehouseInventoryService";
-import { exportExcel } from "@/lib/exportUtils";
+import { exportRowsExcel } from "@/lib/exportUtils";
 import {
   DashboardShell,
   KpiGrid,
@@ -111,7 +111,7 @@ export default function StockReport() {
   ];
 
   function handleExport() {
-    exportExcel(
+    exportRowsExcel(
       filtered.map(r => ({
         Code:        r.code ?? "",
         Name:        r.name_en ?? r.name ?? "",
@@ -196,7 +196,7 @@ export default function StockReport() {
         {error ? (
           <div className="rounded-lg border border-red-500/20 bg-red-500/8 px-4 py-3 text-xs text-red-400">{error}</div>
         ) : loading ? (
-          <LoadingRows rows={8} />
+          <LoadingRows count={8} />
         ) : filtered.length === 0 ? (
           <EmptyState icon={Package} message={t("noDataFound", "No batches match the filter")} />
         ) : (

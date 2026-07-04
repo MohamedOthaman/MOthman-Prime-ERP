@@ -121,7 +121,7 @@ export async function getCustomersWithoutSalesman(): Promise<
 export async function getSalesPerformance(fromDate?: string, toDate?: string): Promise<SalesmanPerformanceRow[]> {
     // Fetch all salesmen
     const { data: salesmenData, error: salesmenErr } = await supabase
-        .from("salesmen" as any)
+        .from("salesmen")
         .select("id, name, code")
         .order("name");
 

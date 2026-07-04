@@ -30,7 +30,7 @@ export async function logAudit(entry: AuditEntry): Promise<void> {
     const userId = session?.user?.id ?? null;
 
     const { error } = await supabase
-      .from("audit_logs" as any)
+      .from("audit_logs")
       .insert({
         entity_type: entry.entityType,
         entity_id: entry.entityId ?? null,
@@ -59,7 +59,7 @@ export async function getAuditLogs(
   limit = 50
 ): Promise<AuditLogRow[]> {
   const { data, error } = await supabase
-    .from("audit_logs" as any)
+    .from("audit_logs")
     .select("*")
     .eq("entity_type", entityType)
     .eq("entity_id", entityId)
@@ -79,7 +79,7 @@ export async function getAuditLogs(
  */
 export async function getRecentAuditLogs(limit = 20): Promise<AuditLogRow[]> {
   const { data, error } = await supabase
-    .from("audit_logs" as any)
+    .from("audit_logs")
     .select("*")
     .order("created_at", { ascending: false })
     .limit(limit);
@@ -131,7 +131,7 @@ export async function getAuditLogsByFilter(
 ): Promise<AuditLogPage> {
   try {
     let query = supabase
-      .from("audit_logs" as any)
+      .from("audit_logs")
       .select("*", { count: "exact" })
       .order("created_at", { ascending: false })
       .range(offset, offset + limit - 1);

@@ -109,7 +109,7 @@ export default function BatchTracePage() {
 
     const [batchRes, movRes] = await Promise.allSettled([
       supabase
-        .from("inventory_batches" as any)
+        .from("inventory_batches")
         .select(`
           id, product_id, batch_number, grn_id,
           received_date, expiry_date, qty_received, qty_available,
@@ -120,7 +120,7 @@ export default function BatchTracePage() {
         .single(),
 
       supabase
-        .from("inventory_movements" as any)
+        .from("inventory_movements")
         .select("id, movement_type, qty_change, performed_at, reference_type, reference_id, notes, performed_by")
         .eq("batch_id", batchId)
         .order("performed_at", { ascending: false })
@@ -158,7 +158,7 @@ export default function BatchTracePage() {
     if (batchRes.status === "fulfilled" && (batchRes.value as any).data?.grn_id) {
       const grnId = (batchRes.value as any).data.grn_id;
       const { data: grn } = await supabase
-        .from("grn_headers" as any)
+        .from("grn_headers")
         .select("grn_no")
         .eq("id", grnId)
         .single();

@@ -103,14 +103,14 @@ function normalizeQcStatus(value: string | null | undefined): QcLineStatus {
 export async function fetchGrnQcQueue(): Promise<GrnQcQueueRow[]> {
   const [headersResult, linesResult] = await Promise.all([
     supabase
-      .from("receiving_headers" as any)
+      .from("receiving_headers")
       .select(
         "id, grn_no, supplier_name, po_no, arrival_date, transaction_date, status, municipality_reference_no, municipality_notes"
       )
       .in("status", ["received","inspected","municipality_pending","approved","partial_hold","completed"])
       .order("created_at", { ascending: false }),
     supabase
-      .from("receiving_lines" as any)
+      .from("receiving_lines")
       .select("id, header_id, qc_status, received_quantity, quantity, qty"),
   ]);
 
@@ -165,12 +165,12 @@ export async function fetchGrnQcQueue(): Promise<GrnQcQueueRow[]> {
 export async function fetchGrnQcRecord(headerId: string) {
   const [headerResult, linesResult] = await Promise.all([
     supabase
-      .from("receiving_headers" as any)
+      .from("receiving_headers")
       .select("id, grn_no, supplier_name, po_no, arrival_date, transaction_date, remarks, manual_invoice_no, status, municipality_reference_no, municipality_notes, inspected_at, municipality_submitted_at, municipality_approved_at, approved_at, completed_at, completed_by")
       .eq("id", headerId)
       .single(),
     supabase
-      .from("receiving_lines" as any)
+      .from("receiving_lines")
       .select("id, line_no, product_id, product_code, product_name, store, uom, barcode, batch_no, production_date, expiry_date, received_quantity, quantity, qty, short_excess_quantity, short_excess_reason, qc_status, qc_reason, qc_notes, qc_checked_quantity, qc_inspected_at, qty_damaged, qty_missing, qty_sample, qty_accepted, putaway_warehouse_id, putaway_zone_id, putaway_location_ref")
       .eq("header_id", headerId)
       .order("line_no", { ascending: true }),
@@ -261,7 +261,7 @@ export async function saveGrnQcRecord(input: {
 
   for (const line of input.lines) {
     const { error } = await supabase
-      .from("receiving_lines" as any)
+      .from("receiving_lines")
       .update({
         qc_status:           line.qc_status,
         qc_reason:           line.qc_reason,
@@ -302,7 +302,7 @@ export async function saveGrnQcRecord(input: {
   }
 
   const { error } = await supabase
-    .from("receiving_headers" as any)
+    .from("receiving_headers")
     .update(headerPayload)
     .eq("id", input.headerId);
 
@@ -335,7 +335,7 @@ export async function fetchReceivingPostingSummary(grnId: string): Promise<{
   }>;
 }> {
   const { data, error } = await supabase
-    .from("inventory_movements" as any)
+    .from("inventory_movements")
     .select("batch_id, product_id, batch_no, expiry_date, qty_in, location_ref")
     .eq("reference_id", grnId)
     .eq("movement_type", "INBOUND")

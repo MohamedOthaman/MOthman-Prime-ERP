@@ -42,6 +42,7 @@ export default function ReturnQueuePage() {
     all:       t("all",               "All"),
     draft:     t("draft",             "Draft"),
     received:  t("received",          "Received"),
+    reviewed:  t("reviewed",          "Reviewed"),
     posted:    t("posted",            "Posted"),
     cancelled: t("cancelled",         "Cancelled"),
   }), [t]);

@@ -16,7 +16,7 @@ import {
   type InventoryExpiryAlertBucket,
   type InventoryOperationalBatchRow,
 } from "@/features/services/warehouseInventoryService";
-import { exportExcel } from "@/lib/exportUtils";
+import { exportRowsExcel } from "@/lib/exportUtils";
 import {
   DashboardShell,
   KpiGrid,
@@ -162,7 +162,7 @@ export default function ExpiryAlertsReport() {
       return true;
     });
 
-    exportExcel(
+    exportRowsExcel(
       unique.map(r => ({
         Code:          r.code ?? "",
         Name:          r.name_en ?? r.name ?? "",
@@ -215,7 +215,7 @@ export default function ExpiryAlertsReport() {
         icon={ShieldAlert}
         iconClass="text-red-400"
       >
-        {loading ? <LoadingRows rows={4} /> : expired.length === 0 ? (
+        {loading ? <LoadingRows count={4} /> : expired.length === 0 ? (
           <EmptyState icon={Package} message={t("noExpiredBatches", "No expired batches in stock")} />
         ) : (
           <BucketTable
@@ -233,7 +233,7 @@ export default function ExpiryAlertsReport() {
         icon={AlertTriangle}
         iconClass="text-red-400"
       >
-        {loading ? <LoadingRows rows={4} /> : (b7?.items ?? []).length === 0 ? (
+        {loading ? <LoadingRows count={4} /> : (b7?.items ?? []).length === 0 ? (
           <EmptyState icon={Package} message={t("noBatchesExpiring7d", "No batches expiring within 7 days")} />
         ) : (
           <BucketTable
@@ -251,7 +251,7 @@ export default function ExpiryAlertsReport() {
         icon={AlertTriangle}
         iconClass="text-orange-400"
       >
-        {loading ? <LoadingRows rows={4} /> : items7to14.length === 0 ? (
+        {loading ? <LoadingRows count={4} /> : items7to14.length === 0 ? (
           <EmptyState icon={Package} message={t("noBatchesInWindow", "No batches expiring in this window")} />
         ) : (
           <BucketTable
@@ -269,7 +269,7 @@ export default function ExpiryAlertsReport() {
         icon={AlertTriangle}
         iconClass="text-amber-400"
       >
-        {loading ? <LoadingRows rows={4} /> : items15to30.length === 0 ? (
+        {loading ? <LoadingRows count={4} /> : items15to30.length === 0 ? (
           <EmptyState icon={Package} message={t("noBatchesInWindow", "No batches expiring in this window")} />
         ) : (
           <BucketTable

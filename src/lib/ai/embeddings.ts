@@ -50,8 +50,9 @@ export async function upsertEmbedding(
   content: string,
   embedding: number[],
 ): Promise<void> {
-  const { error } = await supabase
-    .from("entity_embeddings" as never)
+  // entity_embeddings comes from the unapplied P5 pgvector migration, so it is
+  // absent from the generated schema types — keep this dormant path untyped.
+  const { error } = await (supabase.from("entity_embeddings" as never) as any)
     .upsert(
       {
         entity_type: entityType,

@@ -89,7 +89,7 @@ export function getProductLabel(product: ProductLookup, lang: ProductDisplayLang
 
 async function fetchProductLookups() {
   const preferredResult = await supabase
-    .from("products_overview" as any)
+    .from("products_overview")
     .select("id, item_code, name, name_en, name_ar, uom, primary_barcode, all_barcodes, selling_price, is_active")
     .or("is_active.eq.true,is_active.is.null")
     .order("item_code", { ascending: true });
@@ -107,7 +107,7 @@ async function fetchProductLookups() {
   }
 
   const fallbackResult = await supabase
-    .from("products_overview" as any)
+    .from("products_overview")
     .select("id, item_code, name, name_en, name_ar, uom, primary_barcode, selling_price, is_active")
     .or("is_active.eq.true,is_active.is.null")
     .order("item_code", { ascending: true });
@@ -128,12 +128,12 @@ async function fetchProductLookups() {
 export async function fetchSalesInvoiceLookups() {
   const [customersResult, salesmenResult, productsResult] = await Promise.all([
     supabase
-      .from("customers" as any)
+      .from("customers")
       .select("id, code, name, name_ar, salesman_id")
       .or("is_active.eq.true,is_active.is.null")
       .order("name", { ascending: true }),
     supabase
-      .from("salesmen" as any)
+      .from("salesmen")
       .select("id, code, name, name_ar")
       .or("is_active.eq.true,is_active.is.null")
       .order("name", { ascending: true }),
@@ -165,12 +165,12 @@ export async function fetchSalesInvoiceLookups() {
 export async function fetchSalesInvoice(headerId: string) {
   const [headerResult, linesResult] = await Promise.all([
     supabase
-      .from("sales_headers" as any)
+      .from("sales_headers")
       .select("id, invoice_no, invoice_date, customer_id, salesman_id, notes, status, total_amount")
       .eq("id", headerId)
       .single(),
     supabase
-      .from("sales_lines" as any)
+      .from("sales_lines")
       .select("id, line_no, product_id, quantity, unit_price, discount, line_total")
       .eq("header_id", headerId)
       .order("line_no", { ascending: true }),
@@ -197,7 +197,7 @@ export async function fetchSalesInvoice(headerId: string) {
 }
 
 export async function getProductAvailableQty(productId: string) {
-  const { data, error } = await supabase.rpc("get_product_available_qty" as any, {
+  const { data, error } = await supabase.rpc("get_product_available_qty", {
     p_product_id: productId,
   });
 
@@ -274,7 +274,7 @@ export async function saveSalesInvoiceDraft(input: {
 
   if (!currentHeaderId) {
     const insertHeaderResult = await supabase
-      .from("sales_headers" as any)
+      .from("sales_headers")
       .insert(headerPayload)
       .select("id")
       .single();
@@ -286,7 +286,7 @@ export async function saveSalesInvoiceDraft(input: {
     currentHeaderId = insertHeaderResult.data.id as string;
   } else {
     const updateHeaderResult = await supabase
-      .from("sales_headers" as any)
+      .from("sales_headers")
       .update(headerPayload)
       .eq("id", currentHeaderId);
 
@@ -295,7 +295,7 @@ export async function saveSalesInvoiceDraft(input: {
     }
 
     const deleteLinesResult = await supabase
-      .from("sales_lines" as any)
+      .from("sales_lines")
       .delete()
       .eq("header_id", currentHeaderId);
 
@@ -305,7 +305,7 @@ export async function saveSalesInvoiceDraft(input: {
   }
 
   if (input.lines.length > 0) {
-    const insertLinesResult = await supabase.from("sales_lines" as any).insert(
+    const insertLinesResult = await supabase.from("sales_lines").insert(
       input.lines.map((line, index) => ({
         header_id: currentHeaderId,
         line_no: index + 1,
@@ -325,7 +325,7 @@ export async function saveSalesInvoiceDraft(input: {
 }
 
 export async function postSalesInvoice(headerId: string) {
-  const { data, error } = await supabase.rpc("post_sales_invoice" as any, {
+  const { data, error } = await supabase.rpc("post_sales_invoice", {
     p_sales_header_id: headerId,
   });
   if (error) throw new Error(`Failed to post sales invoice: ${error.message}`);
@@ -334,7 +334,7 @@ export async function postSalesInvoice(headerId: string) {
 }
 
 export async function markInvoiceDone(headerId: string) {
-  const { data, error } = await supabase.rpc("mark_invoice_done" as any, {
+  const { data, error } = await supabase.rpc("mark_invoice_done", {
     p_header_id: headerId,
   });
   if (error) throw new Error(`Failed to mark done: ${error.message}`);
@@ -343,7 +343,7 @@ export async function markInvoiceDone(headerId: string) {
 }
 
 export async function markInvoiceReceived(headerId: string) {
-  const { data, error } = await supabase.rpc("mark_invoice_received" as any, {
+  const { data, error } = await supabase.rpc("mark_invoice_received", {
     p_header_id: headerId,
   });
   if (error) throw new Error(`Failed to mark received: ${error.message}`);
@@ -352,7 +352,7 @@ export async function markInvoiceReceived(headerId: string) {
 }
 
 export async function cancelInvoice(headerId: string, reason: string) {
-  const { data, error } = await supabase.rpc("cancel_invoice" as any, {
+  const { data, error } = await supabase.rpc("cancel_invoice", {
     p_header_id: headerId,
     p_reason: reason,
   });
@@ -367,7 +367,7 @@ export async function cancelInvoice(headerId: string, reason: string) {
 
 export async function fetchInvoiceDetail(invoiceId: string) {
   const { data: header, error: headerError } = await supabase
-    .from("sales_invoices" as any)
+    .from("sales_invoices")
     .select(
       "id, invoice_number, invoice_date, customer_id, customer_name, salesman_id, salesman_name, status, total_amount, notes, created_at, ready_at, done_at, received_at, cancelled_at, cancel_reason, returns_at"
     )
@@ -379,7 +379,7 @@ export async function fetchInvoiceDetail(invoiceId: string) {
   }
 
   const { data: lines, error: linesError } = await supabase
-    .from("sales_lines" as any)
+    .from("sales_lines")
     .select("id, line_no, product_id, quantity, unit_price, discount, line_total")
     .eq("header_id", invoiceId)
     .order("line_no", { ascending: true });
@@ -391,7 +391,7 @@ export async function fetchInvoiceDetail(invoiceId: string) {
 
   if (productIds.length > 0) {
     const { data: prods } = await supabase
-      .from("products_overview" as any)
+      .from("products_overview")
       .select("id, item_code, name, name_en, name_ar, uom, primary_barcode")
       .in("id", productIds);
     ((prods ?? []) as any[]).forEach((p) => productMap.set(p.id, p));
@@ -464,7 +464,7 @@ export async function fetchInvoiceListPage(input: {
 }): Promise<InvoiceListPageResult> {
   const pageSize = input.pageSize ?? 50;
   let q = supabase
-    .from("sales_invoices" as any)
+    .from("sales_invoices")
     .select(
       "id, invoice_number, invoice_date, customer_name, salesman_name, status, total_amount, created_at, ready_at, done_at, received_at, cancelled_at"
     )
@@ -509,7 +509,7 @@ export async function fetchInvoiceList(filters?: {
   salesmanId?: string | null;
 }) {
   let q = supabase
-    .from("sales_invoices" as any)
+    .from("sales_invoices")
     .select("id, invoice_number, invoice_date, customer_name, salesman_name, status, total_amount, created_at, ready_at, done_at, received_at, cancelled_at")
     .order("created_at", { ascending: false })
     .limit(filters?.limit ?? 100);

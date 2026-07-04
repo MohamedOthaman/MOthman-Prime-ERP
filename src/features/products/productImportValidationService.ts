@@ -31,7 +31,7 @@ export interface ProductImportValidationSummary {
 
 export async function getProductImportValidationRows() {
   const { data, error } = await supabase
-    .from("products" as any)
+    .from("products")
     .select(`
       id,
       item_code,

@@ -9,7 +9,7 @@ import { useEffect, useState, useMemo } from "react";
 import { Building2, Users, AlertTriangle, DollarSign, Search, Download, UserSquare2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { getCustomerAnalysis, type CustomerAnalysisRow } from "@/features/services/reportService";
-import { exportExcel } from "@/lib/exportUtils";
+import { exportRowsExcel } from "@/lib/exportUtils";
 import { useLang } from "@/contexts/LanguageContext";
 import {
   DashboardShell,
@@ -96,7 +96,7 @@ export default function CustomerAnalysisReport() {
   ];
 
   function handleExport() {
-    exportExcel(
+    exportRowsExcel(
       filtered.map(r => ({
         Code:             r.code,
         Name:             r.name,
@@ -165,7 +165,7 @@ export default function CustomerAnalysisReport() {
         {error ? (
           <div className="rounded-lg border border-red-500/20 bg-red-500/8 px-4 py-3 text-xs text-red-400">{error}</div>
         ) : loading ? (
-          <LoadingRows rows={8} />
+          <LoadingRows count={8} />
         ) : filtered.length === 0 ? (
           <EmptyState icon={Building2} message={t("noCustomersMatchFilter", "No customers match the filter")} />
         ) : (

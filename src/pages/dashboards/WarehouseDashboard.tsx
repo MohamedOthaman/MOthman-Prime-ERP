@@ -101,27 +101,27 @@ function useWarehouseData() {
         const [grnRes, stockRes, expiredRes, exp30Res, exp180Res,
                pickRes, retRes, movRes] = await Promise.allSettled([
           supabase
-            .from("receiving_headers" as any)
+            .from("receiving_headers")
             .select("id, grn_no, supplier_name, status, created_at")
             .order("created_at", { ascending: false })
             .limit(20),
           supabase
-            .from("inventory_product_stock_summary" as any)
+            .from("inventory_product_stock_summary")
             .select("storage_type")
             .gt("available_quantity", 0),
           supabase
-            .from("inventory_product_stock_summary" as any)
+            .from("inventory_product_stock_summary")
             .select("product_id", { count: "exact", head: true })
             .gt("available_quantity", 0)
             .lt("nearest_expiry", today),
           supabase
-            .from("inventory_product_stock_summary" as any)
+            .from("inventory_product_stock_summary")
             .select("product_id", { count: "exact", head: true })
             .gt("available_quantity", 0)
             .gte("nearest_expiry", today)
             .lte("nearest_expiry", in30),
           supabase
-            .from("inventory_product_stock_summary" as any)
+            .from("inventory_product_stock_summary")
             .select("product_id", { count: "exact", head: true })
             .gt("available_quantity", 0)
             .gte("nearest_expiry", today)

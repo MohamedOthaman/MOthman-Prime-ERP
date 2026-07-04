@@ -86,13 +86,13 @@ export default function ProductTracePage() {
 
     const [prodRes, batchRes] = await Promise.allSettled([
       supabase
-        .from("products_overview" as any)
+        .from("products_overview")
         .select("id, name, code, category")
         .eq("id", productId)
         .single(),
 
       supabase
-        .from("inventory_batches" as any)
+        .from("inventory_batches")
         .select(`
           id, batch_number, grn_id,
           received_date, expiry_date,

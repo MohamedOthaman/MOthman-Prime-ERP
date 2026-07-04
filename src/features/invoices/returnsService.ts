@@ -111,7 +111,7 @@ export async function fetchReturnQueue(filters?: {
   // Enrich with invoice info
   const invoiceIds = [...new Set((returns as any[]).map((r: any) => r.invoice_id))];
   const { data: invoices } = await supabase
-    .from("sales_invoices" as any)
+    .from("sales_invoices")
     .select("id, invoice_number, customer_name")
     .in("id", invoiceIds);
 
@@ -132,26 +132,21 @@ export async function fetchReturnDetails(returnId: string): Promise<{
   invoiceDetail: { invoice_number: string | null; customer_name: string | null; invoice_date: string } | null;
 }> {
   const { data: doc, error: docErr } = await supabase
-    .from("sales_returns" as any)
+    .from("sales_returns")
     .select("*")
     .eq("id", returnId)
     .single();
 
   if (docErr || !doc) throw new Error(docErr?.message ?? "Return not found");
 
-  const [linesResult, allocsResult, invResult] = await Promise.allSettled([
+  const [linesResult, invResult] = await Promise.allSettled([
     supabase
-      .from("sales_return_lines" as any)
+      .from("sales_return_lines")
       .select("*")
       .eq("return_id", returnId)
       .order("created_at", { ascending: true }),
     supabase
-      .from("sales_return_allocations" as any)
-      .select("*")
-      .eq("return_line_id.return_id" as any, returnId) // will re-do via line ids below
-      .limit(0), // placeholder — real query below
-    supabase
-      .from("sales_invoices" as any)
+      .from("sales_invoices")
       .select("invoice_number, customer_name, invoice_date")
       .eq("id", (doc as any).invoice_id)
       .maybeSingle(),
@@ -171,7 +166,7 @@ export async function fetchReturnDetails(returnId: string): Promise<{
   if (rawLines.length > 0) {
     const productIds = [...new Set(rawLines.map((l) => l.product_id))];
     const { data: prods } = await supabase
-      .from("products_overview" as any)
+      .from("products_overview")
       .select("id, name, name_en, item_code")
       .in("id", productIds);
     const prodMap = new Map(((prods ?? []) as any[]).map((p) => [p.id, p]));
@@ -187,7 +182,7 @@ export async function fetchReturnDetails(returnId: string): Promise<{
   if (lines.length > 0) {
     const lineIds = lines.map((l) => l.id);
     const { data: allocData } = await supabase
-      .from("sales_return_allocations" as any)
+      .from("sales_return_allocations")
       .select("*")
       .in("return_line_id", lineIds)
       .order("created_at", { ascending: true });
@@ -221,7 +216,7 @@ export async function fetchReturnDetails(returnId: string): Promise<{
 
 export async function fetchInvoiceReturnSummary(invoiceId: string): Promise<InvoiceReturnSummary> {
   const { data: docs, error } = await supabase
-    .from("sales_returns" as any)
+    .from("sales_returns")
     .select("id, return_no, status, total_amount, created_at, received_at, posted_at")
     .eq("invoice_id", invoiceId)
     .neq("status", "cancelled")
@@ -250,7 +245,7 @@ export async function fetchInvoiceReturnSummary(invoiceId: string): Promise<Invo
 
   const returnIds = documents.map((d) => d.id);
   const { data: lines } = await supabase
-    .from("sales_return_lines" as any)
+    .from("sales_return_lines")
     .select("return_id, invoice_line_id, qty_returned")
     .in("return_id", returnIds);
 
@@ -276,7 +271,7 @@ export async function createDraftReturn(
   notes?: string
 ): Promise<string> {
   const { data, error } = await supabase
-    .from("sales_returns" as any)
+    .from("sales_returns")
     .insert({ invoice_id: invoiceId, customer_id: customerId, notes: notes ?? null })
     .select("id")
     .single();
@@ -302,13 +297,13 @@ export async function addReturnLines(
     condition: l.condition,
   }));
 
-  const { error } = await supabase.from("sales_return_lines" as any).insert(rows);
+  const { error } = await supabase.from("sales_return_lines").insert(rows);
   if (error) throw new Error(error.message);
 }
 
 export async function deleteReturnLine(lineId: string): Promise<void> {
   const { error } = await supabase
-    .from("sales_return_lines" as any)
+    .from("sales_return_lines")
     .delete()
     .eq("id", lineId);
   if (error) throw new Error(error.message);
@@ -316,14 +311,14 @@ export async function deleteReturnLine(lineId: string): Promise<void> {
 
 export async function updateReturnNotes(returnId: string, notes: string): Promise<void> {
   const { error } = await supabase
-    .from("sales_returns" as any)
+    .from("sales_returns")
     .update({ notes, updated_at: new Date().toISOString() })
     .eq("id", returnId);
   if (error) throw new Error(error.message);
 }
 
 export async function receiveReturn(returnId: string): Promise<void> {
-  const { data, error } = await supabase.rpc("receive_sales_return" as any, {
+  const { data, error } = await supabase.rpc("receive_sales_return", {
     p_return_id: returnId,
   });
   if (error) throw new Error(error.message);
@@ -336,7 +331,7 @@ export async function receiveReturn(returnId: string): Promise<void> {
 }
 
 export async function postReturn(returnId: string): Promise<void> {
-  const { data, error } = await supabase.rpc("post_sales_return" as any, {
+  const { data, error } = await supabase.rpc("post_sales_return", {
     p_return_id: returnId,
   });
   if (error) throw new Error(error.message);
@@ -350,7 +345,7 @@ export async function postReturn(returnId: string): Promise<void> {
 
 export async function cancelReturn(returnId: string): Promise<void> {
   const { error } = await supabase
-    .from("sales_returns" as any)
+    .from("sales_returns")
     .update({ status: "cancelled", updated_at: new Date().toISOString() })
     .eq("id", returnId)
     .in("status", ["draft"]);

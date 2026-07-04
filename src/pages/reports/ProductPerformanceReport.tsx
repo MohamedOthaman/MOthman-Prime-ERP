@@ -11,7 +11,7 @@ import {
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { getProductPerformance, type ProductPerformanceRow } from "@/features/services/reportService";
-import { exportExcel } from "@/lib/exportUtils";
+import { exportRowsExcel } from "@/lib/exportUtils";
 import {
   DashboardShell,
   KpiGrid,
@@ -148,7 +148,7 @@ export default function ProductPerformanceReport() {
   ], [t]);
 
   function handleExport() {
-    exportExcel(
+    exportRowsExcel(
       filtered.map(r => ({
         Code:         r.code ?? "",
         Item_Code:    r.item_code ?? "",
@@ -228,7 +228,7 @@ export default function ProductPerformanceReport() {
         {error ? (
           <div className="rounded-lg border border-red-500/20 bg-red-500/8 px-4 py-3 text-xs text-red-400">{error}</div>
         ) : loading ? (
-          <LoadingRows rows={8} />
+          <LoadingRows count={8} />
         ) : filtered.length === 0 ? (
           <EmptyState icon={Package} message={t("noProductsMatchFilter", "No products match the filter")} />
         ) : (

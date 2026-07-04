@@ -48,7 +48,7 @@ export default function CustomersPage() {
             setLoading(true);
 
             let q = supabase
-                .from("customers" as any)
+                .from("customers")
                 .select(`
           id,
           code,

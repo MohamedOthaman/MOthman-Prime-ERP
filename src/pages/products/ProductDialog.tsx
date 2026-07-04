@@ -220,7 +220,7 @@ function EntryModeToggle({ manual, onToggle }: EntryModeToggleProps) {
 }
 
 async function applyProductMetadataPatch(productId: string, patch: Record<string, unknown>) {
-  const primary = await supabase.from("products" as any).update(patch).eq("id", productId);
+  const primary = await supabase.from("products").update(patch).eq("id", productId);
   if (!primary.error) return;
 
   const missingSectionColumn =
@@ -230,7 +230,7 @@ async function applyProductMetadataPatch(productId: string, patch: Record<string
   if (!missingSectionColumn) throw primary.error;
 
   const { section: _ignored, ...fallbackPatch } = patch;
-  const fallback = await supabase.from("products" as any).update(fallbackPatch).eq("id", productId);
+  const fallback = await supabase.from("products").update(fallbackPatch).eq("id", productId);
   if (fallback.error) throw fallback.error;
 }
 
@@ -250,12 +250,12 @@ function isMissingRelation(error: { code?: string; message?: string } | null, re
 
 async function syncProductBarcodes(productId: string, barcodes: string[], source: string) {
   const normalizedBarcodes = sanitizeBarcodes(barcodes);
-  const { error: deleteError } = await supabase.from("product_barcodes" as any).delete().eq("product_id", productId);
+  const { error: deleteError } = await supabase.from("product_barcodes").delete().eq("product_id", productId);
   if (deleteError && deleteError.code !== "PGRST205") throw deleteError;
 
   if (normalizedBarcodes.length === 0) return;
 
-  const { error: insertError } = await supabase.from("product_barcodes" as any).insert(
+  const { error: insertError } = await supabase.from("product_barcodes").insert(
     normalizedBarcodes.map((barcode, index) => ({
       product_id: productId,
       barcode,
@@ -272,7 +272,7 @@ async function syncProductPrice(
   values: { costPrice: number; sellingPrice: number; discount: number; priceSource: string }
 ) {
   const existingPrice = await supabase
-    .from("product_prices" as any)
+    .from("product_prices")
     .select("id")
     .eq("product_id", productId)
     .maybeSingle();
@@ -283,7 +283,7 @@ async function syncProductPrice(
 
   if (existingPrice.data?.id) {
     const { error } = await supabase
-      .from("product_prices" as any)
+      .from("product_prices")
       .update({
         cost_price: values.costPrice,
         selling_price: values.sellingPrice,
@@ -296,7 +296,7 @@ async function syncProductPrice(
     return;
   }
 
-  const { error } = await supabase.from("product_prices" as any).insert({
+  const { error } = await supabase.from("product_prices").insert({
     product_id: productId,
     cost_price: values.costPrice,
     selling_price: values.sellingPrice,
@@ -320,7 +320,7 @@ async function createProductDirect(payload: {
   discount: number;
 }) {
   const { data, error } = await supabase
-    .from("products" as any)
+    .from("products")
     .insert({
       item_code: payload.itemCode,
       code: payload.itemCode,
@@ -364,7 +364,7 @@ async function updateProductDirect(
   }
 ) {
   const { error } = await supabase
-    .from("products" as any)
+    .from("products")
     .update({
       item_code: payload.itemCode,
       code: payload.itemCode,
@@ -497,7 +497,7 @@ async function updateProductWithCompatibility(
 
 async function loadProductBatches(productId: string, fallbackUnit: string) {
   const primaryResult = await supabase
-    .from("batches" as any)
+    .from("batches")
     .select("id, batch_no, unit, production_date, expiry_date, qty, received_date")
     .eq("product_id", productId)
     .order("expiry_date", { ascending: true });
@@ -520,7 +520,7 @@ async function loadProductBatches(productId: string, fallbackUnit: string) {
   }
 
   const fallbackResult = await supabase
-    .from("inventory_batches" as any)
+    .from("inventory_batches")
     .select("id, product_id, batch_no, qty_available, qty_received, expiry_date, received_date")
     .eq("product_id", productId)
     .order("expiry_date", { ascending: true });
@@ -711,7 +711,7 @@ export default function ProductDialog({ open, onClose, onSaved, editingProduct }
   async function persistBatches(productId: string) {
     const rows = batches.filter((batch) => batch.batchNo.trim() && batch.expiryDate);
 
-    const primaryDelete = await supabase.from("batches" as any).delete().eq("product_id", productId);
+    const primaryDelete = await supabase.from("batches").delete().eq("product_id", productId);
     if (primaryDelete.error && !isMissingRelation(primaryDelete.error, "batches")) {
       throw primaryDelete.error;
     }
@@ -719,7 +719,7 @@ export default function ProductDialog({ open, onClose, onSaved, editingProduct }
     if (!primaryDelete.error) {
       if (rows.length === 0) return;
 
-      const { error: insertError } = await supabase.from("batches" as any).insert(
+      const { error: insertError } = await supabase.from("batches").insert(
         rows.map((batch) => ({
           product_id: productId,
           batch_no: batch.batchNo.trim(),
@@ -736,7 +736,7 @@ export default function ProductDialog({ open, onClose, onSaved, editingProduct }
     }
 
     const fallbackDelete = await supabase
-      .from("inventory_batches" as any)
+      .from("inventory_batches")
       .delete()
       .eq("product_id", productId);
 
@@ -744,7 +744,7 @@ export default function ProductDialog({ open, onClose, onSaved, editingProduct }
 
     if (rows.length === 0) return;
 
-    const { error: fallbackInsertError } = await supabase.from("inventory_batches" as any).insert(
+    const { error: fallbackInsertError } = await supabase.from("inventory_batches").insert(
       rows.map((batch) => ({
         product_id: productId,
         batch_no: batch.batchNo.trim(),

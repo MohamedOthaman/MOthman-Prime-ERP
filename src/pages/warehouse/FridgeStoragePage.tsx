@@ -92,7 +92,7 @@ export default function FridgeStoragePage() {
     setError(null);
 
     const { data, error: err } = await supabase
-      .from("inventory_batches" as any)
+      .from("inventory_batches")
       .select(`
         id, product_id, batch_number, grn_id,
         expiry_date, qty_available, storage_type, putaway_location_ref,

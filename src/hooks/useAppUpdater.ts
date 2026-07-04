@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { listen } from "@tauri-apps/api/event";
 import { invoke } from "@tauri-apps/api/core";
-import { isTauri } from "@/platform/runtime";
+import { isTauriRuntime as isTauri } from "@/platform/runtime";
 
 export type UpdateChannel = "stable" | "beta" | "internal";
 

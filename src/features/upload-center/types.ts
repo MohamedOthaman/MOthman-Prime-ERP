@@ -36,4 +36,6 @@ export interface UploadItem {
   warnings: string[];
   error?: string;
   appliedCount?: number;
+  /** Human-readable progress message shown while extracting. */
+  progress?: string;
 }

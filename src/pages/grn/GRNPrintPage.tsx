@@ -64,12 +64,12 @@ export default function GRNPrintPage() {
       if (!id) return;
       setLoading(true);
       const [headerResult, linesResult] = await Promise.all([
-        supabase.from("receiving_headers" as any).select("*").eq("id", id).single(),
-        supabase.from("receiving_lines" as any).select("*").eq("header_id", id).order("line_no"),
+        supabase.from("receiving_headers").select("*").eq("id", id).single(),
+        supabase.from("receiving_lines").select("*").eq("header_id", id).order("line_no"),
       ]);
 
-      if (!headerResult.error && headerResult.data) setHeader(headerResult.data as HeaderRow);
-      if (!linesResult.error && linesResult.data) setLines(linesResult.data as LineRow[]);
+      if (!headerResult.error && headerResult.data) setHeader(headerResult.data as unknown as HeaderRow);
+      if (!linesResult.error && linesResult.data) setLines(linesResult.data as unknown as LineRow[]);
       setLoading(false);
     }
 

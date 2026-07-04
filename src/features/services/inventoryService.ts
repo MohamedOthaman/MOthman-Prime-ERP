@@ -88,7 +88,7 @@ function toNumber(value: unknown) {
 }
 
 async function fetchAllRows(
-  fetchPage: (from: number, to: number) => Promise<{ data: any[] | null; error: any }>
+  fetchPage: (from: number, to: number) => PromiseLike<{ data: any[] | null; error: any }>
 ) {
   const rows: any[] = [];
   let from = 0;
@@ -191,7 +191,7 @@ function normalizeProductMasterRow(row: any): InventoryProductCatalogRow {
 async function getInventoryBatchStockRows(): Promise<InventoryBatchStockRow[]> {
   const batchResult = await fetchAllRows((from, to) =>
     supabase
-      .from("inventory_batch_stock_details" as any)
+      .from("inventory_batch_stock_details")
       .select(
         "product_id, batch_no, expiry_date, received_quantity, issued_quantity, remaining_quantity, first_received_date, last_received_date, receiving_invoice_no, grn_no, receiving_reference"
       )
@@ -211,7 +211,7 @@ async function getInventoryBatchStockRows(): Promise<InventoryBatchStockRow[]> {
 
   const fallbackResult = await fetchAllRows((from, to) =>
     supabase
-        .from("inventory_stock_by_batch" as any)
+        .from("inventory_stock_by_batch")
         .select("product_id, batch_no, expiry_date, available_quantity")
       .gt("available_quantity", 0)
       .order("expiry_date", { ascending: true, nullsFirst: false })
@@ -237,7 +237,7 @@ async function getInventoryBatchStockRows(): Promise<InventoryBatchStockRow[]> {
 
   const legacyResult = await fetchAllRows((from, to) =>
     supabase
-      .from("inventory_batches" as any)
+      .from("inventory_batches")
       .select("*")
       .order("expiry_date", { ascending: true, nullsFirst: false })
       .range(from, to)
@@ -269,7 +269,7 @@ async function getInventoryBatchStockRows(): Promise<InventoryBatchStockRow[]> {
 
   const batchesTableResult = await fetchAllRows((from, to) =>
     supabase
-      .from("batches" as any)
+      .from("batches")
       .select("product_id, batch_no, qty, unit, production_date, expiry_date, received_date")
       .gt("qty", 0)
       .order("expiry_date", { ascending: true, nullsFirst: false })
@@ -302,7 +302,7 @@ async function getInventoryBatchStockRows(): Promise<InventoryBatchStockRow[]> {
 async function getProductBarcodeMap() {
   const result = await fetchAllRows((from, to) =>
     supabase
-      .from("product_barcodes" as any)
+      .from("product_barcodes")
       .select("product_id, barcode, is_primary")
       .range(from, to)
   );
@@ -326,7 +326,7 @@ async function getInventoryProductMasters(includeInactive = false): Promise<Inve
   const richResult = await fetchAllRows((from, to) =>
     (() => {
       let query = supabase
-        .from("products_overview" as any)
+        .from("products_overview")
         .select(
           "id, code, item_code, internal_code, name, name_ar, name_en, brand, category, section, uom, pack_size, packaging, storage_type, carton_holds, primary_barcode, all_barcodes, cost_price, selling_price, discount, price_source, is_active, created_at, updated_at"
         )
@@ -348,7 +348,7 @@ async function getInventoryProductMasters(includeInactive = false): Promise<Inve
   const fallbackResult = await fetchAllRows((from, to) =>
     (() => {
       let query = supabase
-        .from("products_overview" as any)
+        .from("products_overview")
         .select(
           "id, code, item_code, internal_code, name, name_ar, name_en, brand, category, uom, pack_size, packaging, storage_type, carton_holds, primary_barcode, cost_price, selling_price, discount, price_source, is_active, created_at, updated_at"
         )
@@ -387,7 +387,7 @@ async function getInventoryProductStockSummariesByProduct(
 ) {
   const summaryResult = await fetchAllRows((from, to) =>
     supabase
-      .from("inventory_product_stock_summary" as any)
+      .from("inventory_product_stock_summary")
       .select(
         "product_id, code, item_code, name, name_ar, name_en, brand, category, section, uom, packaging, storage_type, carton_holds, primary_barcode, all_barcodes, available_quantity, batch_count, nearest_expiry"
       )
@@ -411,7 +411,7 @@ async function getInventoryProductStockSummariesByProduct(
 
   const productViewResult = await fetchAllRows((from, to) =>
     supabase
-      .from("inventory_stock_by_product" as any)
+      .from("inventory_stock_by_product")
       .select("product_id, available_quantity")
       .range(from, to)
   );
@@ -440,7 +440,7 @@ async function getInventoryProductStockSummariesByProduct(
 
   const legacySummary = await fetchAllRows((from, to) =>
     supabase
-      .from("v_product_stock_balance" as any)
+      .from("v_product_stock_balance")
       .select("product_id, item_code, name, qty_available")
       .range(from, to)
   );
@@ -525,7 +525,7 @@ export async function getInventoryStockPageSnapshot(): Promise<InventoryStockPag
 
 export async function getAvailableStock(productId: string): Promise<number> {
   const { data, error } = await supabase
-    .from("inventory_stock_by_product" as any)
+    .from("inventory_stock_by_product")
     .select("available_quantity")
     .eq("product_id", productId)
     .maybeSingle();
@@ -541,7 +541,7 @@ export async function getAvailableStock(productId: string): Promise<number> {
   }
 
   const legacySummary = await supabase
-    .from("v_product_stock_balance" as any)
+    .from("v_product_stock_balance")
     .select("qty_available")
     .eq("product_id", productId)
     .maybeSingle();

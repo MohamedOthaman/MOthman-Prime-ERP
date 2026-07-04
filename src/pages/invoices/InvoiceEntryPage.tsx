@@ -275,7 +275,7 @@ export default function InvoiceEntryPage() {
       try {
         const { data, error } = await supabase
            
-          .from("customer_sku_mappings" as any)
+          .from("customer_sku_mappings")
           .select("external_name, product_id")
           .eq("customer_id", customerId);
         if (!error && data) {
@@ -530,7 +530,7 @@ export default function InvoiceEntryPage() {
         if (injectedCustomerId) {
           try {
             const { data } = await supabase
-              .from("customer_sku_mappings" as any)
+              .from("customer_sku_mappings")
               .select("external_name, product_id")
               .eq("customer_id", injectedCustomerId);
             if (data) {
@@ -585,12 +585,12 @@ export default function InvoiceEntryPage() {
           if (matched && extItemName) {
             try {
               if (injectedCustomerId) {
-                await supabase.from("customer_sku_mappings" as any).upsert(
+                await supabase.from("customer_sku_mappings").upsert(
                   { customer_id: injectedCustomerId, external_name: extItemName, product_id: matched.id },
                   { onConflict: "customer_id,external_name" }
                 );
               }
-              await supabase.from("auto_match_feedback" as any).upsert(
+              await supabase.from("auto_match_feedback").upsert(
                 {
                   external_name: extItemName,
                   matched_product_id: matched.id,
@@ -1120,7 +1120,7 @@ export default function InvoiceEntryPage() {
         if (mappedLines.length > 0 && customerId) {
           const { data: existing } = await supabase
              
-            .from("customer_sku_mappings" as any)
+            .from("customer_sku_mappings")
             .select("external_name")
             .eq("customer_id", customerId);
 
@@ -1137,13 +1137,13 @@ export default function InvoiceEntryPage() {
 
           if (mappingsToInsert.length > 0) {
              
-            await supabase.from("customer_sku_mappings" as any).insert(mappingsToInsert);
+            await supabase.from("customer_sku_mappings").insert(mappingsToInsert);
           }
 
           for (const line of mappedLines) {
             const { data: existingFb } = await supabase
                
-              .from("auto_match_feedback" as any)
+              .from("auto_match_feedback")
               .select("id, usage_count")
               .eq("external_name", line.originalName)
               .eq("matched_product_id", line.product_id)
@@ -1152,7 +1152,7 @@ export default function InvoiceEntryPage() {
             if (existingFb) {
               await supabase
                  
-                .from("auto_match_feedback" as any)
+                .from("auto_match_feedback")
                 .update({
                   usage_count: (existingFb.usage_count || 0) + 1,
                   last_used: new Date().toISOString(),
@@ -1160,7 +1160,7 @@ export default function InvoiceEntryPage() {
                 .eq("id", existingFb.id);
             } else {
                
-              await supabase.from("auto_match_feedback" as any).insert({
+              await supabase.from("auto_match_feedback").insert({
                 external_name: line.originalName,
                 matched_product_id: line.product_id,
                 usage_count: 1,
@@ -1513,10 +1513,10 @@ export default function InvoiceEntryPage() {
         let ocrDocId: string | null = null;
         try {
           const { data: ocrDoc, error: ocrErr } = await supabase
-            .from("ocr_documents" as any)
+            .from("ocr_documents")
             .insert({
               filename: file.name,
-              storage_path: storagePath,
+              storage_path: storagePath ?? `unsaved/${file.name}`,
               document_type: "invoice",
               status: "extracted",
               confidence: null,
@@ -1526,7 +1526,7 @@ export default function InvoiceEntryPage() {
                 text_length: result.text_length ?? 0,
                 confidence_known: false,
                 ai_structuring_enabled: false,
-              },
+              } as import("@/integrations/supabase/types").Json,
             })
             .select("id")
             .single();
@@ -1610,12 +1610,12 @@ export default function InvoiceEntryPage() {
           if (matchedProduct && extItemName) {
             try {
               if (customerId) {
-                await supabase.from("customer_sku_mappings" as any).upsert(
+                await supabase.from("customer_sku_mappings").upsert(
                   { customer_id: customerId, external_name: extItemName, product_id: matchedProduct.id },
                   { onConflict: "customer_id,external_name" },
                 );
               }
-              await supabase.from("auto_match_feedback" as any).upsert(
+              await supabase.from("auto_match_feedback").upsert(
                 {
                   external_name: extItemName,
                   matched_product_id: matchedProduct.id,
@@ -1687,7 +1687,7 @@ export default function InvoiceEntryPage() {
 
         if (ocrDocId) {
           try {
-            await supabase.from("ocr_documents" as any).update({ status: "needs_review" }).eq("id", ocrDocId);
+            await supabase.from("ocr_documents").update({ status: "needs_review" }).eq("id", ocrDocId);
           } catch (e) {
             console.warn("[INVOICE] ocr_documents status update failed:", e);
           }
@@ -1766,20 +1766,20 @@ export default function InvoiceEntryPage() {
       try {
         const { data: ocrDoc, error: ocrErr } = await supabase
 
-          .from("ocr_documents" as any)
+          .from("ocr_documents")
           .insert({
             filename: file.name,
-            storage_path: storagePath,
+            storage_path: storagePath ?? `unsaved/${file.name}`,
             document_type: "invoice",
             status: "extracted",
             confidence: extractionConfidence,
-            raw_data: extData,
+            raw_data: extData as import("@/integrations/supabase/types").Json,
             metadata: {
               source: result.source,
               text_length: result.text_length ?? 0,
               confidence_known: extractionConfidence !== null,
               validation_warnings: validationWarnings.length,
-            },
+            } as import("@/integrations/supabase/types").Json,
           })
           .select("id")
           .single();
@@ -1896,13 +1896,13 @@ export default function InvoiceEntryPage() {
           try {
             if (customerId) {
                
-              await supabase.from("customer_sku_mappings" as any).upsert(
+              await supabase.from("customer_sku_mappings").upsert(
                 { customer_id: customerId, external_name: extItemName, product_id: matchedProduct.id },
                 { onConflict: "customer_id,external_name" }
               );
             }
              
-            await supabase.from("auto_match_feedback" as any).upsert(
+            await supabase.from("auto_match_feedback").upsert(
               {
                 external_name: extItemName,
                 matched_product_id: matchedProduct.id,
@@ -1990,7 +1990,7 @@ export default function InvoiceEntryPage() {
         try {
           await supabase
 
-            .from("ocr_documents" as any)
+            .from("ocr_documents")
             .update({ status: needsReview ? "needs_review" : "extracted" })
             .eq("id", ocrDocId);
         } catch (e) {
@@ -2018,10 +2018,10 @@ export default function InvoiceEntryPage() {
       try {
         await supabase
 
-          .from("ocr_documents" as any)
+          .from("ocr_documents")
           .insert({
             filename: file.name,
-            storage_path: storagePath,
+            storage_path: storagePath ?? `unsaved/${file.name}`,
             document_type: "invoice",
             status: "failed",
             metadata: { error: msg, stage: "extraction" },
