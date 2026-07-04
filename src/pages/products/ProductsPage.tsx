@@ -1,16 +1,16 @@
-import { useDeferredValue, useEffect, useMemo, useState } from "react";
+import { useDeferredValue, useMemo, useState } from "react";
 import ProductDialog from "./ProductDialog";
-import { Package, Plus, Search, Edit3, Layers } from "lucide-react";
+import { Package, Plus, Search, Edit3, Layers, CloudOff, RefreshCw } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { StorageBadge } from "@/components/StorageBadge";
 import { FilterDropdownBar, type FilterDropdownGroup } from "@/components/FilterDropdownBar";
 import { ReportsMenu } from "@/components/ReportsMenu";
+import { VirtualList } from "@/components/VirtualList";
 import { useLang } from "@/contexts/LanguageContext";
 import { getProductDisplayName } from "@/lib/productDisplay";
-import { getProductGroupLabel, type ProductGroupBy } from "@/lib/productOrganization";
 import { inferStorageType } from "@/lib/productStorage";
-import { exportExcel, exportPDF } from "@/lib/exportUtils";
-import { getInventoryProductCatalog, type InventoryProductCatalogRow } from "@/features/services/inventoryService";
+import { useLocalFirstProducts } from "@/features/products/useLocalFirstProducts";
+import type { InventoryProductCatalogRow } from "@/features/services/inventoryService";
 
 export type ProductRow = InventoryProductCatalogRow;
 
@@ -33,30 +33,12 @@ function sortValues(values: (string | null | undefined)[]) {
 export default function ProductsPage() {
   const { lang, t } = useLang();
   const navigate = useNavigate();
-  const [rows, setRows] = useState<ProductRow[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { rows, source, loading, refreshing, error, refresh } = useLocalFirstProducts();
   const [search, setSearch] = useState("");
   const [selectedFilters, setSelectedFilters] = useState<ProductFilterState>(EMPTY_FILTERS);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<ProductRow | null>(null);
-  const groupBy: ProductGroupBy = "brand";
   const deferredSearch = useDeferredValue(search);
-
-  async function loadProducts() {
-    try {
-      setLoading(true);
-      const data = await getInventoryProductCatalog();
-      setRows(data);
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  useEffect(() => {
-    loadProducts();
-  }, []);
 
   const filterGroups = useMemo<FilterDropdownGroup[]>(() => {
     return [
@@ -70,7 +52,7 @@ export default function ProductsPage() {
   const filteredRows = useMemo(() => {
     const q = deferredSearch.trim().toLowerCase();
 
-    return rows.filter((row) => {
+    const matched = rows.filter((row) => {
       const displayName = getProductDisplayName(row, lang).toLowerCase();
       const rowBrand = row.brand || "";
       const rowCategory = row.category || "";
@@ -101,38 +83,68 @@ export default function ProductsPage() {
 
       return matchesSearch && matchesBrand && matchesCategory && matchesStorage && matchesSection;
     });
+
+    // Brand then name keeps the old grouped feel in a flat, virtualizable list.
+    return matched.sort((left, right) =>
+      `${left.brand || ""} ${getProductDisplayName(left, lang)}`.localeCompare(
+        `${right.brand || ""} ${getProductDisplayName(right, lang)}`
+      )
+    );
   }, [deferredSearch, lang, rows, selectedFilters]);
 
-  const groupedRows = useMemo(() => {
-    return Array.from(
-      filteredRows.reduce((map, row) => {
-        const key = getProductGroupLabel(row, groupBy);
-        if (!map.has(key)) map.set(key, []);
-        map.get(key)!.push(row);
-        return map;
-      }, new Map<string, ProductRow[]>())
-    )
-      .map(([name, products]) => ({ name, products }))
-      .sort((left, right) => left.name.localeCompare(right.name));
-  }, [filteredRows, groupBy]);
+  const buildExportRows = () =>
+    filteredRows.map((row) => ({
+      code: row.item_code || "-",
+      name: getProductDisplayName(row, lang),
+      brand: row.brand || "",
+      category: row.category || "",
+      section: row.section || "",
+      storage: inferStorageType(row),
+      packaging: row.packaging || row.uom || "",
+      barcode: row.primary_barcode || "",
+      price: row.selling_price != null ? row.selling_price.toFixed(3) : "",
+      discount: row.discount != null ? row.discount.toFixed(3) : "",
+      status: row.is_active ? t("active", "Active") : t("inactive", "Inactive"),
+    }));
 
-  const exportRows = useMemo(
-    () =>
-      filteredRows.map((row) => ({
-        code: row.item_code || "-",
-        name: getProductDisplayName(row, lang),
-        brand: row.brand || "",
-        category: row.category || "",
-        section: row.section || "",
-        storage: inferStorageType(row),
-        packaging: row.packaging || row.uom || "",
-        barcode: row.primary_barcode || "",
-        price: row.selling_price != null ? row.selling_price.toFixed(3) : "",
-        discount: row.discount != null ? row.discount.toFixed(3) : "",
-        status: row.is_active ? t("active", "Active") : t("inactive", "Inactive"),
-      })),
-    [filteredRows, lang, t]
-  );
+  const exportColumns = () => [
+    { header: t("colCode", "Code"), key: "code", width: 14 },
+    { header: t("colProductName", "Product Name"), key: "name", width: 30 },
+    { header: t("brands", "Brand"), key: "brand", width: 18 },
+    { header: t("category", "Category"), key: "category", width: 18 },
+    { header: t("section", "Section"), key: "section", width: 18 },
+    { header: t("storage", "Storage"), key: "storage", width: 12 },
+    { header: t("colPackaging", "Packaging"), key: "packaging", width: 14 },
+    { header: t("colBarcode", "Barcode"), key: "barcode", width: 18 },
+    { header: t("colPrice", "Price"), key: "price", width: 12 },
+    { header: t("colDiscount", "Discount %"), key: "discount", width: 12 },
+    { header: t("colStatus", "Status"), key: "status", width: 10 },
+  ];
+
+  // exceljs / jspdf are heavy — load them only when the user actually exports.
+  const handleExportExcel = async () => {
+    const { exportExcel } = await import("@/lib/exportUtils");
+    void exportExcel({
+      title: t("productsReport", "Products Report"),
+      subtitle: `${filteredRows.length} ${t("filteredProducts", "filtered products")}`,
+      filename: "products_filtered",
+      sheetName: t("pageTitleProducts", "Products"),
+      columns: exportColumns(),
+      rows: buildExportRows(),
+    });
+  };
+
+  const handleExportPdf = async () => {
+    const { exportPDF } = await import("@/lib/exportUtils");
+    exportPDF({
+      title: t("productsReport", "Products Report"),
+      subtitle: `${filteredRows.length} ${t("filteredProducts", "filtered products")}`,
+      filename: "products_filtered",
+      sheetName: t("pageTitleProducts", "Products"),
+      columns: exportColumns().map(({ header, key }) => ({ header, key })),
+      rows: buildExportRows(),
+    });
+  };
 
   const handleToggleFilter = (
     groupKey: string,
@@ -159,58 +171,23 @@ export default function ProductsPage() {
     setSelectedFilters(EMPTY_FILTERS);
   };
 
-  const handleExportExcel = () => {
-    void exportExcel({
-      title: t("productsReport", "Products Report"),
-      subtitle: `${filteredRows.length} ${t("filteredProducts", "filtered products")}`,
-      filename: "products_filtered",
-      sheetName: t("pageTitleProducts", "Products"),
-      columns: [
-        { header: t("colCode", "Code"), key: "code", width: 14 },
-        { header: t("colProductName", "Product Name"), key: "name", width: 30 },
-        { header: t("brands", "Brand"), key: "brand", width: 18 },
-        { header: t("category", "Category"), key: "category", width: 18 },
-        { header: t("section", "Section"), key: "section", width: 18 },
-        { header: t("storage", "Storage"), key: "storage", width: 12 },
-        { header: t("colPackaging", "Packaging"), key: "packaging", width: 14 },
-        { header: t("colBarcode", "Barcode"), key: "barcode", width: 18 },
-        { header: t("colPrice", "Price"), key: "price", width: 12 },
-        { header: t("colDiscount", "Discount %"), key: "discount", width: 12 },
-        { header: t("colStatus", "Status"), key: "status", width: 10 },
-      ],
-      rows: exportRows,
-    });
-  };
-
-  const handleExportPdf = () => {
-    exportPDF({
-      title: t("productsReport", "Products Report"),
-      subtitle: `${filteredRows.length} ${t("filteredProducts", "filtered products")}`,
-      filename: "products_filtered",
-      sheetName: t("pageTitleProducts", "Products"),
-      columns: [
-        { header: t("colCode", "Code"), key: "code" },
-        { header: t("colProductName", "Product Name"), key: "name" },
-        { header: t("brands", "Brand"), key: "brand" },
-        { header: t("category", "Category"), key: "category" },
-        { header: t("section", "Section"), key: "section" },
-        { header: t("storage", "Storage"), key: "storage" },
-        { header: t("colPackaging", "Packaging"), key: "packaging" },
-        { header: t("colBarcode", "Barcode"), key: "barcode" },
-        { header: t("colPrice", "Price"), key: "price" },
-        { header: t("colDiscount", "Discount %"), key: "discount" },
-        { header: t("colStatus", "Status"), key: "status" },
-      ],
-      rows: exportRows,
-    });
-  };
-
   return (
     <div className="min-h-screen bg-background pb-20">
       <header className="sticky top-11 z-40 border-b border-border bg-background/95 px-4 py-3 backdrop-blur-sm">
         <div className="mx-auto flex max-w-5xl items-center gap-2">
           <Package className="h-5 w-5 text-primary" />
           <h1 className="text-lg font-bold text-foreground">{t("pageTitleProducts", "Products")}</h1>
+          {error && source === "local" && (
+            <span
+              className="flex items-center gap-1 rounded-md bg-amber-500/10 px-2 py-0.5 text-[10px] font-semibold text-amber-500"
+              title={t("offlineShowingLocal", "Cloud unreachable — showing local data")}
+            >
+              <CloudOff className="h-3 w-3" /> {t("offlineData", "Offline data")}
+            </span>
+          )}
+          {refreshing && (
+            <RefreshCw className="h-3.5 w-3.5 animate-spin text-muted-foreground" />
+          )}
           <span className="ml-auto flex items-center gap-2">
             <button
               onClick={() => {
@@ -247,36 +224,55 @@ export default function ProductsPage() {
             />
           </div>
           <div className="ml-auto shrink-0">
-            <ReportsMenu onExportExcel={handleExportExcel} onExportPdf={handleExportPdf} />
+            <ReportsMenu onExportExcel={() => void handleExportExcel()} onExportPdf={() => void handleExportPdf()} />
           </div>
         </div>
 
-        <div className="text-left text-xs text-muted-foreground">{filteredRows.length} {t("pageTitleProducts", "Products")}</div>
+        <div className="text-left text-xs text-muted-foreground">
+          {filteredRows.length} {t("pageTitleProducts", "Products")}
+        </div>
 
         {loading ? (
           <div className="py-10 text-center text-sm text-muted-foreground">{t("loading", "Loading...")}</div>
         ) : filteredRows.length === 0 ? (
-          <div className="py-10 text-center text-sm text-muted-foreground">{t("noProductsFound", "No products found")}</div>
+          <div className="py-10 text-center text-sm text-muted-foreground">
+            {rows.length === 0 && error
+              ? t("noLocalProductsOffline", "Cloud unreachable and no local product data yet")
+              : t("noProductsFound", "No products found")}
+          </div>
         ) : (
-          groupedRows.map((group) => (
-            <section key={group.name} className="overflow-hidden rounded-lg border border-border bg-card">
-              <div className="border-b border-border bg-muted/40 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                {group.name}
-              </div>
-              {group.products.map((row) => (
-                <button
-                  key={row.id}
+          <div className="overflow-hidden rounded-lg border border-border bg-card">
+            <VirtualList
+              items={filteredRows}
+              estimateSize={62}
+              maxHeight="calc(100vh - 250px)"
+              getItemKey={(_, row) => row.id}
+              renderItem={(row) => (
+                <div
+                  role="button"
+                  tabIndex={0}
                   onClick={() => {
                     setEditingProduct(row);
                     setDialogOpen(true);
                   }}
-                  className="flex w-full items-center gap-2 border-b border-border/50 px-3 py-3 text-left transition-colors hover:bg-row-hover last:border-b-0"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      setEditingProduct(row);
+                      setDialogOpen(true);
+                    }
+                  }}
+                  className="flex w-full cursor-pointer items-center gap-2 border-b border-border/50 px-3 py-3 text-left transition-colors hover:bg-row-hover"
                 >
                   <span className="w-16 shrink-0 font-mono text-xs text-primary">{row.item_code || "-"}</span>
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm text-foreground">{getProductDisplayName(row, lang)}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {[row.category || t("uncategorized", "Uncategorized"), row.section || row.brand || t("noSection", "No section"), row.uom || t("noUom", "No UOM")].join(" • ")}
+                    <p className="truncate text-xs text-muted-foreground">
+                      {[
+                        row.brand || t("uncategorized", "Uncategorized"),
+                        row.category || row.section || t("noSection", "No section"),
+                        row.uom || t("noUom", "No UOM"),
+                      ].join(" • ")}
                       {row.selling_price ? ` • ${row.selling_price.toFixed(3)} KWD` : ` • ${t("noPrice", "No price")}`}
                     </p>
                   </div>
@@ -289,20 +285,25 @@ export default function ProductsPage() {
                   <button
                     type="button"
                     onClick={(e) => { e.stopPropagation(); navigate(`/products/${row.id}/trace`); }}
-                    className="ml-1 p-1 rounded hover:bg-muted/50 transition shrink-0"
+                    className="ml-1 shrink-0 rounded p-1 transition hover:bg-muted/50"
                     title={t("viewBatchTrace", "View batch trace")}
                   >
                     <Layers className="h-3.5 w-3.5 text-violet-400/70" />
                   </button>
-                  <Edit3 className="h-3.5 w-3.5 text-muted-foreground" />
-                </button>
-              ))}
-            </section>
-          ))
+                  <Edit3 className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                </div>
+              )}
+            />
+          </div>
         )}
       </main>
 
-      <ProductDialog open={dialogOpen} onClose={() => setDialogOpen(false)} onSaved={loadProducts} editingProduct={editingProduct} />
+      <ProductDialog
+        open={dialogOpen}
+        onClose={() => setDialogOpen(false)}
+        onSaved={() => void refresh()}
+        editingProduct={editingProduct}
+      />
     </div>
   );
 }

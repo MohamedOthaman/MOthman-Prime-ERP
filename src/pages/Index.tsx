@@ -7,7 +7,7 @@ import { ReportsMenu } from "@/components/ReportsMenu";
 import { useLang } from "@/contexts/LanguageContext";
 import { getProductDisplayName } from "@/lib/productDisplay";
 import { getProductGroupLabel, type ProductGroupBy } from "@/lib/productOrganization";
-import { exportExcel, exportPDF } from "@/lib/exportUtils";
+// exceljs / jspdf are heavy — loaded on demand inside the export handlers.
 import {
   getInventoryExpiryAlerts,
   getInventoryOperationalBatches,
@@ -225,7 +225,8 @@ const Index = () => {
     setSelectedFilters(EMPTY_FILTERS);
   };
 
-  const handleExportExcel = () => {
+  const handleExportExcel = async () => {
+    const { exportExcel } = await import("@/lib/exportUtils");
     void exportExcel({
       title: t("stockReport", "Stock Report"),
       subtitle: `${filteredProducts.length} ${t("filteredProducts", "filtered products")}`,
@@ -252,7 +253,8 @@ const Index = () => {
     });
   };
 
-  const handleExportPdf = () => {
+  const handleExportPdf = async () => {
+    const { exportPDF } = await import("@/lib/exportUtils");
     exportPDF({
       title: t("stockReport", "Stock Report"),
       subtitle: `${filteredProducts.length} ${t("filteredProducts", "filtered products")}`,

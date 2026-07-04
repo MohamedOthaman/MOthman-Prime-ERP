@@ -65,6 +65,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     }
 
+    const roleCacheKey = (userId: string) => `prime-role:${userId}`;
+
     const fetchUserRole = async (userId?: string, email?: string | null) => {
       if (!userId) { setRole("read_only"); return; }
       if (email?.toLowerCase() === "mohamed22othman@yahoo.com") { setRole("owner"); return; }
@@ -75,13 +77,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         .eq("id", userId)
         .maybeSingle();
 
-      setRole(error || !data?.role ? "read_only" : data.role);
+      if (!error && data?.role) {
+        setRole(data.role);
+        try { localStorage.setItem(roleCacheKey(userId), data.role); } catch { /* quota */ }
+      } else if (!error) {
+        setRole("read_only");
+      }
+      // On network error keep the (cached) role we already have — the cloud
+      // being unreachable must not lock a returning user out of their pages.
     };
 
     const handleSession = async (s: Session | null) => {
       setSession(s);
       setUser(s?.user ?? null);
-      await fetchUserRole(s?.user?.id, s?.user?.email ?? null);
+
+      const userId = s?.user?.id;
+      const cachedRole = userId ? localStorage.getItem(roleCacheKey(userId)) : null;
+      if (cachedRole) {
+        // Local-first: render immediately with the cached role and refresh it
+        // in the background — no network round-trip on the critical path.
+        setRole(cachedRole);
+        setLoading(false);
+        void fetchUserRole(userId, s?.user?.email ?? null);
+        return;
+      }
+
+      // First login on this device: the role is unknown, resolve it before
+      // releasing the routes so RoleGuard doesn't misfire.
+      await fetchUserRole(userId, s?.user?.email ?? null);
       setLoading(false);
     };
 
