@@ -36,7 +36,7 @@ export function foldArabic(text: string): string {
 function normalizeForMatch(text: string): string {
   return foldArabic(normalizeDigits(text))
     .toLowerCase()
-    .replace(/[\s ]+/g, " ")
+    .replace(/[\s\u00A0]+/g, " ")
     .trim();
 }
 
