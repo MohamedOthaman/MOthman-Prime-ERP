@@ -41,6 +41,7 @@ import { useOfflineSaveDraft } from "@/features/invoices/queries/useOfflineSaveD
 import { parsePdf } from "@/lib/pdfParser";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { recordMatchLearnings } from "@/features/invoices/skuLearningService";
 import { validateInvoiceRows } from "@/features/upload-center/validation";
 import { fireTrigger } from "@/lib/automation";
 import InvoiceLookupSelect, { type InvoiceLookupOption } from "./InvoiceLookupSelect";
@@ -582,25 +583,9 @@ export default function InvoiceEntryPage() {
           else if (!matched && extItemName && suggestions.length > 0) ambiguousCount++;
           else if (!matched && extItemName) unmatchedCount++;
 
-          if (matched && extItemName) {
-            try {
-              if (injectedCustomerId) {
-                await supabase.from("customer_sku_mappings").upsert(
-                  { customer_id: injectedCustomerId, external_name: extItemName, product_id: matched.id },
-                  { onConflict: "customer_id,external_name" }
-                );
-              }
-              await supabase.from("auto_match_feedback").upsert(
-                {
-                  external_name: extItemName,
-                  matched_product_id: matched.id,
-                  usage_count: 1,
-                  last_used: new Date().toISOString(),
-                },
-                { onConflict: "external_name,matched_product_id" }
-              );
-            } catch { /* non-critical */ }
-          }
+          // Learning is intentionally NOT persisted here: the user has not
+          // reviewed anything yet. Mappings are recorded at draft-save time
+          // via recordMatchLearnings (see skuLearningService).
 
           const quantity = String(extQty > 0 ? extQty : 1);
           let availableStock: number | null = null;
@@ -1114,63 +1099,15 @@ export default function InvoiceEntryPage() {
       setHeaderId(savedHeaderId);
       setStatus("draft");
 
-      // Save customer SKU mappings and match feedback
-      try {
-        const mappedLines = lines.filter((line) => line.originalName && line.product_id);
-        if (mappedLines.length > 0 && customerId) {
-          const { data: existing } = await supabase
-             
-            .from("customer_sku_mappings")
-            .select("external_name")
-            .eq("customer_id", customerId);
-
-          const existingNames = new Set(
-            ((existing || []) as Array<{ external_name: string }>).map((r) => r.external_name.toLowerCase())
-          );
-          const mappingsToInsert = mappedLines
-            .filter((line) => !existingNames.has(line.originalName!.toLowerCase()))
-            .map((line) => ({
-              customer_id: customerId,
-              external_name: line.originalName,
-              product_id: line.product_id,
-            }));
-
-          if (mappingsToInsert.length > 0) {
-             
-            await supabase.from("customer_sku_mappings").insert(mappingsToInsert);
-          }
-
-          for (const line of mappedLines) {
-            const { data: existingFb } = await supabase
-               
-              .from("auto_match_feedback")
-              .select("id, usage_count")
-              .eq("external_name", line.originalName)
-              .eq("matched_product_id", line.product_id)
-              .maybeSingle();
-
-            if (existingFb) {
-              await supabase
-                 
-                .from("auto_match_feedback")
-                .update({
-                  usage_count: (existingFb.usage_count || 0) + 1,
-                  last_used: new Date().toISOString(),
-                })
-                .eq("id", existingFb.id);
-            } else {
-               
-              await supabase.from("auto_match_feedback").insert({
-                external_name: line.originalName,
-                matched_product_id: line.product_id,
-                usage_count: 1,
-              });
-            }
-          }
-        }
-      } catch (mappingErr) {
-        console.error("Failed to save auto match mappings:", mappingErr);
-      }
+      // Persist match learnings now that the user reviewed the lines by
+      // saving. (Case-insensitive manual upserts — the live unique indexes
+      // are expression-based, so PostgREST onConflict cannot be used.)
+      void recordMatchLearnings(
+        customerId || null,
+        lines
+          .filter((line) => line.originalName && line.product_id)
+          .map((line) => ({ externalName: line.originalName!, productId: line.product_id }))
+      );
 
       if (isNew) {
         navigate(`/invoice-entry/${savedHeaderId}`, { replace: true });
@@ -1607,27 +1544,8 @@ export default function InvoiceEntryPage() {
           else if (suggestions.length > 0) ambiguousCount++;
           else if (extItemName) unmatchedCount++;
 
-          if (matchedProduct && extItemName) {
-            try {
-              if (customerId) {
-                await supabase.from("customer_sku_mappings").upsert(
-                  { customer_id: customerId, external_name: extItemName, product_id: matchedProduct.id },
-                  { onConflict: "customer_id,external_name" },
-                );
-              }
-              await supabase.from("auto_match_feedback").upsert(
-                {
-                  external_name: extItemName,
-                  matched_product_id: matchedProduct.id,
-                  usage_count: 1,
-                  last_used: new Date().toISOString(),
-                },
-                { onConflict: "external_name,matched_product_id" },
-              );
-            } catch (e) {
-              console.warn("[MATCH] Feedback save failed:", e);
-            }
-          }
+          // Learning is persisted at draft-save time (after review) via
+          // recordMatchLearnings — not here in the extraction loop.
 
           const quantity = String(extQty > 0 ? extQty : 1);
           const unitPrice = String(
@@ -1891,30 +1809,8 @@ export default function InvoiceEntryPage() {
         else if (!matchedProduct && extItemName && suggestions.length > 0) ambiguousCount++;
         else if (!matchedProduct && extItemName) unmatchedCount++;
 
-        // Persist successful match for next time
-        if (matchedProduct && extItemName) {
-          try {
-            if (customerId) {
-               
-              await supabase.from("customer_sku_mappings").upsert(
-                { customer_id: customerId, external_name: extItemName, product_id: matchedProduct.id },
-                { onConflict: "customer_id,external_name" }
-              );
-            }
-             
-            await supabase.from("auto_match_feedback").upsert(
-              {
-                external_name: extItemName,
-                matched_product_id: matchedProduct.id,
-                usage_count: 1,
-                last_used: new Date().toISOString(),
-              },
-              { onConflict: "external_name,matched_product_id" }
-            );
-          } catch (e) {
-            console.warn("[MATCH] Feedback save failed:", e);
-          }
-        }
+        // Learning is persisted at draft-save time (after review) via
+        // recordMatchLearnings — not here in the extraction loop.
 
         const quantity = String(extQty > 0 ? extQty : 1);
         const unitPrice = String(extPrice || (matchedProduct?.selling_price != null ? Number(matchedProduct.selling_price) : 0));
