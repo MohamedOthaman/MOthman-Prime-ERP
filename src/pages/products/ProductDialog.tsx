@@ -1,12 +1,18 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLang } from "@/contexts/LanguageContext";
-import { supabase } from "@/integrations/supabase/client";
 import { Barcode, Check, ChevronRight, Keyboard, Package2, Plus, RotateCcw, X } from "lucide-react";
+import { toast } from "sonner";
 import { Drawer, DrawerContent, DrawerTrigger } from "@/components/ui/drawer";
 import { Button } from "@/components/ui/button";
 import { DateWheel, NumberWheel } from "@/components/WheelPicker";
 import { cn } from "@/lib/utils";
 import { inferStorageType, type ProductStorageType } from "@/lib/productStorage";
+import { useDatabase } from "@/database/DatabaseProvider";
+import {
+  loadProductBatches,
+  sanitizeBarcodes,
+  saveProductMasterLocalFirst,
+} from "@/features/products/productMasterService";
 
 interface ProductDialogProps {
   open: boolean;
@@ -219,273 +225,9 @@ function EntryModeToggle({ manual, onToggle }: EntryModeToggleProps) {
   );
 }
 
-async function applyProductMetadataPatch(productId: string, patch: Record<string, unknown>) {
-  const primary = await supabase.from("products").update(patch).eq("id", productId);
-  if (!primary.error) return;
-
-  const missingSectionColumn =
-    typeof patch.section !== "undefined" &&
-    (primary.error.message.includes("section") || primary.error.code === "PGRST204");
-
-  if (!missingSectionColumn) throw primary.error;
-
-  const { section: _ignored, ...fallbackPatch } = patch;
-  const fallback = await supabase.from("products").update(fallbackPatch).eq("id", productId);
-  if (fallback.error) throw fallback.error;
-}
-
-function isMissingRpcSignature(error: { code?: string; message?: string } | null, fnName: string) {
-  if (!error) return false;
-  return error.code === "PGRST202" && error.message?.includes(fnName);
-}
-
-function sanitizeBarcodes(values: string[]) {
-  return Array.from(new Set(values.map((value) => value.trim()).filter(Boolean)));
-}
-
-function isMissingRelation(error: { code?: string; message?: string } | null, relation: string) {
-  if (!error) return false;
-  return error.code === "PGRST205" || error.message?.includes(relation) || false;
-}
-
-async function syncProductBarcodes(productId: string, barcodes: string[], source: string) {
-  const normalizedBarcodes = sanitizeBarcodes(barcodes);
-  const { error: deleteError } = await supabase.from("product_barcodes").delete().eq("product_id", productId);
-  if (deleteError && deleteError.code !== "PGRST205") throw deleteError;
-
-  if (normalizedBarcodes.length === 0) return;
-
-  const { error: insertError } = await supabase.from("product_barcodes").insert(
-    normalizedBarcodes.map((barcode, index) => ({
-      product_id: productId,
-      barcode,
-      is_primary: index === 0,
-      source,
-    }))
-  );
-
-  if (insertError) throw insertError;
-}
-
-async function syncProductPrice(
-  productId: string,
-  values: { costPrice: number; sellingPrice: number; discount: number; priceSource: string }
-) {
-  const existingPrice = await supabase
-    .from("product_prices")
-    .select("id")
-    .eq("product_id", productId)
-    .maybeSingle();
-
-  if (existingPrice.error && existingPrice.error.code !== "PGRST116") {
-    throw existingPrice.error;
-  }
-
-  if (existingPrice.data?.id) {
-    const { error } = await supabase
-      .from("product_prices")
-      .update({
-        cost_price: values.costPrice,
-        selling_price: values.sellingPrice,
-        discount: values.discount,
-        price_source: values.priceSource,
-      })
-      .eq("product_id", productId);
-
-    if (error) throw error;
-    return;
-  }
-
-  const { error } = await supabase.from("product_prices").insert({
-    product_id: productId,
-    cost_price: values.costPrice,
-    selling_price: values.sellingPrice,
-    discount: values.discount,
-    price_source: values.priceSource,
-  });
-
-  if (error) throw error;
-}
-
-async function createProductDirect(payload: {
-  itemCode: string;
-  nameAr: string | null;
-  nameEn: string | null;
-  category: string | null;
-  uom: string;
-  storageType: string | null;
-  barcodes: string[];
-  costPrice: number;
-  sellingPrice: number;
-  discount: number;
-}) {
-  const { data, error } = await supabase
-    .from("products")
-    .insert({
-      item_code: payload.itemCode,
-      code: payload.itemCode,
-      name_ar: payload.nameAr,
-      name_en: payload.nameEn,
-      name: payload.nameEn || payload.nameAr || payload.itemCode,
-      category: payload.category,
-      uom: payload.uom,
-      storage_type: payload.storageType,
-      is_active: true,
-    })
-    .select("id")
-    .single();
-
-  if (error) throw error;
-
-  await syncProductPrice(data.id, {
-    costPrice: payload.costPrice,
-    sellingPrice: payload.sellingPrice,
-    discount: payload.discount,
-    priceSource: "manual_direct",
-  });
-  await syncProductBarcodes(data.id, payload.barcodes, "manual_direct");
-  return data.id as string;
-}
-
-async function updateProductDirect(
-  productId: string,
-  payload: {
-    itemCode: string;
-    nameAr: string | null;
-    nameEn: string | null;
-    category: string | null;
-    uom: string;
-    storageType: string | null;
-    barcodes: string[];
-    costPrice: number;
-    sellingPrice: number;
-    discount: number;
-    isActive: boolean;
-  }
-) {
-  const { error } = await supabase
-    .from("products")
-    .update({
-      item_code: payload.itemCode,
-      code: payload.itemCode,
-      name_ar: payload.nameAr,
-      name_en: payload.nameEn,
-      name: payload.nameEn || payload.nameAr || payload.itemCode,
-      category: payload.category,
-      uom: payload.uom,
-      storage_type: payload.storageType,
-      is_active: payload.isActive,
-    })
-    .eq("id", productId);
-
-  if (error) throw error;
-
-  await syncProductPrice(productId, {
-    costPrice: payload.costPrice,
-    sellingPrice: payload.sellingPrice,
-    discount: payload.discount,
-    priceSource: "manual_direct",
-  });
-  await syncProductBarcodes(productId, payload.barcodes, "manual_direct");
-}
-
-async function createProductWithCompatibility(payload: {
-  itemCode: string;
-  nameAr: string | null;
-  nameEn: string | null;
-  category: string | null;
-  uom: string;
-  storageType: string | null;
-  barcodes: string[];
-  costPrice: number;
-  sellingPrice: number;
-  discount: number;
-}) {
-  // Live create_product_full takes a single p_barcode; remaining fields
-  // (category/uom/storage/extra barcodes) are applied via direct update +
-  // barcode sync afterwards.
-  const rpcResult = await supabase.rpc("create_product_full", {
-    p_item_code: payload.itemCode,
-    p_name_ar: payload.nameAr ?? "",
-    p_name_en: payload.nameEn ?? "",
-    p_barcode: payload.barcodes[0] ?? "",
-    p_barcode_source: "manual",
-    p_cost_price: payload.costPrice,
-    p_selling_price: payload.sellingPrice,
-    p_discount: payload.discount,
-    p_price_source: "manual",
-  });
-
-  if (!rpcResult.error) {
-    const newId = rpcResult.data as string;
-    await updateProductDirect(newId, { ...payload, isActive: true }).catch(() => { /* core row already created */ });
-    return newId;
-  }
-  if (!isMissingRpcSignature(rpcResult.error, "create_product_full")) throw rpcResult.error;
-
-  return createProductDirect(payload);
-}
-
-async function updateProductWithCompatibility(
-  productId: string,
-  payload: {
-    itemCode: string;
-    nameAr: string | null;
-    nameEn: string | null;
-    category: string | null;
-    uom: string;
-    storageType: string | null;
-    barcodes: string[];
-    costPrice: number;
-    sellingPrice: number;
-    discount: number;
-    isActive: boolean;
-  }
-) {
-  // Live update_product_full takes a single p_barcode and no category/uom/
-  // storage/is_active args — those are applied via the direct update below,
-  // which also syncs the full barcode list.
-  const rpcResult = await supabase.rpc("update_product_full", {
-    p_product_id: productId,
-    p_item_code: payload.itemCode,
-    p_name_ar: payload.nameAr ?? "",
-    p_name_en: payload.nameEn ?? "",
-    p_barcode: payload.barcodes[0] ?? "",
-    p_cost_price: payload.costPrice,
-    p_selling_price: payload.sellingPrice,
-    p_discount: payload.discount,
-  });
-
-  if (rpcResult.error && !isMissingRpcSignature(rpcResult.error, "update_product_full")) {
-    throw rpcResult.error;
-  }
-
-  await updateProductDirect(productId, payload);
-}
-
-async function loadProductBatches(productId: string, fallbackUnit: string) {
-  const result = await supabase
-    .from("inventory_batches")
-    .select("id, product_id, batch_no, production_date, qty_available, qty_received, expiry_date, received_date")
-    .eq("product_id", productId)
-    .order("expiry_date", { ascending: true });
-
-  if (result.error) throw result.error;
-
-  return ((result.data || []) as any[]).map((row) => ({
-    clientId: row.id || createBatchClientId(),
-    id: row.id,
-    batchNo: row.batch_no || "",
-    unit: fallbackUnit,
-    productionDate: row.production_date || "",
-    expiryDate: row.expiry_date || "",
-    qty: Number(row.qty_available ?? row.qty_received ?? 0),
-    receivedDate: row.received_date || todayIso(),
-  }));
-}
-
 export default function ProductDialog({ open, onClose, onSaved, editingProduct }: ProductDialogProps) {
   const { t } = useLang();
+  const db = useDatabase();
   const [brand, setBrand] = useState("");
   const [category, setCategory] = useState("");
   const [section, setSection] = useState("");
@@ -653,48 +395,6 @@ export default function ProductDialog({ open, onClose, onSaved, editingProduct }
     closeBatchEditor();
   };
 
-  /**
-   * Persist batch edits WITHOUT destroying stock history.
-   * - New rows (no id) are inserted as opening stock.
-   * - Existing rows get metadata updates only (batch_no / dates) — quantities
-   *   change exclusively through GRN receiving, invoice posting, returns and
-   *   (future) adjustment movements, never by overwriting qty here.
-   * - Rows removed in the editor are intentionally NOT deleted: existing
-   *   batches carry movement history and must be corrected via movements.
-   */
-  async function persistBatches(productId: string) {
-    const rows = batches.filter((batch) => batch.batchNo.trim() && batch.expiryDate);
-
-    const newRows = rows.filter((batch) => !batch.id);
-    if (newRows.length > 0) {
-      const { error: insertError } = await supabase.from("inventory_batches").insert(
-        newRows.map((batch) => ({
-          product_id: productId,
-          batch_no: batch.batchNo.trim(),
-          production_date: batch.productionDate || null,
-          expiry_date: batch.expiryDate,
-          qty_received: Number(batch.qty || 0),
-          qty_available: Number(batch.qty || 0),
-          received_date: batch.receivedDate || todayIso(),
-        }))
-      );
-      if (insertError) throw insertError;
-    }
-
-    for (const batch of rows.filter((row) => row.id)) {
-      const { error: updateError } = await supabase
-        .from("inventory_batches")
-        .update({
-          batch_no: batch.batchNo.trim(),
-          production_date: batch.productionDate || null,
-          expiry_date: batch.expiryDate,
-          received_date: batch.receivedDate || todayIso(),
-        })
-        .eq("id", batch.id);
-      if (updateError) throw updateError;
-    }
-  }
-
   async function handleSave() {
     try {
       setSaving(true);
@@ -729,30 +429,39 @@ export default function ProductDialog({ open, onClose, onSaved, editingProduct }
         discount: Number(discount || 0),
       };
 
-      let productId = editingProduct?.id || null;
-      if (isEdit && editingProduct?.id) {
-        await updateProductWithCompatibility(editingProduct.id, {
-          ...payload,
-          isActive: editingProduct.is_active,
-        });
-      } else {
-        productId = await createProductWithCompatibility(payload);
-      }
-
-      if (!productId) throw new Error("Product save did not return an id.");
-
-      await applyProductMetadataPatch(productId, {
-        brand: brand.trim() || null,
-        category: category.trim() || null,
-        section: section.trim() || null,
-        packaging: packagingUnits.join(" / "),
-        carton_holds: cartonHolds ? Number(cartonHolds) : null,
-        pack_size: weightHolds || cartonHolds || null,
-        uom: primaryUnit,
-        storage_type: storageType || null,
+      // Local-first save: the local mirror updates immediately; the remote
+      // write happens inline when online or is queued in the outbox when not.
+      const result = await saveProductMasterLocalFirst(db, {
+        mode: isEdit && editingProduct?.id ? "update" : "create",
+        productId: editingProduct?.id ?? null,
+        isActive: isEdit ? editingProduct?.is_active !== false : true,
+        payload,
+        metadata: {
+          brand: brand.trim() || null,
+          category: category.trim() || null,
+          section: section.trim() || null,
+          packaging: packagingUnits.join(" / "),
+          carton_holds: cartonHolds ? Number(cartonHolds) : null,
+          pack_size: weightHolds || cartonHolds || null,
+          uom: primaryUnit,
+          storage_type: storageType || null,
+        },
+        batches: batches.map((batch) => ({
+          id: batch.id,
+          batchNo: batch.batchNo,
+          unit: batch.unit,
+          productionDate: batch.productionDate,
+          expiryDate: batch.expiryDate,
+          qty: Number(batch.qty || 0),
+          receivedDate: batch.receivedDate,
+        })),
       });
 
-      await persistBatches(productId);
+      if (!result.synced) {
+        toast.info(
+          t("savedLocallyPendingSync", "Saved locally — will sync to the cloud when it is reachable.")
+        );
+      }
       onSaved();
       onClose();
     } catch (err: any) {

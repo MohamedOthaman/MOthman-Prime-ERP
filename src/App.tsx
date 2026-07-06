@@ -19,6 +19,7 @@ import { PersistedSidebarProvider } from "@/components/layout/PersistedSidebarPr
 import { useDesktopLayout } from "@/components/layout/useDesktopLayout";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { PreviewModeBanner } from "@/components/PreviewModeBanner";
+import { SyncStatusIndicator } from "@/components/SyncStatusIndicator";
 import RoleGuard from "@/components/RoleGuard";
 
 import { Suspense, lazy } from "react";
@@ -104,6 +105,8 @@ function ProtectedRoutes() {
       <TopBar />
       {/* Preview mode banner — shown below TopBar when an admin is viewing as another role */}
       <PreviewModeBanner />
+      {/* Global local-first sync state (offline / pending / failed) */}
+      <SyncStatusIndicator />
 
       <div className={isDesktop ? "flex" : ""}>
       {isDesktop && <Sidebar />}

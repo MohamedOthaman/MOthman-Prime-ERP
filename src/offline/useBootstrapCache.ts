@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useDatabase } from "@/database/DatabaseProvider";
 import { useOfflineStatus } from "@/offline/OfflineProvider";
 import { bootstrapAll, getBootstrapStatus, type BootstrapResult } from "./bootstrapCache";
+import { seedFromBundleIfEmpty } from "./bundleSeed";
 import { recordBootstrap } from "@/telemetry/metrics";
 
 const REFRESH_INTERVAL_MS = 15 * 60_000; // 15 min throttle on auto-refresh
@@ -54,6 +55,21 @@ export function useBootstrapCache(options?: { enabled?: boolean }): BootstrapSta
       runningRef.current = false;
     }
   };
+
+  // First-launch seed from the bundled master data — runs regardless of
+  // connectivity so a fresh offline install still has its business brain.
+  useEffect(() => {
+    if (!enabled) return;
+    void seedFromBundleIfEmpty(db).then((result) => {
+      if (result.status === "seeded") {
+        console.info("[bundle-seed] seeded local master data", result.seeded);
+        void getBootstrapStatus(db).then((tableStatus) =>
+          setState((p) => ({ ...p, tableStatus }))
+        );
+      }
+    });
+
+  }, [enabled, db]);
 
   useEffect(() => {
     if (!enabled) return;

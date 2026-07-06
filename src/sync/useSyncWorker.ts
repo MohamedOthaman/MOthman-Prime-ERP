@@ -3,8 +3,10 @@ import { useDatabase } from "@/database/DatabaseProvider";
 import { useOfflineStatus } from "@/offline/OfflineProvider";
 import { createSyncWorker, type SyncWorker } from "./worker";
 import { ensureSalesInvoiceHandlersRegistered } from "./handlers/salesInvoice";
+import { ensureProductMasterHandlersRegistered } from "./handlers/productMaster";
 
 ensureSalesInvoiceHandlersRegistered();
+ensureProductMasterHandlersRegistered();
 
 /**
  * Boots a singleton-per-mount sync worker that drains the outbox while

@@ -139,6 +139,11 @@ export async function bootstrapTable(
     );
 
     if (rows.length > 0) {
+      // A full (non-incremental) snapshot replaces the table so bundle-seeded
+      // rows and rows deleted on the server don't linger locally.
+      if (!useIncremental) {
+        await db.clear(target.table);
+      }
       // Tag every row with an offline _syncedAt marker so we can audit later.
       const stamped = rows.map((r) => ({ ...r, _syncedAt: Date.now() }));
       await db.bulkPut(target.table, stamped);

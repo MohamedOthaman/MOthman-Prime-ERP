@@ -84,13 +84,27 @@ export function useLocalFirstProducts(): LocalFirstProductsState {
       setRows(fresh);
       setSource("network");
       setError(null);
-      // Keep the local mirror alive in the background (non-blocking).
-      void db
-        .bulkPut("products", fresh.map((r) => ({ ...r, _syncedAt: Date.now() })))
-        .catch(() => { /* mirror write failures must never break the page */ });
+      // Keep the local mirror alive in the background (non-blocking). A full
+      // catalog replaces the table so bundle-seeded rows and server-deleted
+      // rows don't linger.
+      void (async () => {
+        await db.clear("products");
+        await db.bulkPut("products", fresh.map((r) => ({ ...r, _syncedAt: Date.now() })));
+      })().catch(() => { /* mirror write failures must never break the page */ });
     } catch (err) {
       if (!aliveRef.current) return;
       setError((err as Error).message);
+      // Cloud unreachable — re-read the local mirror so edits saved while
+      // offline are still reflected on screen.
+      try {
+        const local = await db.query<any>("products", {
+          orderBy: { field: "name", direction: "asc" },
+        });
+        if (aliveRef.current && local.length > 0 && !networkLandedRef.current) {
+          setRows(local.map(normalizeLocalRow));
+          setSource("local");
+        }
+      } catch { /* local store unavailable */ }
     } finally {
       if (aliveRef.current) setRefreshing(false);
     }

@@ -9,6 +9,7 @@
     "build:dev": "vite build --mode development",
     "lint": "eslint .",
     "preview": "vite preview",
+    "bundle:master-data": "node scripts/build-master-bundle.mjs",
     "prepare:food-choice-products": "node scripts/prepare-food-choice-product-master.mjs",
     "import:food-choice-products": "node scripts/import-food-choice-product-master.mjs",
     "import:food-choice-master-data": "node scripts/import-food-choice-master-data.mjs",
