@@ -907,7 +907,9 @@ async def extract_document(
         "source": source_method,
         "text_length": len(text_content),
         "ai_structuring_enabled": False,
-        "raw_text": text_content[:4000] if text_content else "",
+        # Full text — truncating here silently dropped the tail rows of
+        # multi-page quotations before the client parser ever saw them.
+        "raw_text": text_content or "",
         "error": _AI_DISABLED_DETAIL,
     }
 

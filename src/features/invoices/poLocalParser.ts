@@ -185,7 +185,14 @@ function extractHeaderFields(lines: string[]): {
 
 // ─── Table body parsing ────────────────────────────────────────────────────────
 
-const TABLE_FOOTER_RE = /^(total|subtotal|grand\s+total|vat|tax|discount|page\s+\d|thank|مجموع|إجمالي|الإجمالي)/i;
+// Hard footers end the document's item section for good (nothing after them
+// can be an item row). Soft footers (page breaks, per-page subtotals, VAT
+// blocks) only pause parsing until the next table header — a multi-page PO
+// continues its items on the following page.
+const HARD_FOOTER_RE = /^(grand\s+total|net\s+total|total\s+(amount|payable|due)|thank|الإجمالي\s+الكلي|المجموع\s+الكلي)/i;
+const SOFT_FOOTER_RE = /^(total|subtotal|vat|tax|discount|مجموع|إجمالي|الإجمالي)/i;
+// A page marker is just noise inside a continuing table — skip it, stay armed.
+const PAGE_MARKER_RE = /^page\s+\d/i;
 
 const TABLE_HEADER_RE = /(qty|quantity|كمية|الكمية|كميه)/i;
 const TABLE_HEADER_CONTEXT_RE = /(item|product|description|code|price|الوصف|كود|سعر)/i;
@@ -213,8 +220,15 @@ function parseItemRows(lines: string[]): LocalParsedPOItem[] {
       continue;
     }
 
-    // Stop at footer
-    if (TABLE_FOOTER_RE.test(norm)) break;
+    // Footers: a hard footer ends item parsing for the whole document; a
+    // soft footer (page subtotal / "Page 2" / VAT line) only disarms the
+    // table until the next header row, so multi-page POs keep their tail.
+    if (HARD_FOOTER_RE.test(norm)) break;
+    if (PAGE_MARKER_RE.test(norm)) continue;
+    if (SOFT_FOOTER_RE.test(norm)) {
+      inTable = false;
+      continue;
+    }
     if (/^[-=|]{4,}$/.test(norm)) continue;
 
     // ── Column-split approach: split by 2+ consecutive spaces ─────────────────

@@ -162,3 +162,59 @@ PROD001    Test Product   ٢٤   CTN   ١٠.٥٠٠  ٢٥٢.٠٠٠
     }
   });
 });
+
+// ─── Multi-page POs: soft footers must not discard later items ─────────────────
+
+describe("parsePOLocalText — multi-page documents", () => {
+  it("keeps items after a page-1 subtotal when the table header repeats", () => {
+    const text = `
+PO Number: MP-001
+Date: 01/07/2026
+
+Item Code  Description        Qty  Unit  Price
+PROD001    First Page Item     10  CTN   5.000
+Subtotal                                50.000
+Page 2 of 2
+
+Item Code  Description        Qty  Unit  Price
+PROD002    Second Page Item    20  CTN   7.000
+Grand Total                            190.000
+`;
+    const result = parsePOLocalText(text);
+    const codes = result.items.map((i) => i.itemCode);
+    expect(codes).toContain("PROD001");
+    expect(codes).toContain("PROD002");
+  });
+
+  it("keeps items after a bare page marker without a repeated header", () => {
+    const text = `
+PO Number: MP-002
+Date: 01/07/2026
+
+Item Code  Description        Qty  Unit  Price
+PROD001    First Page Item     10  CTN   5.000
+Page 2 of 2
+PROD002    Second Page Item    20  CTN   7.000
+`;
+    const result = parsePOLocalText(text);
+    const codes = result.items.map((i) => i.itemCode);
+    expect(codes).toContain("PROD001");
+    expect(codes).toContain("PROD002");
+  });
+
+  it("still stops at a grand total", () => {
+    const text = `
+PO Number: MP-003
+Date: 01/07/2026
+
+Item Code  Description        Qty  Unit  Price
+PROD001    Real Item           10  CTN   5.000
+Grand Total                            50.000
+NOTAROW    Address Line 55     99  ZZZ   1.000
+`;
+    const result = parsePOLocalText(text);
+    const codes = result.items.map((i) => i.itemCode);
+    expect(codes).toContain("PROD001");
+    expect(codes).not.toContain("NOTAROW");
+  });
+});
