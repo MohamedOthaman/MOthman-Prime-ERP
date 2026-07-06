@@ -401,30 +401,14 @@ async function createProductWithCompatibility(payload: {
   sellingPrice: number;
   discount: number;
 }) {
-  const newRpcPayload = {
+  // Live create_product_full takes a single p_barcode; remaining fields
+  // (category/uom/storage/extra barcodes) are applied via direct update +
+  // barcode sync afterwards.
+  const rpcResult = await supabase.rpc("create_product_full", {
     p_item_code: payload.itemCode,
-    p_name_ar: payload.nameAr,
-    p_name_en: payload.nameEn,
-    p_category: payload.category,
-    p_uom: payload.uom,
-    p_storage_type: payload.storageType,
-    p_barcodes: payload.barcodes,
-    p_cost_price: payload.costPrice,
-    p_selling_price: payload.sellingPrice,
-    p_discount: payload.discount,
-    p_barcode_source: "manual",
-    p_price_source: "manual",
-  };
-
-  const newRpcResult = await supabase.rpc("create_product_full", newRpcPayload);
-  if (!newRpcResult.error) return newRpcResult.data as string;
-  if (!isMissingRpcSignature(newRpcResult.error, "create_product_full")) throw newRpcResult.error;
-
-  const legacyRpcResult = await supabase.rpc("create_product_full", {
-    p_item_code: payload.itemCode,
-    p_name_ar: payload.nameAr,
-    p_name_en: payload.nameEn,
-    p_barcode: payload.barcodes[0] ?? null,
+    p_name_ar: payload.nameAr ?? "",
+    p_name_en: payload.nameEn ?? "",
+    p_barcode: payload.barcodes[0] ?? "",
     p_barcode_source: "manual",
     p_cost_price: payload.costPrice,
     p_selling_price: payload.sellingPrice,
@@ -432,11 +416,12 @@ async function createProductWithCompatibility(payload: {
     p_price_source: "manual",
   });
 
-  if (!legacyRpcResult.error) {
-    await syncProductBarcodes(legacyRpcResult.data as string, payload.barcodes, "manual");
-    return legacyRpcResult.data as string;
+  if (!rpcResult.error) {
+    const newId = rpcResult.data as string;
+    await updateProductDirect(newId, { ...payload, isActive: true }).catch(() => { /* core row already created */ });
+    return newId;
   }
-  if (!isMissingRpcSignature(legacyRpcResult.error, "create_product_full")) throw legacyRpcResult.error;
+  if (!isMissingRpcSignature(rpcResult.error, "create_product_full")) throw rpcResult.error;
 
   return createProductDirect(payload);
 }
@@ -457,40 +442,23 @@ async function updateProductWithCompatibility(
     isActive: boolean;
   }
 ) {
-  const newRpcResult = await supabase.rpc("update_product_full", {
+  // Live update_product_full takes a single p_barcode and no category/uom/
+  // storage/is_active args — those are applied via the direct update below,
+  // which also syncs the full barcode list.
+  const rpcResult = await supabase.rpc("update_product_full", {
     p_product_id: productId,
     p_item_code: payload.itemCode,
-    p_name_ar: payload.nameAr,
-    p_name_en: payload.nameEn,
-    p_category: payload.category,
-    p_uom: payload.uom,
-    p_storage_type: payload.storageType,
-    p_barcodes: payload.barcodes,
-    p_cost_price: payload.costPrice,
-    p_selling_price: payload.sellingPrice,
-    p_discount: payload.discount,
-    p_is_active: payload.isActive,
-  });
-
-  if (!newRpcResult.error) return;
-  if (!isMissingRpcSignature(newRpcResult.error, "update_product_full")) throw newRpcResult.error;
-
-  const legacyRpcResult = await supabase.rpc("update_product_full", {
-    p_product_id: productId,
-    p_item_code: payload.itemCode,
-    p_name_ar: payload.nameAr,
-    p_name_en: payload.nameEn,
-    p_barcode: payload.barcodes[0] ?? null,
+    p_name_ar: payload.nameAr ?? "",
+    p_name_en: payload.nameEn ?? "",
+    p_barcode: payload.barcodes[0] ?? "",
     p_cost_price: payload.costPrice,
     p_selling_price: payload.sellingPrice,
     p_discount: payload.discount,
   });
 
-  if (!legacyRpcResult.error) {
-    await syncProductBarcodes(productId, payload.barcodes, "manual_update");
-    return;
+  if (rpcResult.error && !isMissingRpcSignature(rpcResult.error, "update_product_full")) {
+    throw rpcResult.error;
   }
-  if (!isMissingRpcSignature(legacyRpcResult.error, "update_product_full")) throw legacyRpcResult.error;
 
   await updateProductDirect(productId, payload);
 }

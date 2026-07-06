@@ -194,6 +194,14 @@ export function useStock() {
 
       setStock(recalcDaysLeft(brands));
 
+      // Product info lookup for movement rows (joined client-side).
+      const productInfoById = new Map(
+        stockSnapshot.products.map((p) => [
+          p.product_id,
+          { item_code: p.item_code ?? p.code ?? "", name: p.name ?? "", uom: p.uom ?? "" },
+        ])
+      );
+
       // Recent sales (last 90 days) — used for product movement-speed badges.
       const since = new Date(Date.now() - 90 * 86400000).toISOString().slice(0, 10);
       const [salesResult, movementsResult] = await Promise.all([
@@ -204,9 +212,12 @@ export function useStock() {
           .neq("status", "cancelled")
           .order("invoice_date", { ascending: false })
           .limit(500),
+        // No FK from inventory_movements.product_id exists on live, so a
+        // PostgREST embed is rejected — product info is joined client-side
+        // from the stock snapshot already loaded above.
         supabase
           .from("inventory_movements")
-          .select("id, movement_type, qty_in, qty_out, batch_no, performed_at, reference_type, reference_id, products:product_id(item_code, name, uom)")
+          .select("id, movement_type, qty_in, qty_out, product_id, batch_no, performed_at, reference_type, reference_id")
           .order("performed_at", { ascending: false })
           .limit(200),
       ]);
@@ -238,16 +249,17 @@ export function useStock() {
         setMovements(((movementsResult.data ?? []) as any[]).map((m): MovementEntry => {
           const qtyIn = Number(m.qty_in ?? 0);
           const qtyOut = Number(m.qty_out ?? 0);
+          const prod = productInfoById.get(m.product_id);
           return {
             id: m.id,
             date: m.performed_at?.split("T")[0] || "",
             time: m.performed_at?.split("T")[1]?.split(".")[0] || "",
             type: qtyIn > 0 ? "IN" : "OUT",
-            productCode: m.products?.item_code ?? "",
-            productName: m.products?.name ?? "",
+            productCode: prod?.item_code ?? "",
+            productName: prod?.name ?? "",
             batchNo: m.batch_no ?? "",
             qty: qtyIn > 0 ? qtyIn : qtyOut,
-            unit: m.products?.uom ?? "",
+            unit: prod?.uom ?? "",
             invoiceNo: m.reference_type === "INVOICE" ? (m.reference_id ?? undefined) : undefined,
             returnId: m.reference_type === "RETURN" ? (m.reference_id ?? undefined) : undefined,
           };

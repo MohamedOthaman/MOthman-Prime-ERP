@@ -165,12 +165,19 @@ export async function fetchGrnQcQueue(): Promise<GrnQcQueueRow[]> {
 // ─── Detail ──────────────────────────────────────────────────────────────────
 
 export async function fetchGrnQcRecord(headerId: string) {
-  const [headerResult, linesResult] = await Promise.all([
+  const [headerResult, completionResult, linesResult] = await Promise.all([
     supabase
       .from("receiving_headers")
-      .select("id, grn_no, supplier_name, supplier_invoice_no, received_date, created_at, notes, status, municipality_reference_no, municipality_notes, inspected_at, municipality_submitted_at, municipality_approved_at, approved_at, completed_at, completed_by")
+      .select("id, grn_no, supplier_name, supplier_invoice_no, received_date, created_at, notes, status, municipality_reference_no, municipality_notes, inspected_at, municipality_submitted_at, municipality_approved_at, approved_at")
       .eq("id", headerId)
       .single(),
+    // completed_at/completed_by are not exposed by the live compat view —
+    // read them from the base table.
+    supabase
+      .from("grn_headers")
+      .select("completed_at, completed_by")
+      .eq("id", headerId)
+      .maybeSingle(),
     // Product code/name/uom/barcode are not on the view — enriched from
     // products_overview below.
     supabase
@@ -219,8 +226,8 @@ export async function fetchGrnQcRecord(headerId: string) {
       municipality_submitted_at:  h.municipality_submitted_at ?? null,
       municipality_approved_at:   h.municipality_approved_at ?? null,
       approved_at:                h.approved_at ?? null,
-      completed_at:               h.completed_at ?? null,
-      completed_by:               h.completed_by ?? null,
+      completed_at:               completionResult.data?.completed_at ?? null,
+      completed_by:               completionResult.data?.completed_by ?? null,
     } satisfies GrnQcHeaderRecord,
     lines: lineRows.map((row): GrnQcLineRecord => {
       const prod = productById.get(row.product_id) ?? {};

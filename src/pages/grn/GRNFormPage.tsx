@@ -99,24 +99,36 @@ export default function GRNFormPage() {
     return m;
   }, [products]);
 
-  // Load suppliers + products
+  // Load suppliers + products (+ all barcodes — products_overview only exposes
+  // the primary barcode on live, scanning must match every pack barcode).
   useEffect(() => {
     void (async () => {
-      const [sRes, pRes] = await Promise.all([
+      const [sRes, pRes, bRes] = await Promise.all([
         supabase.from("suppliers").select("id, name").order("name"),
         supabase
           .from("products_overview")
-          .select("id, code, name, name_ar, uom, primary_barcode, all_barcodes, cost_price")
+          .select("id, code, name, name_ar, uom, primary_barcode, cost_price")
           .order("code"),
+        supabase.from("product_barcodes").select("product_id, barcode"),
       ]);
       if (!sRes.error && sRes.data) setSuppliers(sRes.data as any[]);
-      if (!pRes.error && pRes.data)
+      if (!pRes.error && pRes.data) {
+        const barcodesByProduct = new Map<string, string[]>();
+        if (!bRes.error) {
+          (bRes.data ?? []).forEach((row) => {
+            const list = barcodesByProduct.get(row.product_id) ?? [];
+            list.push(row.barcode);
+            barcodesByProduct.set(row.product_id, list);
+          });
+        }
         setProducts(
           pRes.data.map((p) => ({
             ...p,
+            all_barcodes: barcodesByProduct.get(p.id ?? "") ?? (p.primary_barcode ? [p.primary_barcode] : []),
             buying_price: p.cost_price != null ? Number(p.cost_price) : undefined,
           })) as ProductLookup[]
         );
+      }
     })();
     setTimeout(() => grnNoRef.current?.focus(), 100);
   }, []);

@@ -299,9 +299,9 @@ function useOwnerData() {
         // 11. Recent audit log (last activity per user)
         supabase
           .from("audit_logs")
-          .select("performed_by, created_at")
+          .select("performed_by, performed_at")
           .not("performed_by", "is", null)
-          .order("created_at", { ascending: false })
+          .order("performed_at", { ascending: false })
           .limit(200),
       ]);
 

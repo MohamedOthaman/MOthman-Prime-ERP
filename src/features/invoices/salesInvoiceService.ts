@@ -88,38 +88,37 @@ export function getProductLabel(product: ProductLookup, lang: ProductDisplayLang
 }
 
 async function fetchProductLookups() {
-  const preferredResult = await supabase
-    .from("products_overview")
-    .select("id, item_code, name, name_en, name_ar, uom, primary_barcode, all_barcodes, selling_price, is_active")
-    .or("is_active.eq.true,is_active.is.null")
-    .order("item_code", { ascending: true });
+  // products_overview exposes only the primary barcode on live; the full
+  // barcode list (needed for scan/auto-fill matching) comes from
+  // product_barcodes and is merged here.
+  const [productsResult, barcodesResult] = await Promise.all([
+    supabase
+      .from("products_overview")
+      .select("id, item_code, name, name_en, name_ar, uom, primary_barcode, selling_price, is_active")
+      .or("is_active.eq.true,is_active.is.null")
+      .order("item_code", { ascending: true }),
+    supabase.from("product_barcodes").select("product_id, barcode"),
+  ]);
 
-  if (!preferredResult.error) {
-    return preferredResult;
+  if (productsResult.error) {
+    return productsResult;
   }
 
-  const message = preferredResult.error.message || "";
-  const missingAllBarcodes =
-    preferredResult.error.code === "42703" || message.includes("all_barcodes");
-
-  if (!missingAllBarcodes) {
-    return preferredResult;
-  }
-
-  const fallbackResult = await supabase
-    .from("products_overview")
-    .select("id, item_code, name, name_en, name_ar, uom, primary_barcode, selling_price, is_active")
-    .or("is_active.eq.true,is_active.is.null")
-    .order("item_code", { ascending: true });
-
-  if (fallbackResult.error) {
-    return fallbackResult;
+  const barcodesByProduct = new Map<string, string[]>();
+  if (!barcodesResult.error) {
+    (barcodesResult.data ?? []).forEach((row) => {
+      const list = barcodesByProduct.get(row.product_id) ?? [];
+      list.push(row.barcode);
+      barcodesByProduct.set(row.product_id, list);
+    });
   }
 
   return {
-    data: (fallbackResult.data ?? []).map((row: any) => ({
+    data: (productsResult.data ?? []).map((row) => ({
       ...row,
-      all_barcodes: row.primary_barcode ? [row.primary_barcode] : [],
+      all_barcodes:
+        barcodesByProduct.get(row.id ?? "") ??
+        (row.primary_barcode ? [row.primary_barcode] : []),
     })),
     error: null,
   };

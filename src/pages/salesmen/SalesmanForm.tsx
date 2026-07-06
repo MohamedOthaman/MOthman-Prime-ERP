@@ -50,7 +50,7 @@ export default function SalesmanForm() {
         async function load() {
             const { data, error: err } = await supabase
                 .from("salesmen")
-                .select("code, name, name_ar, phone, email, notes, is_active")
+                .select("code, name, name_ar, phone, email, is_active")
                 .eq("id", id)
                 .single();
 
@@ -63,7 +63,7 @@ export default function SalesmanForm() {
                     name_ar: (data as any).name_ar ?? "",
                     phone: (data as any).phone ?? "",
                     email: (data as any).email ?? "",
-                    notes: (data as any).notes ?? "",
+                    notes: "", // salesmen has no notes column on live
                     is_active: data.is_active,
                 });
             }
@@ -97,7 +97,6 @@ export default function SalesmanForm() {
             name_ar: form.name_ar.trim() || null,
             phone: form.phone.trim() || null,
             email: form.email.trim() || null,
-            notes: form.notes.trim() || null,
             is_active: form.is_active,
         };
 

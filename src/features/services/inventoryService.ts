@@ -70,6 +70,7 @@ export interface InventoryProductCatalogRow {
   selling_price: number | null;
   discount: number | null;
   price_source: string | null;
+  image_path: string | null;
   is_active: boolean;
   created_at: string | null;
   updated_at: string | null;
@@ -182,6 +183,7 @@ function normalizeProductMasterRow(row: any): InventoryProductCatalogRow {
     selling_price: row.selling_price != null ? toNumber(row.selling_price) : null,
     discount: row.discount != null ? toNumber(row.discount) : null,
     price_source: row.price_source ?? null,
+    image_path: row.image_path ?? null,
     is_active: row.is_active !== false,
     created_at: row.created_at ?? null,
     updated_at: row.updated_at ?? null,
@@ -263,12 +265,14 @@ async function getProductBarcodeMap() {
 }
 
 async function getInventoryProductMasters(includeInactive = false): Promise<InventoryProductCatalogRow[]> {
-  const richResult = await fetchAllRows((from, to) =>
+  // Live products_overview has no section / all_barcodes columns — the full
+  // barcode list is merged from product_barcodes.
+  const result = await fetchAllRows((from, to) =>
     (() => {
       let query = supabase
         .from("products_overview")
         .select(
-          "id, code, item_code, internal_code, name, name_ar, name_en, brand, category, section, uom, pack_size, packaging, storage_type, carton_holds, primary_barcode, all_barcodes, cost_price, selling_price, discount, price_source, is_active, created_at, updated_at"
+          "id, code, item_code, internal_code, name, name_ar, name_en, brand, category, uom, pack_size, packaging, storage_type, carton_holds, primary_barcode, cost_price, selling_price, discount, price_source, image_path, is_active, created_at, updated_at"
         )
         .order("name_en", { ascending: true, nullsFirst: false })
         .order("name", { ascending: true, nullsFirst: false });
@@ -281,35 +285,13 @@ async function getInventoryProductMasters(includeInactive = false): Promise<Inve
     })()
   );
 
-  if (!richResult.error) {
-    return ((richResult.data ?? []) as any[]).map(normalizeProductMasterRow);
-  }
-
-  const fallbackResult = await fetchAllRows((from, to) =>
-    (() => {
-      let query = supabase
-        .from("products_overview")
-        .select(
-          "id, code, item_code, internal_code, name, name_ar, name_en, brand, category, uom, pack_size, packaging, storage_type, carton_holds, primary_barcode, cost_price, selling_price, discount, price_source, is_active, created_at, updated_at"
-        )
-        .order("name_en", { ascending: true, nullsFirst: false })
-        .order("name", { ascending: true, nullsFirst: false });
-
-      if (!includeInactive) {
-        query = query.or("is_active.eq.true,is_active.is.null");
-      }
-
-      return query.range(from, to);
-    })()
-  );
-
-  if (fallbackResult.error) {
-    throw new Error(`Failed to load products overview: ${fallbackResult.error.message}`);
+  if (result.error) {
+    throw new Error(`Failed to load products overview: ${result.error.message}`);
   }
 
   const barcodeMap = await getProductBarcodeMap();
 
-  return ((fallbackResult.data ?? []) as any[]).map((row) =>
+  return ((result.data ?? []) as any[]).map((row) =>
     normalizeProductMasterRow({
       ...row,
       section: null,
@@ -349,35 +331,7 @@ async function getInventoryProductStockSummariesByProduct(
     throw new Error(`Failed to load stock summary: ${summaryResult.error.message}`);
   }
 
-  const productViewResult = await fetchAllRows((from, to) =>
-    supabase
-      .from("inventory_stock_by_product")
-      .select("product_id, available_quantity")
-      .range(from, to)
-  );
-
-  if (!productViewResult.error) {
-    return new Map(
-      ((productViewResult.data ?? []) as any[]).map((row) => [
-        row.product_id,
-        normalizeProductSummaryRow({
-          product_id: row.product_id,
-          available_quantity: row.available_quantity,
-          batch_count: (batches.filter((batch) => batch.product_id === row.product_id) ?? []).length,
-          nearest_expiry:
-            batches
-              .filter((batch) => batch.product_id === row.product_id && batch.expiry_date)
-              .map((batch) => batch.expiry_date)
-              .sort((left, right) => String(left).localeCompare(String(right)))[0] ?? null,
-        }),
-      ])
-    );
-  }
-
-  if (!isMissingRelation(productViewResult.error, "inventory_stock_by_product")) {
-    throw new Error(`Failed to load stock summary: ${productViewResult.error.message}`);
-  }
-
+  // (inventory_stock_by_product exists only in repo migrations, not live.)
   const legacySummary = await fetchAllRows((from, to) =>
     supabase
       .from("v_product_stock_balance")
@@ -464,8 +418,9 @@ export async function getInventoryStockPageSnapshot(): Promise<InventoryStockPag
 }
 
 export async function getAvailableStock(productId: string): Promise<number> {
+  // Primary: live per-product stock summary view.
   const { data, error } = await supabase
-    .from("inventory_stock_by_product")
+    .from("inventory_product_stock_summary")
     .select("available_quantity")
     .eq("product_id", productId)
     .maybeSingle();
@@ -474,9 +429,7 @@ export async function getAvailableStock(productId: string): Promise<number> {
     return toNumber(data?.available_quantity);
   }
 
-  const missingSummaryView = isMissingRelation(error, "inventory_stock_by_product");
-
-  if (!missingSummaryView) {
+  if (!isMissingRelation(error, "inventory_product_stock_summary")) {
     throw new Error(`Failed to load available stock: ${error.message}`);
   }
 

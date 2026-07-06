@@ -43,6 +43,7 @@ function normalizeLocalRow(row: any): InventoryProductCatalogRow {
     selling_price: row.selling_price != null ? Number(row.selling_price) : null,
     discount: row.discount != null ? Number(row.discount) : null,
     price_source: row.price_source ?? null,
+    image_path: row.image_path ?? null,
     is_active: row.is_active !== false,
     created_at: row.created_at ?? null,
     updated_at: row.updated_at ?? null,

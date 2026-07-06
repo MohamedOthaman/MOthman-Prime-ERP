@@ -30,40 +30,37 @@ const BOOTSTRAP_TARGETS: Array<{
   /** Optional filter applied on initial AND incremental fetch. */
   activeFilter?: string;
 }> = [
+  // Column lists verified against the LIVE schema (generated types 2026-07-03):
+  // products_overview has no all_barcodes/section; customers/salesmen/brands
+  // have no updated_at (so no incremental watermark); warehouses does not
+  // exist live at all.
   {
     table: "products",
     source: "products_overview",
     select:
-      "id, item_code, code, name, name_en, name_ar, brand, category, section, uom, pack_size, packaging, storage_type, carton_holds, primary_barcode, all_barcodes, cost_price, selling_price, discount, image_path, is_active, created_at, updated_at",
+      "id, item_code, code, name, name_en, name_ar, brand, category, uom, pack_size, packaging, storage_type, carton_holds, primary_barcode, cost_price, selling_price, discount, image_path, is_active, created_at, updated_at",
     watermarkColumn: null, // products_overview is a view; no reliable updated_at
     activeFilter: "is_active.eq.true,is_active.is.null",
   },
   {
     table: "customers",
     source: "customers",
-    select: "id, code, name, name_ar, salesman_id, is_active, updated_at",
-    watermarkColumn: "updated_at",
+    select: "id, code, name, name_ar, salesman_id, is_active",
+    watermarkColumn: null,
     activeFilter: "is_active.eq.true,is_active.is.null",
   },
   {
     table: "salesmen",
     source: "salesmen",
-    select: "id, code, name, name_ar, is_active, updated_at",
-    watermarkColumn: "updated_at",
-    activeFilter: "is_active.eq.true,is_active.is.null",
-  },
-  {
-    table: "warehouses",
-    source: "warehouses",
-    select: "id, code, name, name_ar, is_active, updated_at",
-    watermarkColumn: "updated_at",
+    select: "id, code, name, name_ar, is_active",
+    watermarkColumn: null,
     activeFilter: "is_active.eq.true,is_active.is.null",
   },
   {
     table: "brands",
     source: "brands",
-    select: "id, name, name_ar, updated_at",
-    watermarkColumn: "updated_at",
+    select: "id, name",
+    watermarkColumn: null,
   },
 ];
 

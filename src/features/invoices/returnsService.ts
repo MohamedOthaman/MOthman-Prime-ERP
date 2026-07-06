@@ -177,18 +177,26 @@ export async function fetchReturnDetails(returnId: string): Promise<{
     }));
   }
 
-  // Fetch allocations for this return's lines
+  // Fetch allocations for this return. There is no sales_return_allocations
+  // table on live — a posted return's allocations ARE its IN movements
+  // (reference_type RETURN, reference_line_id = return line id).
   let allocations: SalesReturnAllocation[] = [];
   if (lines.length > 0) {
-    const lineIds = lines.map((l) => l.id);
     const { data: allocData } = await supabase
-      .from("sales_return_allocations")
-      .select("*")
-      .in("return_line_id", lineIds)
-      .order("created_at", { ascending: true });
+      .from("inventory_movements")
+      .select("id, reference_line_id, batch_id, batch_no, expiry_date, qty_in, condition, performed_at")
+      .eq("reference_type", "RETURN")
+      .eq("reference_id", returnId)
+      .order("performed_at", { ascending: true });
     allocations = ((allocData ?? []) as any[]).map((a) => ({
-      ...a,
-      qty_returned: Number(a.qty_returned),
+      id: a.id,
+      return_line_id: a.reference_line_id,
+      batch_id: a.batch_id,
+      batch_no: a.batch_no,
+      expiry_date: a.expiry_date,
+      qty_returned: Number(a.qty_in ?? 0),
+      condition: a.condition ?? null,
+      created_at: a.performed_at,
     })) as SalesReturnAllocation[];
   }
 
