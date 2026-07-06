@@ -42,6 +42,7 @@ import { parsePdf } from "@/lib/pdfParser";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { recordMatchLearnings } from "@/features/invoices/skuLearningService";
+import { bestProductSimilarity } from "@/features/invoices/productNameMatcher";
 import { validateInvoiceRows } from "@/features/upload-center/validation";
 import { fireTrigger } from "@/lib/automation";
 import InvoiceLookupSelect, { type InvoiceLookupOption } from "./InvoiceLookupSelect";
@@ -566,14 +567,10 @@ export default function InvoiceEntryPage() {
 
           let suggestions: ProductLookup[] = [];
           if (!matched && extItemName) {
+            // Bilingual: scores against name_en AND name_ar (with Arabic
+            // folding) regardless of the active UI language.
             const sims = products
-              .map((p) => ({
-                product: p,
-                similarity: Math.max(
-                  getStringSimilarity(extItemName, getProductLabel(p, lang)),
-                  p.item_code ? getStringSimilarity(extItemName, p.item_code) : 0
-                ),
-              }))
+              .map((p) => ({ product: p, similarity: bestProductSimilarity(extItemName, p) }))
               .sort((a, b) => b.similarity - a.similarity);
             suggestions = sims.filter((s) => s.similarity >= 0.45).slice(0, 5).map((s) => s.product);
             if (sims[0] && sims[0].similarity > 0.75) matched = sims[0].product;
@@ -1198,43 +1195,6 @@ export default function InvoiceEntryPage() {
     };
   }, [grandTotal, invoiceDate, invoiceNo, lines, notes, selectedCustomer, selectedSalesman]);
 
-  const getStringSimilarity = useCallback((str1: string, str2: string): number => {
-    const s1 = str1.toLowerCase().trim();
-    const s2 = str2.toLowerCase().trim();
-    if (s1 === s2) return 1.0;
-    if (!s1 || !s2) return 0.0;
-
-    const words1 = s1.split(/\s+/);
-    const words2 = s2.split(/\s+/);
-    let matches = 0;
-    for (const w1 of words1) {
-      if (words2.includes(w1)) matches++;
-    }
-    const wordOverlap = (2 * matches) / (words1.length + words2.length);
-
-    const len = Math.max(s1.length, s2.length);
-    const matrix = Array.from({ length: s1.length + 1 }, (_, i) => [i]);
-    for (let j = 0; j <= s2.length; j++) matrix[0][j] = j;
-
-    for (let i = 1; i <= s1.length; i++) {
-      for (let j = 1; j <= s2.length; j++) {
-        if (s1[i - 1] === s2[j - 1]) {
-          matrix[i][j] = matrix[i - 1][j - 1];
-        } else {
-          matrix[i][j] = Math.min(
-            matrix[i - 1][j - 1] + 1,
-            matrix[i][j - 1] + 1,
-            matrix[i - 1][j] + 1
-          );
-        }
-      }
-    }
-    const dist = matrix[s1.length][s2.length];
-    const charSim = 1 - dist / len;
-
-    return 0.4 * wordOverlap + 0.6 * charSim;
-  }, []);
-
   const handleBarcodeScanned = useCallback(
     async (barcode: string) => {
       const matched = resolveProductByCodeOrBarcode(barcode, "barcode") || resolveProductByCodeOrBarcode(barcode, "code");
@@ -1522,16 +1482,12 @@ export default function InvoiceEntryPage() {
 
           let suggestions: ProductLookup[] = [];
           if (!matchedProduct && extItemName) {
-            const sims = products.map((p) => {
-              const label = getProductLabel(p, lang);
-              return {
-                product: p,
-                similarity: Math.max(
-                  getStringSimilarity(extItemName, label),
-                  p.item_code ? getStringSimilarity(extItemName, p.item_code) : 0,
-                ),
-              };
-            });
+            // Bilingual: scores against name_en AND name_ar (with Arabic
+            // folding) regardless of the active UI language.
+            const sims = products.map((p) => ({
+              product: p,
+              similarity: bestProductSimilarity(extItemName, p),
+            }));
             sims.sort((a, b) => b.similarity - a.similarity);
             suggestions = sims.filter((s) => s.similarity >= 0.45).slice(0, 5).map((s) => s.product);
             if (sims[0] && sims[0].similarity > 0.75) {
@@ -1784,15 +1740,14 @@ export default function InvoiceEntryPage() {
           }
         }
 
-        // Priority 4: fuzzy name match
+        // Priority 4: fuzzy name match — bilingual (name_en + name_ar with
+        // Arabic folding), independent of the active UI language.
         let suggestions: ProductLookup[] = [];
         if (!matchedProduct && extItemName) {
-          const sims = products.map((p) => {
-            const label = getProductLabel(p, lang);
-            const nameSim = getStringSimilarity(extItemName, label);
-            const codeSim = p.item_code ? getStringSimilarity(extItemName, p.item_code) : 0;
-            return { product: p, similarity: Math.max(nameSim, codeSim) };
-          });
+          const sims = products.map((p) => ({
+            product: p,
+            similarity: bestProductSimilarity(extItemName, p),
+          }));
           sims.sort((a, b) => b.similarity - a.similarity);
           suggestions = sims.filter((s) => s.similarity >= 0.45).slice(0, 5).map((s) => s.product);
 
