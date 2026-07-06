@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLang } from "@/contexts/LanguageContext";
-import { Barcode, Check, ChevronRight, Keyboard, Package2, Plus, RotateCcw, X } from "lucide-react";
+import { Barcode, Check, ChevronRight, Image as ImageIcon, Keyboard, Package2, Plus, RotateCcw, X } from "lucide-react";
 import { toast } from "sonner";
+import { ProductThumb } from "@/components/ProductThumb";
+import { uploadProductImage } from "@/features/products/productImages";
 import { Drawer, DrawerContent, DrawerTrigger } from "@/components/ui/drawer";
 import { Button } from "@/components/ui/button";
 import { DateWheel, NumberWheel } from "@/components/WheelPicker";
@@ -37,6 +39,7 @@ interface ProductDialogProps {
     pack_size?: string | null;
     carton_holds?: number | null;
     storage_type: string | null;
+    image_path?: string | null;
     is_active: boolean;
   } | null;
 }
@@ -239,6 +242,10 @@ export default function ProductDialog({ open, onClose, onSaved, editingProduct }
   const [weightHolds, setWeightHolds] = useState("");
   const [packagingUnits, setPackagingUnits] = useState<string[]>(["CTN"]);
   const [barcodes, setBarcodes] = useState<string[]>([]);
+  // Product image: existing storage key, newly picked file, or removal flag.
+  const [imagePath, setImagePath] = useState<string | null>(null);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imageRemoved, setImageRemoved] = useState(false);
   const [newBarcode, setNewBarcode] = useState("");
   const [batches, setBatches] = useState<BatchForm[]>([]);
   const [batchEditorDraft, setBatchEditorDraft] = useState<BatchForm | null>(null);
@@ -291,6 +298,9 @@ export default function ProductDialog({ open, onClose, onSaved, editingProduct }
       setSellingPrice(editingProduct.selling_price != null ? String(editingProduct.selling_price) : "");
       setDiscount(editingProduct.discount != null ? String(editingProduct.discount) : "");
       setBarcodes(editingProduct.all_barcodes || []);
+      setImagePath(editingProduct.image_path ?? null);
+      setImageFile(null);
+      setImageRemoved(false);
     } else {
       setBrand("");
       setCategory("");
@@ -307,6 +317,9 @@ export default function ProductDialog({ open, onClose, onSaved, editingProduct }
       setDiscount("");
       setBarcodes([]);
       setBatches([]);
+      setImagePath(null);
+      setImageFile(null);
+      setImageRemoved(false);
     }
     setBatchEditorDraft(null);
     setBatchEditorIndex(null);
@@ -429,12 +442,29 @@ export default function ProductDialog({ open, onClose, onSaved, editingProduct }
         discount: Number(discount || 0),
       };
 
+      // Image: upload a newly picked file first (requires connectivity — the
+      // product itself still saves if the upload fails).
+      let nextImagePath: string | null | undefined = undefined;
+      if (imageRemoved) {
+        nextImagePath = null;
+      }
+      if (imageFile) {
+        try {
+          nextImagePath = await uploadProductImage(payload.itemCode, imageFile);
+        } catch (imgErr: any) {
+          toast.warning(
+            `${t("imageUploadSkipped", "Image not saved")}: ${imgErr?.message ?? ""}`
+          );
+        }
+      }
+
       // Local-first save: the local mirror updates immediately; the remote
       // write happens inline when online or is queued in the outbox when not.
       const result = await saveProductMasterLocalFirst(db, {
         mode: isEdit && editingProduct?.id ? "update" : "create",
         productId: editingProduct?.id ?? null,
         isActive: isEdit ? editingProduct?.is_active !== false : true,
+        imagePath: nextImagePath,
         payload,
         metadata: {
           brand: brand.trim() || null,
@@ -651,6 +681,54 @@ export default function ProductDialog({ open, onClose, onSaved, editingProduct }
                 batchEditorDraft ? "pointer-events-none -translate-x-3 opacity-0" : "translate-x-0 opacity-100"
               )}
             >
+              {/* ── Product image ── */}
+              <div className="rounded-xl border border-border bg-card p-2.5">
+                <h3 className="mb-2 flex items-center gap-1 text-sm font-semibold">
+                  <ImageIcon className="h-4 w-4" /> {t("productImage", "Product Image")}
+                </h3>
+                <div className="flex items-center gap-3">
+                  <ProductThumb
+                    imagePath={
+                      imageFile ? URL.createObjectURL(imageFile) : imageRemoved ? null : imagePath
+                    }
+                    alt={nameEn || nameAr || itemCode}
+                    size={64}
+                  />
+                  <div className="flex flex-col gap-1.5">
+                    <label className="cursor-pointer rounded-lg border border-border px-3 py-1.5 text-center text-xs font-medium hover:bg-secondary">
+                      {imagePath || imageFile
+                        ? t("replaceImage", "Replace image")
+                        : t("addImage", "Add image")}
+                      <input
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp"
+                        className="hidden"
+                        onChange={(event) => {
+                          const file = event.target.files?.[0] ?? null;
+                          if (file) {
+                            setImageFile(file);
+                            setImageRemoved(false);
+                          }
+                          event.target.value = "";
+                        }}
+                      />
+                    </label>
+                    {(imagePath || imageFile) && !imageRemoved && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setImageFile(null);
+                          setImageRemoved(true);
+                        }}
+                        className="rounded-lg border border-destructive/30 px-3 py-1.5 text-xs font-medium text-destructive hover:bg-destructive/10"
+                      >
+                        {t("removeImage", "Remove image")}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+
               <div className="rounded-xl border border-border bg-card p-2.5">
                 <h3 className="mb-2 flex items-center gap-1 text-sm font-semibold">
                   <Barcode className="h-4 w-4" /> {t("barcodes", "Barcodes")} ({barcodes.length})

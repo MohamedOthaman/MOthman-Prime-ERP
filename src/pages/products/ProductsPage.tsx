@@ -3,6 +3,7 @@ import ProductDialog from "./ProductDialog";
 import { Package, Plus, Search, Edit3, Layers, CloudOff, RefreshCw } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { StorageBadge } from "@/components/StorageBadge";
+import { ProductThumb } from "@/components/ProductThumb";
 import { FilterDropdownBar, type FilterDropdownGroup } from "@/components/FilterDropdownBar";
 import { ReportsMenu } from "@/components/ReportsMenu";
 import { VirtualList } from "@/components/VirtualList";
@@ -262,8 +263,9 @@ export default function ProductsPage() {
                       setDialogOpen(true);
                     }
                   }}
-                  className="flex w-full cursor-pointer items-center gap-2 border-b border-border/50 px-3 py-3 text-left transition-colors hover:bg-row-hover"
+                  className="flex w-full cursor-pointer items-center gap-2 border-b border-border/50 px-3 py-2 text-left transition-colors hover:bg-row-hover"
                 >
+                  <ProductThumb imagePath={row.image_path} alt={row.name || row.item_code || ""} size={40} />
                   <span className="w-16 shrink-0 font-mono text-xs text-primary">{row.item_code || "-"}</span>
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm text-foreground">{getProductDisplayName(row, lang)}</p>

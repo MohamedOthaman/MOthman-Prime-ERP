@@ -70,6 +70,11 @@ export interface ProductMasterSaveInput {
   payload: ProductMasterPayload;
   metadata: ProductMetadataPatch;
   batches: BatchEditRow[];
+  /**
+   * products.image_path value: a storage key in the product-images bucket,
+   * null to remove the image, or undefined to leave it untouched.
+   */
+  imagePath?: string | null;
 }
 
 export const PRODUCT_MASTER_ENTITY = "product_master";
@@ -349,7 +354,11 @@ export async function persistProductMasterRemote(input: ProductMasterSaveInput):
 
   if (!productId) throw new Error("Product save did not return an id.");
 
-  await applyProductMetadataPatch(productId, { ...input.metadata });
+  const metadataPatch: Record<string, unknown> = { ...input.metadata };
+  if (typeof input.imagePath !== "undefined") {
+    metadataPatch.image_path = input.imagePath;
+  }
+  await applyProductMetadataPatch(productId, metadataPatch);
   await persistProductBatches(productId, input.batches);
   return productId;
 }
@@ -377,7 +386,7 @@ function buildLocalMirrorRow(input: ProductMasterSaveInput, productId: string) {
     cost_price: payload.costPrice,
     selling_price: payload.sellingPrice,
     discount: payload.discount,
-    image_path: null,
+    image_path: typeof input.imagePath === "undefined" ? null : input.imagePath,
     is_active: input.isActive,
     _syncedAt: Date.now(),
     _source: "local_edit",
@@ -408,23 +417,30 @@ export async function saveProductMasterLocalFirst(
     input.productId ??
     `local:${typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : Date.now()}`;
 
+  // Preserve the existing local image when the edit didn't touch it.
+  let effectiveInput = input;
+  if (typeof input.imagePath === "undefined" && input.productId) {
+    const existing = await db.get<{ image_path?: string | null }>("products", input.productId).catch(() => null);
+    effectiveInput = { ...input, imagePath: existing?.image_path ?? undefined };
+  }
+
   await db
-    .put("products", buildLocalMirrorRow(input, provisionalId))
+    .put("products", buildLocalMirrorRow(effectiveInput, provisionalId))
     .catch(() => { /* local mirror failures must never block the save */ });
 
   try {
-    const productId = await persistProductMasterRemote(input);
+    const productId = await persistProductMasterRemote(effectiveInput);
     if (productId !== provisionalId) {
       // Replace the provisional row with the server-id row.
       await db.delete("products", provisionalId).catch(() => undefined);
-      await db.put("products", buildLocalMirrorRow(input, productId)).catch(() => undefined);
+      await db.put("products", buildLocalMirrorRow(effectiveInput, productId)).catch(() => undefined);
     }
     return { productId, synced: true };
   } catch {
     await enqueue(db, {
       entity: PRODUCT_MASTER_ENTITY,
-      op: input.mode,
-      payload: input,
+      op: effectiveInput.mode,
+      payload: effectiveInput,
     });
     return { productId: provisionalId, synced: false };
   }
