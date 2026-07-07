@@ -65,7 +65,8 @@ export async function getCustomersBySalesman(): Promise<CustomersBySalesmanGroup
         )
         .not("salesman_id", "is", null)
         .or("is_active.eq.true,is_active.is.null")
-        .order("name");
+        .order("name")
+        .limit(5000);
 
     if (error) {
         throw new Error(
@@ -103,7 +104,8 @@ export async function getCustomersWithoutSalesman(): Promise<
         )
         .is("salesman_id", null)
         .or("is_active.eq.true,is_active.is.null")
-        .order("name");
+        .order("name")
+        .limit(5000);
 
     if (error) {
         throw new Error(

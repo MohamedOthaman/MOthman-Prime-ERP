@@ -116,3 +116,28 @@ explicit "no write/delete" boundaries.
 > `docs/MIGRATION_NOTES.md` §5. Counts were produced by parsing the saved advisor
 > JSON (its `categories` field partitions security vs. performance); re-run
 > `get_advisors` for the live number before remediation.
+
+---
+
+## Phase G status (2026-07-07 — fresh live advisors)
+
+Advisors re-run against the restored project. The June ERRORs
+(`rls_disabled_in_public` ×6, `security_definer_view` ×10,
+`sensitive_columns_exposed` ×2) are **no longer reported** — resolved live
+out-of-band. Current findings and disposition:
+
+| Finding | Count | Disposition |
+|---|---|---|
+| `rls_enabled_no_policy` (inventory_movements, outbound_*, sales_return*) | 7 | **G1 migration** (`20260707120000`) — authenticated SELECT policies; writes stay RPC-only. Also fixes app screens that silently read zero rows today. |
+| `anon_security_definer_function_executable` | 33 | **G2 migration** (`20260707130000`) — REVOKE anon/public on all overloads; authenticated kept. |
+| `function_search_path_mutable` | 19 | **G3 migration** (`20260707140000`) — pin `search_path = public`; `handle_new_user` deliberately excluded (auth-schema trigger, review individually). |
+| `duplicate_index` | 5 | **G4 migration** (`20260707150000`) — drop identical redundant copies, keep canonical/constraint-backed survivor. |
+| `rls_policy_always_true` (mapping/OCR/learning tables) | 4 | Accepted for now: policies are already scoped `TO authenticated`; these are staff-shared reference/learning tables. Revisit if per-user ownership is introduced. |
+| `auth_rls_initplan` | 8 | Deferred follow-up: rewrite policies with `(SELECT auth.uid())`; needs per-policy definitions review. |
+| `multiple_permissive_policies` | 22 | Deferred follow-up: policy consolidation, one table at a time. |
+| `unused_index` | 104 | **Do not drop** — pre-launch statistics are meaningless; re-evaluate after real traffic. |
+| `auth_leaked_password_protection` | 1 | Dashboard toggle (Auth → passwords) — cannot be set via SQL; enable manually. |
+
+Application order when approved: **G1 → G2 → G3 → G4**, one at a time,
+re-running the security advisor between each. All four are additive/
+logic-preserving and individually reversible (see file headers).
