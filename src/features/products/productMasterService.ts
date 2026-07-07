@@ -12,6 +12,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { DatabaseAdapter } from "@/database/types";
 import { enqueue } from "@/sync/outbox";
+import { logAudit } from "@/services/auditService";
 
 export function todayIso() {
   return new Date().toISOString().split("T")[0];
@@ -312,16 +313,41 @@ async function persistProductBatches(productId: string, batches: BatchEditRow[])
   }
 
   for (const batch of rows.filter((row) => row.id)) {
+    // Read the current metadata first so every edit leaves a revision trail.
+    const { data: before } = await supabase
+      .from("inventory_batches")
+      .select("batch_no, production_date, expiry_date, received_date")
+      .eq("id", batch.id!)
+      .maybeSingle();
+
+    const next = {
+      batch_no: batch.batchNo.trim(),
+      production_date: batch.productionDate || null,
+      expiry_date: batch.expiryDate,
+      received_date: batch.receivedDate || todayIso(),
+    };
+
+    const changed =
+      !before ||
+      before.batch_no !== next.batch_no ||
+      before.production_date !== next.production_date ||
+      before.expiry_date !== next.expiry_date ||
+      before.received_date !== next.received_date;
+    if (!changed) continue;
+
     const { error: updateError } = await supabase
       .from("inventory_batches")
-      .update({
-        batch_no: batch.batchNo.trim(),
-        production_date: batch.productionDate || null,
-        expiry_date: batch.expiryDate,
-        received_date: batch.receivedDate || todayIso(),
-      })
-      .eq("id", batch.id);
+      .update(next)
+      .eq("id", batch.id!);
     if (updateError) throw updateError;
+
+    void logAudit({
+      entityType: "batch",
+      entityId: batch.id,
+      action: "batch_metadata_updated",
+      oldValue: before ?? undefined,
+      newValue: next,
+    });
   }
 }
 

@@ -215,6 +215,34 @@ export async function getProductFefoPreview(
     return [];
   }
 
+  // Primary: the live get_fefo_batches RPC — the SAME ordering the posting
+  // engines use, so the preview cannot drift from what posting will do.
+  const rpcResult = await supabase.rpc("get_fefo_batches", {
+    p_product_id: productId,
+    p_qty_needed: requestedQty,
+  });
+
+  if (!rpcResult.error && Array.isArray(rpcResult.data)) {
+    const allocations: FefoPreviewAllocation[] = [];
+    let remainingQty = requestedQty;
+    for (const row of rpcResult.data) {
+      if (remainingQty <= 0) break;
+      const availableQuantity = Number(row.qty_available ?? 0);
+      if (availableQuantity <= 0) continue;
+      const allocatedQty = Math.min(availableQuantity, remainingQty);
+      allocations.push({
+        batch_no: row.batch_no,
+        expiry_date: row.expiry_date,
+        allocated_qty: allocatedQty,
+        available_quantity: availableQuantity,
+      });
+      remainingQty -= allocatedQty;
+    }
+    return allocations;
+  }
+
+  // Fallback: client-side approximation from the batch views (offline or RPC
+  // unavailable).
   const batches = await getAvailableBatches(productId);
   const allocations: FefoPreviewAllocation[] = [];
   let remainingQty = requestedQty;

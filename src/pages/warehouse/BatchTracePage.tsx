@@ -11,6 +11,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { toast } from "sonner";
+import { recordStockAdjustment } from "@/features/services/stockAdjustmentService";
 import {
   Package,
   ArrowLeft,
@@ -93,6 +95,33 @@ export default function BatchTracePage() {
   const [movements, setMovements] = useState<MovementRow[]>([]);
   const [loading, setLoading]     = useState(true);
   const [error, setError]         = useState<string | null>(null);
+  const [adjustOpen, setAdjustOpen]     = useState(false);
+  const [adjustDelta, setAdjustDelta]   = useState("");
+  const [adjustReason, setAdjustReason] = useState("");
+  const [adjusting, setAdjusting]       = useState(false);
+
+  async function submitAdjustment() {
+    if (!batchId) return;
+    const delta = Number(adjustDelta);
+    if (!Number.isFinite(delta) || delta === 0) {
+      toast.error(t("adjustDeltaInvalid", "Enter a non-zero +/- quantity"));
+      return;
+    }
+    setAdjusting(true);
+    const result = await recordStockAdjustment(batchId, delta, adjustReason.trim());
+    setAdjusting(false);
+    if (!result.success) {
+      toast.error(result.error ?? t("adjustFailed", "Adjustment failed"));
+      return;
+    }
+    toast.success(
+      `${t("adjustApplied", "Adjustment applied")} — ${t("qtyAvailable", "Available")}: ${result.qty_available}`
+    );
+    setAdjustOpen(false);
+    setAdjustDelta("");
+    setAdjustReason("");
+    void load();
+  }
 
   // ─── Movement type config (inside component for i18n) ───────────────────────
   const MOVEMENT_CONFIG = useMemo(() => ({
@@ -300,6 +329,57 @@ export default function BatchTracePage() {
                   </div>
                 ))}
               </div>
+
+              {/* Manual adjustment — movement-backed, audited */}
+              {!adjustOpen ? (
+                <button
+                  onClick={() => setAdjustOpen(true)}
+                  className="flex items-center gap-2 w-full rounded-lg border border-amber-500/25 bg-amber-500/5 hover:bg-amber-500/10 px-3 py-2.5 transition text-left"
+                >
+                  <Settings2 className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                  <span className="text-xs font-medium text-foreground flex-1">
+                    {t("adjustQuantity", "Adjust quantity (movement-backed)")}
+                  </span>
+                </button>
+              ) : (
+                <div className="space-y-2 rounded-lg border border-amber-500/25 bg-amber-500/5 p-3">
+                  <p className="text-xs font-semibold text-foreground">
+                    {t("adjustQuantityTitle", "Stock adjustment")}
+                  </p>
+                  <div className="flex gap-2">
+                    <input
+                      type="number"
+                      step="any"
+                      value={adjustDelta}
+                      onChange={(e) => setAdjustDelta(e.target.value)}
+                      placeholder={t("adjustDeltaPlaceholder", "+/- quantity")}
+                      className="h-8 w-28 rounded-md border border-border bg-secondary px-2 text-xs text-foreground"
+                    />
+                    <input
+                      type="text"
+                      value={adjustReason}
+                      onChange={(e) => setAdjustReason(e.target.value)}
+                      placeholder={t("adjustReasonPlaceholder", "Reason (required)")}
+                      className="h-8 flex-1 rounded-md border border-border bg-secondary px-2 text-xs text-foreground"
+                    />
+                  </div>
+                  <div className="flex justify-end gap-2">
+                    <button
+                      onClick={() => { setAdjustOpen(false); setAdjustDelta(""); setAdjustReason(""); }}
+                      className="rounded-md border border-border px-2.5 py-1 text-[11px] font-medium hover:bg-secondary"
+                    >
+                      {t("cancelAction", "Cancel")}
+                    </button>
+                    <button
+                      disabled={adjusting || !adjustDelta || !adjustReason.trim()}
+                      onClick={() => void submitAdjustment()}
+                      className="rounded-md bg-amber-500/90 px-2.5 py-1 text-[11px] font-semibold text-black disabled:opacity-50"
+                    >
+                      {adjusting ? t("saving", "Saving...") : t("applyAdjustment", "Apply adjustment")}
+                    </button>
+                  </div>
+                </div>
+              )}
 
               {/* GRN / receiving link */}
               {batch.grn_id && (

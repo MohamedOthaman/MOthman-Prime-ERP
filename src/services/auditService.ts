@@ -18,7 +18,7 @@ import { supabase } from "@/integrations/supabase/client";
 import type { Json } from "@/integrations/supabase/types";
 
 export interface AuditEntry {
-  entityType: "grn" | "user" | "product" | "invoice" | "system";
+  entityType: "grn" | "user" | "product" | "invoice" | "batch" | "system";
   entityId?: string;
   action: string;
   oldValue?: Record<string, any>;
