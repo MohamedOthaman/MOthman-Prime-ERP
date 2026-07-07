@@ -38,7 +38,6 @@ import {
   type SalesmanLookup,
 } from "@/features/invoices/salesInvoiceService";
 import { useOfflineSaveDraft } from "@/features/invoices/queries/useOfflineSaveDraft";
-import { parsePdf } from "@/lib/pdfParser";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { recordMatchLearnings } from "@/features/invoices/skuLearningService";
