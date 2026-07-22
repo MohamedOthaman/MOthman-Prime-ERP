@@ -4,6 +4,8 @@ import {
   getInventoryProductCatalog,
   type InventoryProductCatalogRow,
 } from "@/features/services/inventoryService";
+import type { OutboxRecord } from "@/database/types";
+import { PRODUCT_MASTER_ENTITY, type ProductMasterSaveInput } from "./productMasterService";
 
 export type ProductDataSource = "none" | "local" | "network";
 
@@ -50,6 +52,37 @@ function normalizeLocalRow(row: any): InventoryProductCatalogRow {
   };
 }
 
+export function mergeRemoteWithPendingProducts(
+  remote: InventoryProductCatalogRow[],
+  local: any[],
+  outbox: OutboxRecord[]
+): InventoryProductCatalogRow[] {
+  const active = outbox.filter(
+    (row) => row.entity === PRODUCT_MASTER_ENTITY && row.status !== "succeeded"
+  );
+  const activeCodes = new Set(
+    active
+      .map((row) => row.itemCode ?? (row.payload as ProductMasterSaveInput | undefined)?.payload?.itemCode)
+      .filter((value): value is string => Boolean(value))
+  );
+  const localByCode = new Map(
+    local
+      .filter((row) => activeCodes.has(row.item_code))
+      .map((row) => [row.item_code, row] as const)
+  );
+
+  const merged = remote.map((row) => {
+    const code = row.item_code ?? row.code ?? "";
+    const pending = localByCode.get(code);
+    return pending ? normalizeLocalRow({ ...row, ...pending, id: row.id }) : row;
+  });
+  const remoteCodes = new Set(remote.map((row) => row.item_code ?? row.code));
+  for (const [code, row] of localByCode) {
+    if (!remoteCodes.has(code)) merged.push(normalizeLocalRow(row));
+  }
+  return merged;
+}
+
 /**
  * Local-first product catalog.
  *
@@ -79,9 +112,14 @@ export function useLocalFirstProducts(): LocalFirstProductsState {
     setRefreshing(true);
     try {
       const fresh = await getInventoryProductCatalog();
+      const [local, outbox] = await Promise.all([
+        db.query<any>("products"),
+        db.query<OutboxRecord>("outbox"),
+      ]);
+      const visible = mergeRemoteWithPendingProducts(fresh, local, outbox);
       if (!aliveRef.current) return;
       networkLandedRef.current = true;
-      setRows(fresh);
+      setRows(visible);
       setSource("network");
       setError(null);
       // Keep the local mirror alive in the background (non-blocking). A full
@@ -89,7 +127,7 @@ export function useLocalFirstProducts(): LocalFirstProductsState {
       // rows don't linger.
       void (async () => {
         await db.clear("products");
-        await db.bulkPut("products", fresh.map((r) => ({ ...r, _syncedAt: Date.now() })));
+        await db.bulkPut("products", visible.map((r) => ({ ...r, _syncedAt: Date.now() })));
       })().catch(() => { /* mirror write failures must never break the page */ });
     } catch (err) {
       if (!aliveRef.current) return;

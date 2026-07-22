@@ -8,6 +8,7 @@ export interface SyncStatus {
   inFlight: number;
   failedPermanent: number;
   lastUpdatedAt: number | null;
+  latestFailure: OutboxRecord | null;
 }
 
 const POLL_MS = 4_000;
@@ -19,6 +20,7 @@ export function useSyncStatus(): SyncStatus {
     inFlight: 0,
     failedPermanent: 0,
     lastUpdatedAt: null,
+    latestFailure: null,
   });
 
   useEffect(() => {
@@ -26,10 +28,15 @@ export function useSyncStatus(): SyncStatus {
 
     const refresh = async () => {
       try {
-        const [pending, inFlight, failedPermanent] = await Promise.all([
+        const [pending, inFlight, failedPermanent, failures] = await Promise.all([
           countByStatus(db, "pending"),
           countByStatus(db, "in_flight"),
           countByStatus(db, "failed_permanent"),
+          db.query<OutboxRecord>("outbox", {
+            filters: [{ field: "status", equals: "failed_permanent" }],
+            orderBy: { field: "updatedAt", direction: "desc" },
+            limit: 1,
+          }),
         ]);
         if (cancelled) return;
         setStatus({
@@ -37,6 +44,7 @@ export function useSyncStatus(): SyncStatus {
           inFlight,
           failedPermanent,
           lastUpdatedAt: Date.now(),
+          latestFailure: failures[0] ?? null,
         });
       } catch {
         /* ignore — DB may be transitioning */

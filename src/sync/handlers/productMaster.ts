@@ -6,11 +6,10 @@ import {
   type ProductMasterSaveInput,
 } from "@/features/products/productMasterService";
 
-async function handler(record: OutboxRecord): Promise<void> {
+async function handler(record: OutboxRecord) {
   const input = record.payload as ProductMasterSaveInput;
-  // persistProductMasterRemote is replay-safe: a create whose item_code
-  // already exists on the server switches to update semantics.
-  await persistProductMasterRemote(input);
+  const result = await persistProductMasterRemote(input);
+  return { remoteRecordId: result.productId, syncState: "remote" as const };
 }
 
 let registered = false;

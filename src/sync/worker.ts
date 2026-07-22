@@ -4,8 +4,11 @@ import {
   markFailed,
   markInFlight,
   markSuccess,
+  recoverInterrupted,
+  updateOutboxMetadata,
 } from "./outbox";
 import { getHandler } from "./handlers";
+import { SyncOperationError } from "./errors";
 import {
   recordSyncCycleComplete,
   recordSyncCycleStart,
@@ -61,51 +64,70 @@ export function createSyncWorker(
 
         for (const entry of pending) {
           if (isDisabled() || !options.isOnline()) return;
-          const handler = getHandler(entry);
+          const attempt = await markInFlight(db, entry.id);
+          if (!attempt) continue;
+          const handler = getHandler(attempt);
           if (!handler) {
             await markFailed(
               db,
-              entry.id,
-              new Error(`No handler registered for ${entry.entity}:${entry.op}`)
+              attempt.id,
+              new SyncOperationError(
+                `No sync handler is registered for ${attempt.entity}:${attempt.op}`,
+                {
+                  code: "NO_SYNC_HANDLER",
+                  permanent: true,
+                  retryable: false,
+                  syncState: attempt.syncState ?? "local_only",
+                }
+              )
             );
             continue;
           }
 
-          await markInFlight(db, entry.id);
           const startedAt = Date.now();
           try {
             if (isDryRun()) {
-               
-              console.info("[sync:dry-run]", entry.entity, entry.op, entry.id);
+              console.info("[sync:dry-run]", attempt.entity, attempt.op, attempt.id);
             } else {
-              await handler(entry);
+              const result = (await handler(attempt)) as
+                | import("./handlers").SyncHandlerResult
+                | undefined;
+              if (result?.remoteRecordId || result?.syncState) {
+                await updateOutboxMetadata(db, attempt.id, {
+                  remoteRecordId: result.remoteRecordId ?? attempt.remoteRecordId,
+                  syncState: result.syncState ?? attempt.syncState,
+                });
+              }
             }
-            await markSuccess(db, entry.id);
+            await markSuccess(db, attempt.id);
             recordSyncLatency({
-              entity: entry.entity,
-              op: entry.op,
+              entity: attempt.entity,
+              op: attempt.op,
               durationMs: Date.now() - startedAt,
-              attempts: entry.attempts + 1,
+              attempts: attempt.attempts,
               outcome: "success",
             });
           } catch (err) {
-            const error = err as Error;
-            await markFailed(db, entry.id, error);
+            const error = err instanceof Error ? err : new Error(String(err));
+            const failed = await markFailed(db, attempt.id, err);
+            const willRetry = failed?.status === "pending";
             recordSyncLatency({
-              entity: entry.entity,
-              op: entry.op,
+              entity: attempt.entity,
+              op: attempt.op,
               durationMs: Date.now() - startedAt,
-              attempts: entry.attempts + 1,
-              outcome: "retry",
+              attempts: attempt.attempts,
+              outcome: willRetry ? "retry" : "failed_permanent",
               error: error.message,
             });
-            recordRetry({
-              entity: entry.entity,
-              outboxId: entry.id,
-              attempts: entry.attempts + 1,
-              reason: error.message,
-              nextAttemptInMs: 0,
-            });
+            if (willRetry && failed) {
+              recordRetry({
+                entity: attempt.entity,
+                outboxId: attempt.id,
+                attempts: attempt.attempts,
+                reason: error.message,
+                nextAttemptInMs: Math.max(0, failed.nextAttemptAt - Date.now()),
+              });
+            }
           }
         }
       }
@@ -127,7 +149,7 @@ export function createSyncWorker(
         window.addEventListener("online", handleOnline);
       }
       timerId = window.setInterval(drain, HEARTBEAT_MS);
-      void drain();
+      void recoverInterrupted(db).then(() => drain());
     },
     stop() {
       if (typeof window !== "undefined") {

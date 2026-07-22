@@ -13,11 +13,19 @@
  *   saves, only the image is skipped with a clear message.
  */
 import { supabase } from "@/integrations/supabase/client";
+import { classifyError, SyncOperationError } from "@/sync/errors";
 
 export const PRODUCT_IMAGES_BUCKET = "product-images";
 
 const MAX_DIMENSION = 800;
 const JPEG_QUALITY = 0.82;
+
+export interface PreparedProductImage {
+  /** Stable across retries, so Storage upsert cannot create duplicate objects. */
+  objectKey: string;
+  contentType: string;
+  base64: string;
+}
 
 /** Resolve an image_path value to a renderable URL (null-safe). */
 export function resolveProductImageUrl(imagePath: string | null | undefined): string | null {
@@ -55,22 +63,74 @@ export async function compressProductImage(file: File): Promise<Blob> {
  * into products.image_path. Throws with a human-readable message when the
  * bucket is missing or the network is down.
  */
-export async function uploadProductImage(itemCode: string, file: File): Promise<string> {
+function extensionFor(contentType: string): string {
+  if (contentType === "image/png") return "png";
+  if (contentType === "image/webp") return "webp";
+  return "jpg";
+}
+
+function bytesToBase64(bytes: Uint8Array): string {
+  let binary = "";
+  const chunkSize = 0x8000;
+  for (let offset = 0; offset < bytes.length; offset += chunkSize) {
+    binary += String.fromCharCode(...bytes.subarray(offset, offset + chunkSize));
+  }
+  return btoa(binary);
+}
+
+function base64ToBlob(value: string, contentType: string): Blob {
+  const binary = atob(value);
+  const bytes = new Uint8Array(binary.length);
+  for (let index = 0; index < binary.length; index += 1) {
+    bytes[index] = binary.charCodeAt(index);
+  }
+  return new Blob([bytes], { type: contentType });
+}
+
+export function preparedProductImageDataUrl(image: PreparedProductImage): string {
+  return `data:${image.contentType};base64,${image.base64}`;
+}
+
+/** Compress and serialize once. The exact object key and bytes survive restart. */
+export async function prepareProductImageUpload(
+  itemCode: string,
+  file: File
+): Promise<PreparedProductImage> {
   const blob = await compressProductImage(file);
   const safeCode = itemCode.replace(/[^A-Za-z0-9_-]/g, "_") || "product";
-  const key = `products/${safeCode}-${Date.now().toString(36)}.jpg`;
+  const contentType = blob.type || file.type || "image/jpeg";
+  const nonce = typeof crypto !== "undefined" && "randomUUID" in crypto
+    ? crypto.randomUUID()
+    : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
+  const objectKey = `products/${safeCode}-${nonce}.${extensionFor(contentType)}`;
+  const base64 = bytesToBase64(new Uint8Array(await blob.arrayBuffer()));
+  return { objectKey, contentType, base64 };
+}
+
+/** Idempotent upload of bytes prepared before the operation entered the outbox. */
+export async function uploadPreparedProductImage(image: PreparedProductImage): Promise<string> {
+  const blob = base64ToBlob(image.base64, image.contentType);
 
   const { error } = await supabase.storage
     .from(PRODUCT_IMAGES_BUCKET)
-    .upload(key, blob, { contentType: "image/jpeg", upsert: true });
+    .upload(image.objectKey, blob, { contentType: image.contentType, upsert: true });
 
   if (error) {
-    if (/bucket not found/i.test(error.message)) {
-      throw new Error(
-        "Image storage is not provisioned yet (apply migration 20260706120000_storage_buckets.sql)."
-      );
-    }
-    throw new Error(`Image upload failed: ${error.message}`);
+    const classified = classifyError(error);
+    throw new SyncOperationError(`Image upload failed: ${classified.message}`, {
+      code: classified.code,
+      status: classified.status,
+      details: classified.details,
+      hint: classified.hint,
+      permanent: classified.permanent,
+      retryable: classified.retryable,
+      syncState: "partial_remote",
+    });
   }
-  return key;
+  return image.objectKey;
+}
+
+/** Convenience path retained for callers that do not need durable replay. */
+export async function uploadProductImage(itemCode: string, file: File): Promise<string> {
+  return uploadPreparedProductImage(await prepareProductImageUpload(itemCode, file));
 }

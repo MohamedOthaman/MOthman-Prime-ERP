@@ -18,6 +18,26 @@ function fmtDateTime(ms: number) {
   return new Date(ms).toLocaleString("en-GB", { hour12: false });
 }
 
+function payloadIdentity(record: OutboxRecord) {
+  const payload = record.payload as {
+    productId?: string | null;
+    payload?: { itemCode?: string; nameEn?: string | null; nameAr?: string | null };
+  } | null;
+  return {
+    itemCode: record.itemCode ?? payload?.payload?.itemCode,
+    name: record.entityName ?? payload?.payload?.nameEn ?? payload?.payload?.nameAr,
+    payloadId: payload?.productId ?? undefined,
+  };
+}
+
+const SYNC_STATE_LABELS: Record<NonNullable<OutboxRecord["syncState"]>, string> = {
+  local_only: "Local only",
+  remote: "Remote",
+  partial_remote: "Partially synced",
+  pending: "Pending",
+  unknown: "Unknown",
+};
+
 export default function SyncLogPage() {
   const db = useDatabase();
   const { t } = useLang();
@@ -60,7 +80,11 @@ export default function SyncLogPage() {
   };
 
   const handleDiscard = async (id: string) => {
-    if (!confirm(t("discardConfirm", "Discard this sync entry? This cannot be undone."))) return;
+    const row = rows.find((candidate) => candidate.id === id);
+    const warning = row?.syncState === "partial_remote"
+      ? "Discard the retry data? The remote product will remain, but its unfinished image/change will not be retried."
+      : "Discard the retry data? The local product is not deleted, but it will remain local-only until saved again.";
+    if (!confirm(t("discardConfirm", warning))) return;
     await discard(db, id);
     await refresh();
     toast.success(t("discarded", "Discarded"));
@@ -108,6 +132,8 @@ export default function SyncLogPage() {
           visible.map((r) => {
             const cfg = STATUS_PILL[r.status];
             const Icon = cfg.icon;
+            const identity = payloadIdentity(r);
+            const state = r.syncState ?? (r.remoteRecordId ? "partial_remote" : "unknown");
             return (
               <div key={r.id} className="rounded-lg border border-border bg-card p-3 space-y-2">
                 <div className="flex items-start gap-2">
@@ -115,19 +141,43 @@ export default function SyncLogPage() {
                     <Icon className="w-3 h-3" />
                     {cfg.label}
                   </span>
-                  <span className="text-xs font-mono text-foreground flex-1 truncate">
-                    {r.entity}:{r.op}
+                  <span className="text-xs font-medium text-foreground flex-1 truncate">
+                    {r.label || `${r.entity}:${r.op}`}
                   </span>
                   <span className="text-[10px] text-muted-foreground font-mono">
-                    {fmtDateTime(r.createdAt)}
+                    {fmtDateTime(r.updatedAt || r.createdAt)}
                   </span>
                 </div>
                 <div className="text-[10px] text-muted-foreground font-mono break-all">
-                  id: {r.id} · attempts: {r.attempts} · device: {r.deviceId.slice(0, 8)}
+                  operation: {r.op} · entity: {r.entity} · state: {SYNC_STATE_LABELS[state]} · attempts: {r.attempts}
+                </div>
+                <div className="grid gap-1 text-[10px] text-muted-foreground sm:grid-cols-2">
+                  <div>
+                    {identity.itemCode && <div>Item code: <span className="font-mono text-foreground">{identity.itemCode}</span></div>}
+                    {identity.name && <div>Product: <span className="text-foreground">{identity.name}</span></div>}
+                    <div>Local ID: <span className="font-mono break-all text-foreground">{r.localRecordId ?? identity.payloadId ?? "—"}</span></div>
+                    <div>Remote ID: <span className="font-mono break-all text-foreground">{r.remoteRecordId ?? "—"}</span></div>
+                  </div>
+                  <div>
+                    <div>First failure: {r.firstFailureAt ? fmtDateTime(r.firstFailureAt) : "—"}</div>
+                    <div>Last attempt: {r.lastAttemptAt ? fmtDateTime(r.lastAttemptAt) : "—"}</div>
+                    <div>Device: <span className="font-mono">{r.deviceId.slice(0, 8)}</span></div>
+                    <div>Classification: {r.permanent ? "Permanent / needs action" : r.retryable === false ? "Not retryable" : "Retryable"}</div>
+                  </div>
                 </div>
                 {r.lastError && (
-                  <div className="text-[11px] text-red-400 bg-red-500/5 border border-red-500/20 rounded px-2 py-1.5">
-                    {r.lastError}
+                  <div className="space-y-1 text-[11px] text-red-400 bg-red-500/5 border border-red-500/20 rounded px-2 py-1.5">
+                    <div>{r.lastError}</div>
+                    {r.errorCode && <div className="font-mono">Code: {r.errorCode}</div>}
+                    {r.errorDetails && <div className="text-muted-foreground">Details: {r.errorDetails}</div>}
+                    {r.errorHint && <div className="text-amber-300">Next step: {r.errorHint}</div>}
+                  </div>
+                )}
+                {r.status === "failed_permanent" && (
+                  <div className="text-[10px] text-amber-400/90">
+                    {r.permanent
+                      ? t("permanentFailHint", "This was rejected by the server and will not succeed on retry until the cause (permission, data, or a pending migration) is fixed. Your data is saved on this device.")
+                      : t("exhaustedRetriesHint", "Retries were exhausted. Your data is saved on this device — retry once connectivity or the cause is resolved.")}
                   </div>
                 )}
                 {(r.status === "pending" || r.status === "failed_permanent") && (
@@ -139,13 +189,15 @@ export default function SyncLogPage() {
                       <RotateCcw className="w-3 h-3" />
                       {t("retryNow", "Retry now")}
                     </button>
-                    <button
-                      onClick={() => handleDiscard(r.id)}
-                      className="text-[10px] px-2 py-1 rounded border border-red-500/30 bg-red-500/10 text-red-400 font-medium hover:bg-red-500/20 transition inline-flex items-center gap-1"
-                    >
-                      <Trash2 className="w-3 h-3" />
-                      {t("discard", "Discard")}
-                    </button>
+                    {r.status === "failed_permanent" && (
+                      <button
+                        onClick={() => handleDiscard(r.id)}
+                        className="text-[10px] px-2 py-1 rounded border border-red-500/30 bg-red-500/10 text-red-400 font-medium hover:bg-red-500/20 transition inline-flex items-center gap-1"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                        {t("discard", "Discard retry data")}
+                      </button>
+                    )}
                   </div>
                 )}
               </div>

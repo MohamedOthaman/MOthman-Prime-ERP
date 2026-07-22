@@ -1,4 +1,5 @@
 import { CloudOff, RefreshCw, AlertTriangle, Check } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { useSyncStatus } from "@/sync/useSyncStatus";
 import { useOfflineStatus } from "@/offline/OfflineProvider";
 import { useLang } from "@/contexts/LanguageContext";
@@ -12,7 +13,8 @@ import { useLang } from "@/contexts/LanguageContext";
  */
 export function SyncStatusIndicator() {
   const { t } = useLang();
-  const { pending, inFlight, failedPermanent } = useSyncStatus();
+  const navigate = useNavigate();
+  const { pending, inFlight, failedPermanent, latestFailure } = useSyncStatus();
   const { isOnline, supabaseReachable } = useOfflineStatus();
 
   const offline = !isOnline || !supabaseReachable;
@@ -41,13 +43,24 @@ export function SyncStatusIndicator() {
     cls = "border-sky-500/30 bg-sky-500/10 text-sky-500";
   }
 
+  // Anything but the plain "syncing" spinner is actionable → make it a button
+  // that opens the Sync Log, where the real error + retry/discard live.
+  const actionable = failedPermanent > 0 || (offline && queued > 0) || (queued > 0 && !offline);
+  const failureDetail = latestFailure
+    ? `${latestFailure.label ?? `${latestFailure.entity}:${latestFailure.op}`}${latestFailure.errorCode ? ` [${latestFailure.errorCode}]` : ""}: ${latestFailure.lastError ?? "Unknown error"}`
+    : null;
+
   return (
-    <div
-      role="status"
-      className={`fixed bottom-3 right-3 z-50 flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[11px] font-semibold shadow-lg backdrop-blur-sm ${cls}`}
+    <button
+      type="button"
+      onClick={() => navigate("/admin/sync-log")}
+      title={failureDetail ?? t("openSyncLog", "Open sync log")}
+      className={`fixed bottom-3 right-3 z-50 flex max-w-[min(36rem,calc(100vw-1.5rem))] items-center gap-1.5 rounded-full border px-3 py-1.5 text-[11px] font-semibold shadow-lg backdrop-blur-sm transition hover:brightness-110 ${cls} ${
+        actionable ? "cursor-pointer" : "cursor-default"
+      }`}
     >
       {icon}
-      <span>{text}</span>
-    </div>
+      <span className="truncate">{failureDetail ? `${text} — ${failureDetail}` : text}</span>
+    </button>
   );
 }

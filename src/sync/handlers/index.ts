@@ -1,6 +1,11 @@
 import type { OutboxRecord } from "@/database/types";
 
-export type SyncHandler = (record: OutboxRecord) => Promise<void>;
+export interface SyncHandlerResult {
+  remoteRecordId?: string;
+  syncState?: OutboxRecord["syncState"];
+}
+
+export type SyncHandler = (record: OutboxRecord) => Promise<SyncHandlerResult | void>;
 
 /**
  * Registry mapping `entity:op` → handler that fires the actual remote call.

@@ -35,31 +35,51 @@ BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname = 'storage'
                  AND tablename = 'objects' AND policyname = 'product_images_auth_write') THEN
     CREATE POLICY product_images_auth_write ON storage.objects
-      FOR INSERT TO authenticated WITH CHECK (bucket_id = 'product-images');
+      FOR INSERT TO authenticated WITH CHECK (
+        bucket_id = 'product-images'
+        AND public.get_my_role() = ANY (ARRAY['admin','owner','ops_manager','purchase','purchase_manager','manager'])
+      );
   END IF;
 
   IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname = 'storage'
                  AND tablename = 'objects' AND policyname = 'product_images_auth_update') THEN
     CREATE POLICY product_images_auth_update ON storage.objects
-      FOR UPDATE TO authenticated USING (bucket_id = 'product-images');
+      FOR UPDATE TO authenticated
+      USING (
+        bucket_id = 'product-images'
+        AND public.get_my_role() = ANY (ARRAY['admin','owner','ops_manager','purchase','purchase_manager','manager'])
+      )
+      WITH CHECK (
+        bucket_id = 'product-images'
+        AND public.get_my_role() = ANY (ARRAY['admin','owner','ops_manager','purchase','purchase_manager','manager'])
+      );
   END IF;
 
   IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname = 'storage'
                  AND tablename = 'objects' AND policyname = 'product_images_auth_delete') THEN
     CREATE POLICY product_images_auth_delete ON storage.objects
-      FOR DELETE TO authenticated USING (bucket_id = 'product-images');
+      FOR DELETE TO authenticated USING (
+        bucket_id = 'product-images'
+        AND public.get_my_role() = ANY (ARRAY['admin','owner','ops_manager','purchase','purchase_manager','manager'])
+      );
   END IF;
 
   -- documents: authenticated staff only (read and write).
   IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname = 'storage'
                  AND tablename = 'objects' AND policyname = 'documents_auth_read') THEN
     CREATE POLICY documents_auth_read ON storage.objects
-      FOR SELECT TO authenticated USING (bucket_id = 'documents');
+      FOR SELECT TO authenticated USING (
+        bucket_id = 'documents'
+        AND public.get_my_role() = ANY (ARRAY['admin','owner','invoice_team','accountant','accounting','ops_manager','sales_manager'])
+      );
   END IF;
 
   IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname = 'storage'
                  AND tablename = 'objects' AND policyname = 'documents_auth_write') THEN
     CREATE POLICY documents_auth_write ON storage.objects
-      FOR INSERT TO authenticated WITH CHECK (bucket_id = 'documents');
+      FOR INSERT TO authenticated WITH CHECK (
+        bucket_id = 'documents'
+        AND public.get_my_role() = ANY (ARRAY['admin','owner','invoice_team','accountant','accounting','ops_manager','sales_manager'])
+      );
   END IF;
 END $$;

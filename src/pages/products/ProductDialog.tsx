@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useLang } from "@/contexts/LanguageContext";
 import { Barcode, Check, ChevronRight, Image as ImageIcon, Keyboard, Package2, Plus, RotateCcw, X } from "lucide-react";
 import { toast } from "sonner";
 import { ProductThumb } from "@/components/ProductThumb";
-import { uploadProductImage } from "@/features/products/productImages";
+import { prepareProductImageUpload } from "@/features/products/productImages";
 import { Drawer, DrawerContent, DrawerTrigger } from "@/components/ui/drawer";
 import { Button } from "@/components/ui/button";
 import { DateWheel, NumberWheel } from "@/components/WheelPicker";
@@ -231,6 +232,7 @@ function EntryModeToggle({ manual, onToggle }: EntryModeToggleProps) {
 export default function ProductDialog({ open, onClose, onSaved, editingProduct }: ProductDialogProps) {
   const { t } = useLang();
   const db = useDatabase();
+  const navigate = useNavigate();
   const [brand, setBrand] = useState("");
   const [category, setCategory] = useState("");
   const [section, setSection] = useState("");
@@ -442,20 +444,16 @@ export default function ProductDialog({ open, onClose, onSaved, editingProduct }
         discount: Number(discount || 0),
       };
 
-      // Image: upload a newly picked file first (requires connectivity — the
-      // product itself still saves if the upload fails).
+      // Prepare once so the exact bytes and object key survive an app restart.
+      // The product record is persisted before Storage is attempted.
       let nextImagePath: string | null | undefined = undefined;
+      let imageUpload: Awaited<ReturnType<typeof prepareProductImageUpload>> | undefined;
       if (imageRemoved) {
         nextImagePath = null;
       }
       if (imageFile) {
-        try {
-          nextImagePath = await uploadProductImage(payload.itemCode, imageFile);
-        } catch (imgErr: any) {
-          toast.warning(
-            `${t("imageUploadSkipped", "Image not saved")}: ${imgErr?.message ?? ""}`
-          );
-        }
+        imageUpload = await prepareProductImageUpload(payload.itemCode, imageFile);
+        nextImagePath = undefined;
       }
 
       // Local-first save: the local mirror updates immediately; the remote
@@ -465,6 +463,7 @@ export default function ProductDialog({ open, onClose, onSaved, editingProduct }
         productId: editingProduct?.id ?? null,
         isActive: isEdit ? editingProduct?.is_active !== false : true,
         imagePath: nextImagePath,
+        imageUpload,
         payload,
         metadata: {
           brand: brand.trim() || null,
@@ -488,14 +487,30 @@ export default function ProductDialog({ open, onClose, onSaved, editingProduct }
       });
 
       if (!result.synced) {
-        toast.info(
-          t("savedLocallyPendingSync", "Saved locally — will sync to the cloud when it is reachable.")
-        );
+        const e = result.error;
+        const partialRemote = result.syncState === "partial_remote";
+        const title = partialRemote
+          ? t("productRemoteImagePending", "Product saved remotely; its image is not synchronized")
+          : e?.permanent
+            ? t("productSavedLocalRejected", "Product saved on this device but rejected by the server")
+            : t("savedLocallyPendingSync", "Saved on this device — cloud sync is pending");
+        const options = {
+          description: [e?.code ? `[${e.code}]` : "", e?.message, e?.hint]
+            .filter(Boolean)
+            .join(" — "),
+          action: {
+            label: t("viewSyncLog", "View sync log"),
+            onClick: () => navigate("/admin/sync-log"),
+          },
+          duration: 14000,
+        };
+        if (e?.permanent) toast.error(title, options);
+        else toast.warning(title, options);
       }
       onSaved();
       onClose();
     } catch (err: any) {
-      alert(err?.message || "Failed to save product");
+      toast.error(err?.message || t("failedToSaveProduct", "Failed to save product"));
     } finally {
       setSaving(false);
     }

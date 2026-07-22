@@ -71,4 +71,24 @@ export interface OutboxRecord {
   status: "pending" | "in_flight" | "succeeded" | "failed_permanent";
   /** epoch ms when the next retry is allowed */
   nextAttemptAt: number;
+  /** Human-readable summary of what this operation is (e.g. "Edit product X"). */
+  label?: string;
+  /** True when the last failure is permanent (retry is pointless until fixed). */
+  permanent?: boolean;
+  /** Stable key used to replace an equivalent queued operation instead of duplicating it. */
+  dedupeKey?: string;
+  /** Product/item identity shown in the Sync Log without parsing arbitrary payloads. */
+  itemCode?: string;
+  entityName?: string;
+  localRecordId?: string;
+  remoteRecordId?: string;
+  /** Structured failure details retained independently from the display message. */
+  errorCode?: string;
+  errorHint?: string;
+  errorDetails?: string;
+  retryable?: boolean;
+  firstFailureAt?: number;
+  lastAttemptAt?: number;
+  /** Whether the affected record exists locally, remotely, or only partially remotely. */
+  syncState?: "local_only" | "remote" | "partial_remote" | "pending" | "unknown";
 }
